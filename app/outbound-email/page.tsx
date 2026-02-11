@@ -2,9 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Search, Send, Check, X, Clock } from 'lucide-react';
+import { ArrowLeft, Search, Send, Check, X, Clock, RefreshCw } from 'lucide-react';
 
-// Types
 interface Contact {
   id: string;
   name: string;
@@ -16,7 +15,7 @@ interface Contact {
   lastActivity: Date;
   notes: CRMNote[];
   priorEmails: Email[];
-  timeline: TimelineEvent[];
+  dealHistory: DealEvent[];
 }
 
 interface CRMNote {
@@ -30,132 +29,158 @@ interface Email {
   id: string;
   date: Date;
   subject: string;
-  body: string;
+  snippet: string;
   direction: 'inbound' | 'outbound';
 }
 
-interface TimelineEvent {
+interface DealEvent {
   id: string;
   date: Date;
-  type: 'call' | 'email' | 'meeting' | 'note' | 'deal_update';
-  description: string;
+  fromStage: string;
+  toStage: string;
+  note?: string;
 }
 
 type ReviewStatus = 'pending' | 'approved' | 'rejected';
 type TabType = 'context' | 'draft' | 'review';
 
-// Data generation
 const companies = [
-  'Meridian Systems', 'Apex Industries', 'Northwind Dynamics', 'Sterling Partners',
-  'Cascade Technologies', 'Summit Holdings', 'Ironclad Solutions', 'Vanguard Group',
-  'Pinnacle Software', 'Horizon Ventures', 'Atlas Consulting', 'Forge Analytics',
-  'Quantum Logistics', 'Evergreen Capital', 'Titan Manufacturing', 'Vertex Labs',
-  'Cobalt Enterprises', 'Stratus Networks', 'Keystone Financial', 'Onyx Digital'
+  'Stripe', 'Figma', 'Linear', 'Notion', 'Vercel', 'Supabase', 'Retool', 'Airtable',
+  'Amplitude', 'Segment', 'Plaid', 'Brex', 'Ramp', 'Mercury', 'Rippling', 'Gusto'
 ];
 
 const firstNames = [
   'Sarah', 'Michael', 'Jennifer', 'David', 'Rachel', 'James', 'Emily', 'Robert',
-  'Amanda', 'Christopher', 'Laura', 'Daniel', 'Michelle', 'Andrew', 'Elizabeth',
-  'Thomas', 'Nicole', 'Matthew', 'Stephanie', 'Brian'
+  'Amanda', 'Chris', 'Laura', 'Daniel', 'Michelle', 'Andrew', 'Elizabeth', 'Thomas'
 ];
 
 const lastNames = [
   'Chen', 'Rodriguez', 'Thompson', 'Williams', 'Martinez', 'Anderson', 'Taylor',
-  'Moore', 'Jackson', 'Martin', 'Lee', 'Harris', 'Clark', 'Lewis', 'Robinson',
-  'Walker', 'Young', 'Allen', 'King', 'Wright'
+  'Moore', 'Jackson', 'Martin', 'Lee', 'Harris', 'Clark', 'Lewis', 'Robinson', 'Walker'
 ];
 
 const roles = [
-  'VP of Engineering', 'Director of Operations', 'Chief Technology Officer',
-  'Head of Product', 'Senior Director', 'VP of Sales', 'Chief Operating Officer',
-  'Director of IT', 'Head of Procurement', 'VP of Business Development'
+  'VP of Engineering', 'Director of Operations', 'CTO', 'Head of Product',
+  'VP of Sales', 'COO', 'Director of IT', 'Head of Procurement',
+  'VP of Business Development', 'Director of Growth'
 ];
 
 const dealStages: Contact['dealStage'][] = ['lead', 'qualified', 'proposal', 'negotiation', 'closed'];
 
-const noteTemplates = [
-  'Call with {name} - discussed Q{q} priorities. Main concern is integration with existing systems. Follow up on technical requirements.',
-  'Met at industry conference. Strong interest in automation capabilities. Decision timeline is end of Q{q}.',
-  'Demo completed. {name} brought in technical team. Positive feedback on reporting features. Need to address security questions.',
-  'Budget discussion. Looking at {amount}k range. Need to align with their fiscal year planning.',
-  'Competitor mentioned - they are also evaluating Salesforce. Our differentiation is the AI capabilities.',
-  'Stakeholder mapping: {name} is champion, CFO is economic buyer. Need executive sponsor alignment.',
-  'Technical review scheduled for next week. They want to see API documentation and data migration process.',
-  'Pricing proposal sent. {name} to review with leadership team. Expected decision within 2 weeks.',
+const stageLabels: Record<Contact['dealStage'], string> = {
+  lead: 'Lead',
+  qualified: 'Qualified',
+  proposal: 'Proposal',
+  negotiation: 'Negotiation',
+  closed: 'Closed Won',
+};
+
+const stageColors: Record<Contact['dealStage'], string> = {
+  lead: '#737373',
+  qualified: '#2563eb',
+  proposal: '#d97706',
+  negotiation: '#d97706',
+  closed: '#16a34a',
+};
+
+const noteContents = [
+  (name: string) => `Call with ${name} went well. They're looking to replace their current vendor by Q2. Main pain points are manual data entry and lack of reporting. Team size is ~50, growing to 80 by year end. Decision committee includes CFO and VP Ops.`,
+  (name: string) => `${name} introduced me to their technical lead. They have concerns about API rate limits and data migration from Salesforce. I committed to sending technical documentation and a migration timeline estimate.`,
+  (name: string) => `Demo completed with ${name} and 3 team members. Strong interest in the automation features. ${name} asked about enterprise pricing and multi-seat discounts. They're comparing us against HubSpot and Outreach.`,
+  (name: string) => `Pricing discussion. ${name} mentioned budget is approved for this quarter but needs CFO sign-off for anything over $100K. Suggested we structure as annual with quarterly billing to ease cash flow concerns.`,
+  (name: string) => `${name} shared internal feedback doc. Team loves the UI but worried about learning curve. Offered extended onboarding support and dedicated CSM. Next step is final stakeholder presentation next Tuesday.`,
+  (name: string) => `Quick sync with ${name}. They're in final negotiations with us and one competitor. Our differentiator is the integration ecosystem. Need to send case study from similar company in their industry.`,
 ];
 
-const emailSubjects = [
-  'Re: Partnership Discussion',
-  'Following up on our conversation',
-  'Technical Requirements Document',
-  'Re: Proposal Review',
-  'Next Steps',
-  'Re: Demo Scheduling',
+const emailSnippets = [
+  { subject: 'Re: Partnership Discussion', snippet: 'Thank you for the detailed proposal. I have shared it with our leadership team and we are reviewing the pricing structure...' },
+  { subject: 'Following up on our demo', snippet: 'Great speaking with you yesterday. As discussed, I am attaching the technical requirements document our team put together...' },
+  { subject: 'Re: Integration Requirements', snippet: 'Our engineering team reviewed the API documentation. We have a few questions about webhook reliability and rate limiting...' },
+  { subject: 'Scheduling final presentation', snippet: 'I have confirmed availability with our CFO and VP of Operations. Would Thursday at 2pm PT work for the final presentation?' },
+  { subject: 'Re: Contract review', snippet: 'Legal has reviewed the MSA and has a few redlines. Mainly around the data processing agreement and liability caps...' },
 ];
 
 function generateContacts(): Contact[] {
-  return Array.from({ length: 20 }, (_, i) => {
-    const firstName = firstNames[i % firstNames.length];
-    const lastName = lastNames[i % lastNames.length];
-    const company = companies[i % companies.length];
+  const dealValues = [15000, 24000, 36000, 48000, 75000, 95000, 120000, 150000, 185000, 225000, 280000, 340000, 425000, 500000, 65000, 88000];
+  
+  return Array.from({ length: 16 }, (_, i) => {
+    const firstName = firstNames[i];
+    const lastName = lastNames[i];
+    const company = companies[i];
     const name = `${firstName} ${lastName}`;
-    const daysAgo = Math.floor(Math.random() * 30) + 1;
+    const daysAgo = [1, 2, 3, 5, 7, 10, 14, 21, 4, 6, 8, 12, 16, 18, 9, 11][i];
+    const stage = dealStages[i % 5];
     
-    const notes: CRMNote[] = Array.from({ length: 3 + Math.floor(Math.random() * 3) }, (_, j) => ({
+    const notes: CRMNote[] = Array.from({ length: 4 }, (_, j) => ({
       id: `note-${i}-${j}`,
-      date: new Date(Date.now() - (j * 7 + Math.floor(Math.random() * 5)) * 24 * 60 * 60 * 1000),
-      content: noteTemplates[j % noteTemplates.length]
-        .replace('{name}', firstName)
-        .replace('{q}', String(Math.floor(Math.random() * 4) + 1))
-        .replace('{amount}', String(Math.floor(Math.random() * 200) + 50)),
-      author: ['Alex Morgan', 'Jordan Lee', 'Casey Smith'][j % 3],
+      date: new Date(Date.now() - (j * 7 + j * 2) * 24 * 60 * 60 * 1000),
+      content: noteContents[(i + j) % noteContents.length](firstName),
+      author: ['Alex Morgan', 'Jordan Lee', 'Casey Smith', 'Taylor Kim'][j % 4],
     }));
 
-    const priorEmails: Email[] = Array.from({ length: 2 + Math.floor(Math.random() * 3) }, (_, j) => ({
-      id: `email-${i}-${j}`,
-      date: new Date(Date.now() - (j * 5 + Math.floor(Math.random() * 3)) * 24 * 60 * 60 * 1000),
-      subject: emailSubjects[j % emailSubjects.length],
-      body: j % 2 === 0 
-        ? `Hi ${firstName},\n\nThank you for taking the time to discuss your requirements. I wanted to follow up on the points we covered and outline potential next steps.\n\nBest regards`
-        : `Hello,\n\nThank you for the information. We are reviewing internally and will get back to you by end of week with our questions.\n\nBest,\n${firstName}`,
-      direction: j % 2 === 0 ? 'outbound' : 'inbound',
-    }));
+    const priorEmails: Email[] = Array.from({ length: 3 }, (_, j) => {
+      const template = emailSnippets[(i + j) % emailSnippets.length];
+      return {
+        id: `email-${i}-${j}`,
+        date: new Date(Date.now() - (j * 4 + 2) * 24 * 60 * 60 * 1000),
+        subject: template.subject,
+        snippet: template.snippet,
+        direction: j % 2 === 0 ? 'inbound' : 'outbound',
+      };
+    });
 
-    const timeline: TimelineEvent[] = [
-      { id: `t-${i}-1`, date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), type: 'email', description: 'Sent follow-up email' },
-      { id: `t-${i}-2`, date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), type: 'call', description: '30 min discovery call' },
-      { id: `t-${i}-3`, date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000), type: 'meeting', description: 'Product demo with team' },
-      { id: `t-${i}-4`, date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000), type: 'deal_update', description: 'Moved to ' + dealStages[(i + 1) % dealStages.length] },
-      { id: `t-${i}-5`, date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), type: 'note', description: 'Added CRM notes from call' },
-    ];
+    const stageIndex = dealStages.indexOf(stage);
+    const dealHistory: DealEvent[] = Array.from({ length: Math.min(stageIndex + 1, 3) }, (_, j) => ({
+      id: `deal-${i}-${j}`,
+      date: new Date(Date.now() - (30 - j * 10) * 24 * 60 * 60 * 1000),
+      fromStage: stageLabels[dealStages[Math.max(0, stageIndex - j - 1)]],
+      toStage: stageLabels[dealStages[Math.max(0, stageIndex - j)]],
+      note: j === 0 ? 'Moved after successful demo' : undefined,
+    })).reverse();
 
     return {
       id: `contact-${i}`,
       name,
-      email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${company.toLowerCase().replace(/\s+/g, '')}.com`,
+      email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${company.toLowerCase()}.com`,
       company,
       role: roles[i % roles.length],
-      dealValue: (Math.floor(Math.random() * 20) + 5) * 10000,
-      dealStage: dealStages[i % dealStages.length],
+      dealValue: dealValues[i],
+      dealStage: stage,
       lastActivity: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
       notes,
       priorEmails,
-      timeline,
+      dealHistory,
     };
   });
 }
 
 function generateDraft(contact: Contact): string {
+  const firstName = contact.name.split(' ')[0];
   const latestNote = contact.notes[0];
-  const recentContext = latestNote?.content.split('.')[0] || 'our recent discussion';
   
-  return `Hi ${contact.name.split(' ')[0]},
+  const contextPhrases: Record<Contact['dealStage'], string> = {
+    lead: `I noticed ${contact.company} has been growing rapidly and wanted to reach out about how we might be able to help with your operational efficiency.`,
+    qualified: `Following up on our initial conversation about ${contact.company}'s needs around automation and reporting.`,
+    proposal: `I wanted to check in on the proposal I sent over last week. I know your team had some questions about the integration timeline.`,
+    negotiation: `Thank you for the productive discussion with your team. I have incorporated the feedback from your CFO regarding the payment terms.`,
+    closed: `Congratulations on the decision to move forward. I wanted to confirm next steps for onboarding.`,
+  };
 
-I wanted to follow up on ${recentContext.toLowerCase()}. Given ${contact.company}'s focus on operational efficiency, I believe there are a few specific areas where we could provide significant value.
+  const contextDetail = latestNote 
+    ? latestNote.content.split('.')[0].toLowerCase()
+    : 'our recent discussion';
 
-Based on our conversation, I understand your team is evaluating solutions for Q2 implementation. I have prepared a tailored proposal that addresses the integration requirements you mentioned and includes the security documentation your technical team requested.
+  return `Hi ${firstName},
 
-Would you have 20 minutes this week for a brief call to walk through the key points? I am available Thursday or Friday afternoon.
+${contextPhrases[contact.dealStage]}
+
+Based on ${contextDetail}, I believe there are a few specific areas where we can provide significant value to ${contact.company}:
+
+1. Reducing manual data entry by 80% through our automation workflows
+2. Real-time reporting dashboards that integrate with your existing tools
+3. Dedicated onboarding support to ensure smooth adoption across your team
+
+I have prepared a tailored summary that addresses the integration requirements your technical team mentioned. Would you have 20 minutes this Thursday or Friday for a brief call to walk through the key points?
 
 Looking forward to hearing from you.
 
@@ -168,21 +193,21 @@ function formatDate(date: Date): string {
   
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
+function formatDateFull(date: Date): string {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-const stageLabels: Record<Contact['dealStage'], string> = {
-  lead: 'Lead',
-  qualified: 'Qualified',
-  proposal: 'Proposal',
-  negotiation: 'Negotiation',
-  closed: 'Closed',
-};
+function formatCurrency(value: number): string {
+  if (value >= 1000) {
+    return `$${Math.round(value / 1000)}K`;
+  }
+  return `$${value}`;
+}
 
 export default function OutboundEmailPage() {
   const contacts = useMemo(() => generateContacts(), []);
@@ -191,13 +216,15 @@ export default function OutboundEmailPage() {
   const [activeTab, setActiveTab] = useState<TabType>('context');
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [reviewStatuses, setReviewStatuses] = useState<Record<string, ReviewStatus>>({});
+  const [reviewerNotes, setReviewerNotes] = useState<Record<string, string>>({});
 
   const filteredContacts = useMemo(() => {
     if (!searchQuery) return contacts;
     const q = searchQuery.toLowerCase();
     return contacts.filter(c => 
       c.name.toLowerCase().includes(q) || 
-      c.company.toLowerCase().includes(q)
+      c.company.toLowerCase().includes(q) ||
+      c.role.toLowerCase().includes(q)
     );
   }, [contacts, searchQuery]);
 
@@ -213,9 +240,23 @@ export default function OutboundEmailPage() {
     ? (reviewStatuses[selectedContact.id] ?? 'pending')
     : 'pending';
 
+  const currentReviewerNote = selectedContact
+    ? (reviewerNotes[selectedContact.id] ?? '')
+    : '';
+
   const handleDraftChange = (value: string) => {
     if (selectedContact) {
       setDrafts(prev => ({ ...prev, [selectedContact.id]: value }));
+    }
+  };
+
+  const handleRegenerate = () => {
+    if (selectedContact) {
+      setDrafts(prev => {
+        const newDrafts = { ...prev };
+        delete newDrafts[selectedContact.id];
+        return newDrafts;
+      });
     }
   };
 
@@ -234,36 +275,34 @@ export default function OutboundEmailPage() {
   const handleReset = () => {
     if (selectedContact) {
       setReviewStatuses(prev => ({ ...prev, [selectedContact.id]: 'pending' }));
+      setReviewerNotes(prev => ({ ...prev, [selectedContact.id]: '' }));
     }
   };
 
   return (
     <div className="h-screen w-screen bg-[#fafaf9] text-[#191919] flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="h-12 border-b border-[#e5e5e3] flex items-center px-4 shrink-0">
+      <header className="h-12 border-b border-[#e5e5e3] flex items-center px-4 shrink-0 bg-[#fafaf9]">
         <Link 
           href="/" 
           className="flex items-center gap-2 text-[#737373] hover:text-[#191919] transition-colors duration-150"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={16} strokeWidth={1.5} />
           <span className="text-[13px]">Back</span>
         </Link>
         <span className="ml-6 text-[15px] font-medium">Outbound Email</span>
       </header>
 
-      {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left sidebar - Contact list */}
-        <aside className="w-72 border-r border-[#e5e5e3] flex flex-col shrink-0">
+        <aside className="w-80 border-r border-[#e5e5e3] flex flex-col shrink-0 bg-[#fafaf9]">
           <div className="p-3 border-b border-[#e5e5e3]">
             <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#737373]" />
+              <Search size={16} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#737373]" />
               <input
                 type="text"
                 placeholder="Search contacts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-9 pl-9 pr-3 bg-[#fafaf9] border border-[#e5e5e3] rounded text-[13px] text-[#191919] placeholder-[#737373] focus:outline-none focus:border-[#2563eb] transition-colors duration-150"
+                className="w-full h-9 pl-9 pr-3 bg-[#f5f5f4] border border-[#e5e5e3] rounded text-[13px] text-[#191919] placeholder-[#737373] focus:outline-none focus:border-[#2563eb] transition-colors duration-150"
               />
             </div>
           </div>
@@ -275,16 +314,31 @@ export default function OutboundEmailPage() {
                   setSelectedId(contact.id);
                   setActiveTab('context');
                 }}
-                className={`w-full text-left p-3 border-b border-[#e5e5e3] transition-colors duration-150 ${
+                className={`w-full text-left px-4 py-3 border-b border-[#e5e5e3] transition-colors duration-150 ${
                   selectedId === contact.id 
                     ? 'bg-[#eeeeec]' 
-                    : 'hover:bg-[#fafaf9]'
+                    : 'hover:bg-[#f5f5f4]'
                 }`}
               >
-                <div className="text-[13px] font-medium truncate">{contact.name}</div>
-                <div className="text-[11px] text-[#737373] truncate mt-0.5">{contact.company}</div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] font-medium truncate">{contact.name}</div>
+                    <div className="text-[11px] text-[#737373] truncate mt-0.5">{contact.company}</div>
+                  </div>
+                  <div className="text-[13px] font-medium text-[#191919] shrink-0">
+                    {formatCurrency(contact.dealValue)}
+                  </div>
+                </div>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-[11px] text-[#737373]">{stageLabels[contact.dealStage]}</span>
+                  <span 
+                    className="text-[11px] px-1.5 py-0.5 rounded"
+                    style={{ 
+                      color: stageColors[contact.dealStage],
+                      backgroundColor: `${stageColors[contact.dealStage]}10`
+                    }}
+                  >
+                    {stageLabels[contact.dealStage]}
+                  </span>
                   <span className="text-[11px] text-[#737373]">{formatDate(contact.lastActivity)}</span>
                 </div>
               </button>
@@ -292,28 +346,36 @@ export default function OutboundEmailPage() {
           </div>
         </aside>
 
-        {/* Main area */}
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 flex flex-col overflow-hidden bg-[#fafaf9]">
           {selectedContact ? (
             <>
-              {/* Contact header */}
-              <div className="p-4 border-b border-[#e5e5e3] shrink-0">
+              <div className="px-6 py-4 border-b border-[#e5e5e3] shrink-0">
                 <div className="flex items-start justify-between">
                   <div>
                     <h1 className="text-[18px] font-medium">{selectedContact.name}</h1>
                     <div className="text-[13px] text-[#737373] mt-1">
                       {selectedContact.role} at {selectedContact.company}
                     </div>
+                    <div className="text-[11px] text-[#737373] mt-0.5">
+                      {selectedContact.email}
+                    </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[15px] font-medium">{formatCurrency(selectedContact.dealValue)}</div>
-                    <div className="text-[11px] text-[#737373] mt-1">{stageLabels[selectedContact.dealStage]}</div>
+                    <div className="text-[18px] font-medium">{formatCurrency(selectedContact.dealValue)}</div>
+                    <span 
+                      className="inline-block text-[11px] px-1.5 py-0.5 rounded mt-1"
+                      style={{ 
+                        color: stageColors[selectedContact.dealStage],
+                        backgroundColor: `${stageColors[selectedContact.dealStage]}10`
+                      }}
+                    >
+                      {stageLabels[selectedContact.dealStage]}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Tabs */}
-              <div className="flex border-b border-[#e5e5e3] shrink-0">
+              <div className="flex border-b border-[#e5e5e3] shrink-0 px-6">
                 {(['context', 'draft', 'review'] as TabType[]).map(tab => (
                   <button
                     key={tab}
@@ -329,40 +391,54 @@ export default function OutboundEmailPage() {
                 ))}
               </div>
 
-              {/* Tab content */}
-              <div className="flex-1 overflow-y-auto p-4">
+              <div className="flex-1 overflow-y-auto">
                 {activeTab === 'context' && (
-                  <div className="space-y-6">
-                    {/* CRM Notes */}
-                    <section>
-                      <h2 className="text-[13px] text-[#737373] mb-3">CRM Notes</h2>
-                      <div className="space-y-3">
+                  <div className="p-6 max-w-3xl">
+                    <section className="mb-8">
+                      <div className="text-[11px] text-[#737373] uppercase tracking-wide mb-3">CRM Notes</div>
+                      <div className="space-y-4">
                         {selectedContact.notes.map(note => (
-                          <div key={note.id} className="bg-[#fafaf9] border border-[#e5e5e3] rounded p-3">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-[11px] text-[#737373]">{note.author}</span>
-                              <span className="text-[11px] text-[#737373]">{formatDate(note.date)}</span>
+                          <div key={note.id} className="border-l-2 border-[#e5e5e3] pl-4">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[13px] font-medium">{note.author}</span>
+                              <span className="text-[11px] text-[#737373]">{formatDateFull(note.date)}</span>
                             </div>
-                            <p className="text-[13px] leading-relaxed">{note.content}</p>
+                            <p className="text-[13px] leading-relaxed text-[#191919]">{note.content}</p>
                           </div>
                         ))}
                       </div>
                     </section>
 
-                    {/* Prior Emails */}
-                    <section>
-                      <h2 className="text-[13px] text-[#737373] mb-3">Prior Emails</h2>
+                    <section className="mb-8">
+                      <div className="text-[11px] text-[#737373] uppercase tracking-wide mb-3">Email History</div>
                       <div className="space-y-3">
                         {selectedContact.priorEmails.map(email => (
-                          <div key={email.id} className="bg-[#fafaf9] border border-[#e5e5e3] rounded p-3">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-[11px] text-[#737373]">
-                                {email.direction === 'outbound' ? 'Sent' : 'Received'}
-                              </span>
-                              <span className="text-[11px] text-[#737373]">{formatDate(email.date)}</span>
+                          <div key={email.id} className="bg-[#f5f5f4] rounded p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[13px] font-medium">{email.subject}</span>
+                              <span className="text-[11px] text-[#737373]">{formatDateFull(email.date)}</span>
                             </div>
-                            <div className="text-[13px] font-medium mb-2">{email.subject}</div>
-                            <p className="text-[13px] text-[#737373] leading-relaxed whitespace-pre-line">{email.body}</p>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`text-[11px] ${email.direction === 'inbound' ? 'text-[#2563eb]' : 'text-[#737373]'}`}>
+                                {email.direction === 'inbound' ? 'Received' : 'Sent'}
+                              </span>
+                            </div>
+                            <p className="text-[13px] text-[#737373] leading-relaxed">{email.snippet}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section>
+                      <div className="text-[11px] text-[#737373] uppercase tracking-wide mb-3">Deal History</div>
+                      <div className="space-y-2">
+                        {selectedContact.dealHistory.map(event => (
+                          <div key={event.id} className="flex items-center gap-3 text-[13px]">
+                            <span className="text-[11px] text-[#737373] w-24 shrink-0">{formatDateFull(event.date)}</span>
+                            <span className="text-[#737373]">{event.fromStage}</span>
+                            <span className="text-[#737373]">→</span>
+                            <span className="font-medium">{event.toStage}</span>
+                            {event.note && <span className="text-[#737373]">· {event.note}</span>}
                           </div>
                         ))}
                       </div>
@@ -371,106 +447,131 @@ export default function OutboundEmailPage() {
                 )}
 
                 {activeTab === 'draft' && (
-                  <div className="h-full flex flex-col">
-                    <div className="text-[13px] text-[#737373] mb-3">AI-generated draft based on CRM context</div>
+                  <div className="p-6 h-full flex flex-col max-w-3xl">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-[11px] text-[#737373] uppercase tracking-wide">AI-Generated Draft</div>
+                      <button
+                        onClick={handleRegenerate}
+                        className="flex items-center gap-1.5 text-[13px] text-[#737373] hover:text-[#191919] transition-colors duration-150"
+                      >
+                        <RefreshCw size={14} strokeWidth={1.5} />
+                        Regenerate
+                      </button>
+                    </div>
+                    <div className="bg-[#f5f5f4] rounded p-4 mb-4">
+                      <div className="text-[11px] text-[#737373] mb-1">To: {selectedContact.email}</div>
+                      <div className="text-[11px] text-[#737373]">Subject: Following up on our conversation</div>
+                    </div>
                     <textarea
                       value={currentDraft}
                       onChange={(e) => handleDraftChange(e.target.value)}
-                      className="flex-1 w-full bg-[#fafaf9] border border-[#e5e5e3] rounded p-4 text-[13px] leading-relaxed resize-none focus:outline-none focus:border-[#2563eb] transition-colors duration-150"
+                      className="flex-1 min-h-[300px] w-full bg-[#f5f5f4] border border-[#e5e5e3] rounded p-4 text-[13px] leading-relaxed resize-none focus:outline-none focus:border-[#2563eb] transition-colors duration-150"
                     />
                   </div>
                 )}
 
                 {activeTab === 'review' && (
-                  <div className="space-y-6">
-                    {/* Status */}
-                    <div className="flex items-center gap-3">
-                      <span className="text-[13px] text-[#737373]">Status:</span>
-                      <span className={`inline-flex items-center gap-1.5 text-[13px] ${
+                  <div className="p-6 max-w-3xl">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="text-[11px] text-[#737373] uppercase tracking-wide">Status</div>
+                      <span className={`inline-flex items-center gap-1.5 text-[13px] font-medium ${
                         currentStatus === 'approved' ? 'text-[#16a34a]' :
                         currentStatus === 'rejected' ? 'text-[#dc2626]' :
                         'text-[#d97706]'
                       }`}>
-                        {currentStatus === 'approved' && <Check size={14} />}
-                        {currentStatus === 'rejected' && <X size={14} />}
-                        {currentStatus === 'pending' && <Clock size={14} />}
-                        {currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)}
+                        {currentStatus === 'approved' && <Check size={14} strokeWidth={2} />}
+                        {currentStatus === 'rejected' && <X size={14} strokeWidth={2} />}
+                        {currentStatus === 'pending' && <Clock size={14} strokeWidth={1.5} />}
+                        {currentStatus === 'approved' ? 'Approved' : currentStatus === 'rejected' ? 'Rejected' : 'Pending Review'}
                       </span>
                     </div>
 
-                    {/* Email preview */}
-                    <div className="bg-[#fafaf9] border border-[#e5e5e3] rounded p-4">
+                    <div className="bg-[#f5f5f4] rounded p-4 mb-6">
                       <div className="text-[11px] text-[#737373] mb-1">To: {selectedContact.email}</div>
-                      <div className="text-[11px] text-[#737373] mb-3">Subject: Following up on our conversation</div>
-                      <div className="text-[13px] leading-relaxed whitespace-pre-line">{currentDraft}</div>
+                      <div className="text-[11px] text-[#737373] mb-4">Subject: Following up on our conversation</div>
+                      <div className="text-[13px] leading-relaxed whitespace-pre-line border-t border-[#e5e5e3] pt-4">{currentDraft}</div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex gap-3">
-                      {currentStatus === 'pending' ? (
-                        <>
+                    {currentStatus === 'pending' && (
+                      <>
+                        <div className="mb-4">
+                          <div className="text-[11px] text-[#737373] uppercase tracking-wide mb-2">Reviewer Notes (optional)</div>
+                          <textarea
+                            value={currentReviewerNote}
+                            onChange={(e) => {
+                              if (selectedContact) {
+                                setReviewerNotes(prev => ({ ...prev, [selectedContact.id]: e.target.value }));
+                              }
+                            }}
+                            placeholder="Add notes for the sender..."
+                            className="w-full h-20 bg-[#f5f5f4] border border-[#e5e5e3] rounded p-3 text-[13px] resize-none focus:outline-none focus:border-[#2563eb] transition-colors duration-150 placeholder-[#737373]"
+                          />
+                        </div>
+                        <div className="flex gap-3">
                           <button
                             onClick={handleApprove}
-                            className="h-9 px-4 bg-[#16a34a] text-[#191919] text-[13px] font-medium rounded hover:opacity-90 transition-opacity duration-150 flex items-center gap-2"
+                            className="h-10 px-5 bg-[#16a34a] text-white text-[13px] font-medium rounded hover:bg-[#15803d] transition-colors duration-150 flex items-center gap-2"
                           >
-                            <Send size={14} />
+                            <Send size={14} strokeWidth={1.5} />
                             Approve & Send
                           </button>
                           <button
                             onClick={handleReject}
-                            className="h-9 px-4 bg-[#eeeeec] border border-[#e5e5e3] text-[13px] rounded hover:bg-[#e5e5e3] transition-colors duration-150"
+                            className="h-10 px-5 bg-[#f5f5f4] border border-[#e5e5e3] text-[13px] rounded hover:bg-[#eeeeec] transition-colors duration-150"
                           >
                             Reject
                           </button>
                           <button
                             onClick={() => setActiveTab('draft')}
-                            className="h-9 px-4 bg-[#eeeeec] border border-[#e5e5e3] text-[13px] rounded hover:bg-[#e5e5e3] transition-colors duration-150"
+                            className="h-10 px-5 bg-[#f5f5f4] border border-[#e5e5e3] text-[13px] rounded hover:bg-[#eeeeec] transition-colors duration-150"
                           >
                             Edit Draft
                           </button>
-                        </>
-                      ) : (
+                        </div>
+                      </>
+                    )}
+
+                    {currentStatus !== 'pending' && (
+                      <div className="flex gap-3">
                         <button
                           onClick={handleReset}
-                          className="h-9 px-4 bg-[#eeeeec] border border-[#e5e5e3] text-[13px] rounded hover:bg-[#e5e5e3] transition-colors duration-150"
+                          className="h-10 px-5 bg-[#f5f5f4] border border-[#e5e5e3] text-[13px] rounded hover:bg-[#eeeeec] transition-colors duration-150"
                         >
-                          Reset Status
+                          Reset to Pending
                         </button>
-                      )}
-                    </div>
+                        {currentStatus === 'rejected' && (
+                          <button
+                            onClick={() => setActiveTab('draft')}
+                            className="h-10 px-5 bg-[#f5f5f4] border border-[#e5e5e3] text-[13px] rounded hover:bg-[#eeeeec] transition-colors duration-150"
+                          >
+                            Revise Draft
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {currentReviewerNote && currentStatus !== 'pending' && (
+                      <div className="mt-6 p-4 bg-[#f5f5f4] rounded">
+                        <div className="text-[11px] text-[#737373] uppercase tracking-wide mb-2">Reviewer Notes</div>
+                        <p className="text-[13px]">{currentReviewerNote}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-[#737373] text-[13px]">
-              Select a contact to view details
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
+              <div className="w-12 h-12 rounded-full bg-[#f5f5f4] flex items-center justify-center mb-4">
+                <Send size={20} strokeWidth={1.5} className="text-[#737373]" />
+              </div>
+              <div className="text-[15px] text-[#191919] mb-1">No contact selected</div>
+              <div className="text-[13px] text-[#737373] max-w-xs">
+                Select a contact from the list to view their CRM context and draft an outbound email.
+              </div>
             </div>
           )}
         </main>
-
-        {/* Right panel - Timeline */}
-        {selectedContact && (
-          <aside className="w-64 border-l border-[#e5e5e3] flex flex-col shrink-0">
-            <div className="p-3 border-b border-[#e5e5e3]">
-              <span className="text-[13px] text-[#737373]">Activity</span>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3">
-              <div className="space-y-4">
-                {selectedContact.timeline.map((event, index) => (
-                  <div key={event.id} className="relative pl-4">
-                    {index < selectedContact.timeline.length - 1 && (
-                      <div className="absolute left-[3px] top-3 bottom-0 w-px bg-[#e5e5e3]" />
-                    )}
-                    <div className="absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full bg-[#e5e5e3]" />
-                    <div className="text-[11px] text-[#737373]">{formatDate(event.date)}</div>
-                    <div className="text-[13px] mt-0.5">{event.description}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </aside>
-        )}
       </div>
     </div>
   );

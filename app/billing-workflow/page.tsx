@@ -2,9 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Check, AlertTriangle, FileText, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Check, AlertTriangle, ChevronRight } from 'lucide-react';
 
-// Design tokens
 const colors = {
   bg: '#fafaf9',
   surface: '#f5f5f4',
@@ -18,57 +17,37 @@ const colors = {
   red: '#dc2626',
 };
 
-// Generate German-sounding company names
-const germanPrefixes = ['Nord', 'Süd', 'Ost', 'West', 'Alt', 'Neu', 'Groß', 'Klein', 'Ober', 'Unter'];
-const germanRoots = ['berg', 'stein', 'feld', 'wald', 'bach', 'dorf', 'hausen', 'burg', 'thal', 'heim'];
-const companySuffixes = ['GmbH', 'AG', 'KG', 'e.K.', 'GmbH & Co. KG'];
-const businessTypes = ['Logistik', 'Technik', 'Handel', 'Bau', 'Consulting', 'Services', 'Solutions', 'Industrie'];
-
-function generateCompanyName(seed: number): string {
-  const prefix = germanPrefixes[seed % germanPrefixes.length];
-  const root = germanRoots[(seed * 3) % germanRoots.length];
-  const businessType = businessTypes[(seed * 7) % businessTypes.length];
-  const suffix = companySuffixes[(seed * 11) % companySuffixes.length];
-  return `${prefix}${root} ${businessType} ${suffix}`;
-}
-
-// Generate mock data
-function generateCustomerData(count: number) {
-  return Array.from({ length: count }, (_, i) => {
-    const seed = i + 1;
-    const employees = 5 + Math.floor(Math.pow(seed * 17 % 100, 0.8));
-    const cardLoads = employees + Math.floor((seed * 13 % 20) - 10);
-    const hasAnomaly = cardLoads !== employees && Math.abs(cardLoads - employees) > 2;
-    const missingData = seed % 17 === 0;
-    const licenseType = ['Standard', 'Premium', 'Enterprise'][seed % 3];
-    const licenseFee = licenseType === 'Standard' ? 9.90 : licenseType === 'Premium' ? 14.90 : 24.90;
-    const transactionFee = cardLoads * 0.50;
-    const total = employees * licenseFee + transactionFee;
-    const invoiceStatus = ['Draft', 'Sent', 'Paid'][(seed * 7) % 3] as 'Draft' | 'Sent' | 'Paid';
-    const dueDate = new Date(2025, 1, 15 + (seed % 10));
-    
-    return {
-      id: `CUS-${String(seed).padStart(4, '0')}`,
-      name: generateCompanyName(seed),
-      employees,
-      cardLoads,
-      revenueHandle: total,
-      status: missingData ? 'Missing' : hasAnomaly ? 'Anomaly' : 'Pending',
-      verified: false,
-      licenseType,
-      licenseFee,
-      transactionFee,
-      total,
-      invoiceStatus,
-      dueDate,
-      notes: '',
-      lastMonth: total * (0.85 + (seed % 30) / 100),
-    };
-  });
-}
+// Realistic German company names
+const germanCompanies = [
+  'Müller Logistik GmbH',
+  'Schmidt Automotive AG',
+  'Weber Maschinenbau GmbH',
+  'Becker Elektrotechnik KG',
+  'Hoffmann Consulting GmbH',
+  'Fischer Transport GmbH & Co. KG',
+  'Schneider Bauunternehmen AG',
+  'Krüger Industrieservice GmbH',
+  'Braun Verpackungen e.K.',
+  'Neumann Software Solutions GmbH',
+  'Zimmermann Metallbau KG',
+  'Richter Pharma GmbH',
+  'Wagner Lebensmittel AG',
+  'Köhler Engineering GmbH',
+  'Herrmann Textilhandel GmbH & Co. KG',
+  'Lange Drucktechnik GmbH',
+  'Hartmann Gebäudetechnik KG',
+  'Werner Spedition GmbH',
+  'Maier Medizintechnik AG',
+  'König Facility Management GmbH',
+  'Schwarz Energietechnik GmbH & Co. KG',
+  'Baumann IT Services GmbH',
+  'Vogt Handelsgesellschaft KG',
+  'Keller Umwelttechnik GmbH',
+  'Schreiber Personaldienstleistungen AG',
+];
 
 type WorkflowStep = 'review' | 'invoicing' | 'financial';
-type CustomerStatus = 'Pending' | 'Verified' | 'Anomaly' | 'Missing';
+type CustomerStatus = 'Pending' | 'Verified' | 'Anomaly';
 type InvoiceStatus = 'Draft' | 'Sent' | 'Paid';
 
 interface Customer {
@@ -76,38 +55,128 @@ interface Customer {
   name: string;
   employees: number;
   cardLoads: number;
+  cardDelta: number;
   revenueHandle: number;
   status: CustomerStatus;
   verified: boolean;
-  licenseType: string;
+  licenseType: 'Standard' | 'Premium' | 'Enterprise';
   licenseFee: number;
   transactionFee: number;
   total: number;
   invoiceStatus: InvoiceStatus;
   dueDate: Date;
-  notes: string;
   lastMonth: number;
+}
+
+function generateCustomerData(): Customer[] {
+  const licenseFees = { Standard: 9.90, Premium: 14.90, Enterprise: 24.90 };
+  
+  // Deterministic but varied distribution
+  // 15 Verified, 5 Pending, 5 Anomaly
+  const statusPattern: CustomerStatus[] = [
+    'Verified', 'Verified', 'Verified', 'Pending', 'Verified',
+    'Verified', 'Anomaly', 'Verified', 'Verified', 'Pending',
+    'Verified', 'Verified', 'Anomaly', 'Verified', 'Pending',
+    'Verified', 'Verified', 'Anomaly', 'Verified', 'Verified',
+    'Pending', 'Verified', 'Anomaly', 'Verified', 'Pending',
+  ];
+  
+  // Invoice status pattern: 8 Paid, 10 Sent, 7 Draft
+  const invoicePattern: InvoiceStatus[] = [
+    'Paid', 'Sent', 'Draft', 'Sent', 'Paid',
+    'Sent', 'Draft', 'Paid', 'Sent', 'Sent',
+    'Paid', 'Draft', 'Sent', 'Paid', 'Sent',
+    'Draft', 'Paid', 'Sent', 'Sent', 'Draft',
+    'Paid', 'Sent', 'Draft', 'Paid', 'Draft',
+  ];
+  
+  // License type pattern for variety
+  const licensePattern: Array<'Standard' | 'Premium' | 'Enterprise'> = [
+    'Premium', 'Enterprise', 'Standard', 'Premium', 'Enterprise',
+    'Standard', 'Premium', 'Enterprise', 'Standard', 'Standard',
+    'Premium', 'Enterprise', 'Premium', 'Standard', 'Enterprise',
+    'Standard', 'Premium', 'Standard', 'Enterprise', 'Premium',
+    'Standard', 'Enterprise', 'Premium', 'Standard', 'Premium',
+  ];
+  
+  // Realistic employee counts (small to medium businesses)
+  const employeeCounts = [
+    12, 45, 8, 23, 156, 34, 67, 19, 28, 42,
+    15, 89, 31, 11, 54, 26, 73, 17, 38, 95,
+    22, 48, 14, 61, 33,
+  ];
+  
+  return germanCompanies.map((name, i) => {
+    const employees = employeeCounts[i];
+    const status = statusPattern[i];
+    const licenseType = licensePattern[i];
+    const invoiceStatus = invoicePattern[i];
+    
+    // Only anomalies have card load differences (realistic: +/- 1 to 3)
+    let cardDelta = 0;
+    if (status === 'Anomaly') {
+      const deltas = [2, -1, 3, -2, 1];
+      cardDelta = deltas[Math.floor(i / 5) % 5];
+    }
+    const cardLoads = employees + cardDelta;
+    
+    const licenseFee = licenseFees[licenseType];
+    const transactionFee = cardLoads * 0.50;
+    const total = employees * licenseFee + transactionFee;
+    
+    // Last month: subtle variation (+/- 0-8%)
+    const changeFactors = [1.02, 0.98, 1.05, 0.97, 1.03, 0.99, 1.01, 0.96, 1.04, 1.00];
+    const lastMonth = total / changeFactors[i % 10];
+    
+    // Due dates spread across February 2025
+    const dueDays = [5, 10, 15, 20, 25];
+    const dueDate = new Date(2025, 1, dueDays[i % 5]);
+    
+    return {
+      id: `CUS-${String(i + 1).padStart(4, '0')}`,
+      name,
+      employees,
+      cardLoads,
+      cardDelta,
+      revenueHandle: total,
+      status,
+      verified: status === 'Verified',
+      licenseType,
+      licenseFee,
+      transactionFee,
+      total,
+      invoiceStatus,
+      dueDate,
+      lastMonth,
+    };
+  });
 }
 
 export default function BillingWorkflowPage() {
   const [currentStep, setCurrentStep] = useState<WorkflowStep>('review');
-  const [customers, setCustomers] = useState<Customer[]>(() => generateCustomerData(28));
-  
-  const billingPeriod = 'January 2025';
+  const [customers, setCustomers] = useState<Customer[]>(() => generateCustomerData());
   
   const stats = useMemo(() => {
     const active = customers.length;
     const monthlyRevenue = customers.reduce((sum, c) => sum + c.total, 0);
     const pendingInvoices = customers.filter(c => c.invoiceStatus !== 'Paid').length;
-    const anomalies = customers.filter(c => c.status === 'Anomaly' || c.status === 'Missing').length;
+    const anomalies = customers.filter(c => c.status === 'Anomaly').length;
     const verified = customers.filter(c => c.verified).length;
     return { active, monthlyRevenue, pendingInvoices, anomalies, verified };
   }, [customers]);
 
   const toggleVerified = (id: string) => {
-    setCustomers(prev => prev.map(c => 
-      c.id === id ? { ...c, verified: !c.verified, status: !c.verified ? 'Verified' : 'Pending' } : c
-    ));
+    setCustomers(prev => prev.map(c => {
+      if (c.id !== id) return c;
+      const newVerified = !c.verified;
+      // Can only toggle between Pending and Verified (not Anomaly)
+      if (c.status === 'Anomaly' && !newVerified) return c;
+      return { 
+        ...c, 
+        verified: newVerified, 
+        status: newVerified ? 'Verified' : 'Pending' 
+      };
+    }));
   };
 
   const updateInvoiceStatus = (id: string, status: InvoiceStatus) => {
@@ -118,13 +187,22 @@ export default function BillingWorkflowPage() {
 
   const stepIndex = currentStep === 'review' ? 0 : currentStep === 'invoicing' ? 1 : 2;
   const stepLabels = ['Data Review', 'Invoicing', 'Financial Plan'];
+  const stepKeys: WorkflowStep[] = ['review', 'invoicing', 'financial'];
 
   return (
-    <div style={{ background: colors.bg, minHeight: '100vh', color: colors.text }}>
+    <div style={{ 
+      background: colors.bg, 
+      minHeight: '100vh', 
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      color: colors.text,
+    }}>
       {/* Header */}
       <header style={{ 
         borderBottom: `1px solid ${colors.border}`,
         background: colors.surface,
+        flexShrink: 0,
       }}>
         <div style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -137,36 +215,32 @@ export default function BillingWorkflowPage() {
                 gap: 8,
                 textDecoration: 'none',
                 fontSize: 13,
-                transition: 'color 150ms ease-out',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.color = colors.text}
-              onMouseLeave={(e) => e.currentTarget.style.color = colors.muted}
             >
               <ArrowLeft size={16} strokeWidth={1.5} />
               Back
             </Link>
             <div style={{ width: 1, height: 24, background: colors.border }} />
             <div>
-              <div style={{ fontSize: 15, fontWeight: 500 }}>Monthly Billing Workflow</div>
-              <div style={{ fontSize: 13, color: colors.muted }}>{billingPeriod}</div>
+              <div style={{ fontSize: 15, fontWeight: 500 }}>Monthly Billing</div>
+              <div style={{ fontSize: 13, color: colors.muted }}>January 2025</div>
             </div>
           </div>
           
-          {/* Progress Steps */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Pipeline Steps */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             {stepLabels.map((label, i) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center' }}>
                 <button
-                  onClick={() => setCurrentStep(['review', 'invoicing', 'financial'][i] as WorkflowStep)}
+                  onClick={() => setCurrentStep(stepKeys[i])}
                   style={{
-                    padding: '8px 16px',
-                    background: i === stepIndex ? colors.surface2 : 'transparent',
-                    border: `1px solid ${i === stepIndex ? colors.border : 'transparent'}`,
+                    padding: '8px 12px',
+                    background: i === stepIndex ? colors.text : 'transparent',
+                    border: 'none',
                     borderRadius: 6,
-                    color: i === stepIndex ? colors.text : colors.muted,
+                    color: i === stepIndex ? colors.bg : colors.muted,
                     fontSize: 13,
                     cursor: 'pointer',
-                    transition: 'all 150ms ease-out',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
@@ -176,8 +250,8 @@ export default function BillingWorkflowPage() {
                     width: 20,
                     height: 20,
                     borderRadius: 10,
-                    background: i < stepIndex ? colors.green : i === stepIndex ? colors.blue : colors.surface2,
-                    color: i <= stepIndex ? colors.bg : colors.muted,
+                    background: i < stepIndex ? colors.green : i === stepIndex ? colors.bg : colors.surface2,
+                    color: i < stepIndex ? colors.bg : i === stepIndex ? colors.text : colors.muted,
                     fontSize: 11,
                     display: 'flex',
                     alignItems: 'center',
@@ -188,7 +262,7 @@ export default function BillingWorkflowPage() {
                   </span>
                   {label}
                 </button>
-                {i < 2 && <ChevronRight size={16} style={{ color: colors.border, margin: '0 4px' }} />}
+                {i < 2 && <ChevronRight size={14} style={{ color: colors.border, margin: '0 2px' }} />}
               </div>
             ))}
           </div>
@@ -199,18 +273,21 @@ export default function BillingWorkflowPage() {
       <div style={{ 
         padding: '16px 24px',
         display: 'flex',
-        gap: 32,
+        gap: 48,
         borderBottom: `1px solid ${colors.border}`,
+        flexShrink: 0,
       }}>
         <Stat label="Active Customers" value={stats.active} />
-        <Stat label="Monthly Revenue" value={`€${stats.monthlyRevenue.toLocaleString('de-DE', { minimumFractionDigits: 2 })}`} />
-        <Stat label="Pending Invoices" value={stats.pendingInvoices} highlight={stats.pendingInvoices > 0} />
+        <Stat label="Monthly Revenue" value={`${stats.monthlyRevenue.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`} />
+        <Stat label="Pending Invoices" value={stats.pendingInvoices} />
         <Stat label="Anomalies" value={stats.anomalies} highlight={stats.anomalies > 0} highlightColor={colors.amber} />
-        {currentStep === 'review' && <Stat label="Verified" value={`${stats.verified}/${stats.active}`} />}
+        {currentStep === 'review' && (
+          <Stat label="Verified" value={`${stats.verified}/${stats.active}`} highlight={stats.verified === stats.active} highlightColor={colors.green} />
+        )}
       </div>
 
       {/* Main Content */}
-      <main style={{ padding: 24, height: 'calc(100vh - 140px)', overflow: 'auto' }}>
+      <main style={{ flex: 1, overflow: 'auto', padding: 24 }}>
         {currentStep === 'review' && (
           <DataReviewTab customers={customers} onToggleVerified={toggleVerified} />
         )}
@@ -241,7 +318,7 @@ function Stat({
       <div style={{ fontSize: 11, color: colors.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         {label}
       </div>
-      <div style={{ fontSize: 18, fontWeight: 500, color: highlight ? highlightColor : colors.text }}>
+      <div style={{ fontSize: 18, fontWeight: 500, color: highlight ? highlightColor : colors.text, fontVariantNumeric: 'tabular-nums' }}>
         {value}
       </div>
     </div>
@@ -260,7 +337,7 @@ function DataReviewTab({
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
-            <Th style={{ width: 40 }} />
+            <Th style={{ width: 48 }} />
             <Th>Customer</Th>
             <Th align="right">Employees</Th>
             <Th align="right">Card Loads</Th>
@@ -272,12 +349,7 @@ function DataReviewTab({
           {customers.map((customer) => (
             <tr 
               key={customer.id} 
-              style={{ 
-                borderBottom: `1px solid ${colors.border}`,
-                transition: 'background 150ms ease-out',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = colors.surface2}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              style={{ borderBottom: `1px solid ${colors.border}` }}
             >
               <Td>
                 <button
@@ -288,11 +360,11 @@ function DataReviewTab({
                     borderRadius: 4,
                     border: `1px solid ${customer.verified ? colors.green : colors.border}`,
                     background: customer.verified ? colors.green : 'transparent',
-                    cursor: 'pointer',
+                    cursor: customer.status === 'Anomaly' && !customer.verified ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    transition: 'all 150ms ease-out',
+                    opacity: customer.status === 'Anomaly' && !customer.verified ? 0.5 : 1,
                   }}
                 >
                   {customer.verified && <Check size={12} style={{ color: colors.bg }} strokeWidth={2} />}
@@ -303,22 +375,24 @@ function DataReviewTab({
                 <div style={{ fontSize: 11, color: colors.muted }}>{customer.id}</div>
               </Td>
               <Td align="right" style={{ fontVariantNumeric: 'tabular-nums' }}>{customer.employees}</Td>
-              <Td align="right" style={{ 
-                fontVariantNumeric: 'tabular-nums',
-                color: customer.cardLoads !== customer.employees ? colors.amber : colors.text,
-              }}>
-                {customer.cardLoads}
-                {customer.cardLoads !== customer.employees && (
-                  <span style={{ marginLeft: 8, color: colors.amber }}>
-                    ({customer.cardLoads > customer.employees ? '+' : ''}{customer.cardLoads - customer.employees})
+              <Td align="right">
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{customer.cardLoads}</span>
+                {customer.cardDelta !== 0 && (
+                  <span style={{ 
+                    marginLeft: 8, 
+                    color: colors.amber,
+                    fontSize: 12,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {customer.cardDelta > 0 ? '+' : ''}{customer.cardDelta}
                   </span>
                 )}
               </Td>
               <Td align="right" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                €{customer.revenueHandle.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                {customer.revenueHandle.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
               </Td>
               <Td>
-                <StatusBadge status={customer.verified ? 'Verified' : customer.status} />
+                <StatusBadge status={customer.status} />
               </Td>
             </tr>
           ))}
@@ -337,76 +411,70 @@ function InvoicingTab({
 }) {
   const totals = useMemo(() => {
     const total = customers.reduce((sum, c) => sum + c.total, 0);
+    const licenseFees = customers.reduce((sum, c) => sum + (c.employees * c.licenseFee), 0);
+    const transactionFees = customers.reduce((sum, c) => sum + c.transactionFee, 0);
     const draft = customers.filter(c => c.invoiceStatus === 'Draft').reduce((sum, c) => sum + c.total, 0);
     const sent = customers.filter(c => c.invoiceStatus === 'Sent').reduce((sum, c) => sum + c.total, 0);
     const paid = customers.filter(c => c.invoiceStatus === 'Paid').reduce((sum, c) => sum + c.total, 0);
-    return { total, draft, sent, paid };
+    return { total, licenseFees, transactionFees, draft, sent, paid };
   }, [customers]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Summary */}
+      {/* Summary Cards */}
       <div style={{ display: 'flex', gap: 16 }}>
         <SummaryCard label="Total" value={totals.total} />
-        <SummaryCard label="Draft" value={totals.draft} />
+        <SummaryCard label="Draft" value={totals.draft} color={colors.muted} />
         <SummaryCard label="Sent" value={totals.sent} color={colors.blue} />
         <SummaryCard label="Paid" value={totals.paid} color={colors.green} />
       </div>
 
-      {/* Table */}
+      {/* Invoice Table */}
       <div style={{ background: colors.surface, borderRadius: 8, border: `1px solid ${colors.border}` }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
               <Th>Customer</Th>
-              <Th>License Type</Th>
               <Th align="right">License Fee</Th>
               <Th align="right">Transaction Fee</Th>
               <Th align="right">Total</Th>
-              <Th>Due Date</Th>
               <Th>Status</Th>
+              <Th>Due Date</Th>
             </tr>
           </thead>
           <tbody>
             {customers.map((customer) => (
               <tr 
                 key={customer.id} 
-                style={{ 
-                  borderBottom: `1px solid ${colors.border}`,
-                  transition: 'background 150ms ease-out',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = colors.surface2}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                style={{ borderBottom: `1px solid ${colors.border}` }}
               >
                 <Td>
                   <div style={{ fontSize: 13 }}>{customer.name}</div>
+                  <div style={{ fontSize: 11, color: colors.muted }}>{customer.licenseType}</div>
                 </Td>
-                <Td style={{ color: colors.muted, fontSize: 13 }}>{customer.licenseType}</Td>
                 <Td align="right" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  €{(customer.employees * customer.licenseFee).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                  {(customer.employees * customer.licenseFee).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                 </Td>
                 <Td align="right" style={{ fontVariantNumeric: 'tabular-nums', color: colors.muted }}>
-                  €{customer.transactionFee.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                  {customer.transactionFee.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                 </Td>
                 <Td align="right" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
-                  €{customer.total.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
-                </Td>
-                <Td style={{ color: colors.muted, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
-                  {customer.dueDate.toLocaleDateString('de-DE')}
+                  {customer.total.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                 </Td>
                 <Td>
                   <select
                     value={customer.invoiceStatus}
                     onChange={(e) => onUpdateStatus(customer.id, e.target.value as InvoiceStatus)}
                     style={{
-                      background: colors.surface2,
+                      background: colors.bg,
                       border: `1px solid ${colors.border}`,
                       borderRadius: 4,
                       color: customer.invoiceStatus === 'Paid' ? colors.green : 
                              customer.invoiceStatus === 'Sent' ? colors.blue : colors.text,
-                      padding: '4px 8px',
+                      padding: '6px 10px',
                       fontSize: 13,
                       cursor: 'pointer',
+                      fontWeight: 500,
                     }}
                   >
                     <option value="Draft">Draft</option>
@@ -414,9 +482,28 @@ function InvoicingTab({
                     <option value="Paid">Paid</option>
                   </select>
                 </Td>
+                <Td style={{ color: colors.muted, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+                  {customer.dueDate.toLocaleDateString('de-DE')}
+                </Td>
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr style={{ background: colors.surface2 }}>
+              <Td style={{ fontWeight: 500 }}>Total ({customers.length} invoices)</Td>
+              <Td align="right" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+                {totals.licenseFees.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
+              </Td>
+              <Td align="right" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500, color: colors.muted }}>
+                {totals.transactionFees.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
+              </Td>
+              <Td align="right" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+                {totals.total.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
+              </Td>
+              <Td />
+              <Td />
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
@@ -428,40 +515,42 @@ function FinancialPlanTab({ customers }: { customers: Customer[] }) {
     let cumulative = 0;
     return customers.map(c => {
       cumulative += c.total;
-      const change = ((c.total - c.lastMonth) / c.lastMonth) * 100;
-      return { ...c, cumulative, change };
+      const delta = c.total - c.lastMonth;
+      const changePercent = (delta / c.lastMonth) * 100;
+      return { ...c, cumulative, delta, changePercent };
     });
   }, [customers]);
 
   const totalThisMonth = data.reduce((sum, c) => sum + c.total, 0);
   const totalLastMonth = customers.reduce((sum, c) => sum + c.lastMonth, 0);
-  const overallChange = ((totalThisMonth - totalLastMonth) / totalLastMonth) * 100;
+  const overallDelta = totalThisMonth - totalLastMonth;
+  const overallChangePercent = (overallDelta / totalLastMonth) * 100;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Period Comparison */}
+      {/* Period Summary */}
       <div style={{ 
         background: colors.surface, 
         borderRadius: 8, 
         border: `1px solid ${colors.border}`,
         padding: 24,
         display: 'flex',
-        gap: 48,
+        gap: 64,
       }}>
         <div>
           <div style={{ fontSize: 11, color: colors.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            This Period
+            January 2025
           </div>
           <div style={{ fontSize: 24, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
-            €{totalThisMonth.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+            {totalThisMonth.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
           </div>
         </div>
         <div>
           <div style={{ fontSize: 11, color: colors.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Last Period
+            December 2024
           </div>
           <div style={{ fontSize: 24, fontWeight: 500, color: colors.muted, fontVariantNumeric: 'tabular-nums' }}>
-            €{totalLastMonth.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+            {totalLastMonth.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
           </div>
         </div>
         <div>
@@ -471,15 +560,28 @@ function FinancialPlanTab({ customers }: { customers: Customer[] }) {
           <div style={{ 
             fontSize: 24, 
             fontWeight: 500, 
-            color: overallChange >= 0 ? colors.green : colors.red,
+            color: overallChangePercent >= 0 ? colors.green : colors.red,
             fontVariantNumeric: 'tabular-nums',
           }}>
-            {overallChange >= 0 ? '+' : ''}{overallChange.toFixed(1)}%
+            {overallChangePercent >= 0 ? '+' : ''}{overallChangePercent.toFixed(1)}%
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: colors.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Net Difference
+          </div>
+          <div style={{ 
+            fontSize: 24, 
+            fontWeight: 500, 
+            color: overallDelta >= 0 ? colors.green : colors.red,
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            {overallDelta >= 0 ? '+' : ''}{overallDelta.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
           </div>
         </div>
       </div>
 
-      {/* Ledger */}
+      {/* Ledger Table */}
       <div style={{ background: colors.surface, borderRadius: 8, border: `1px solid ${colors.border}` }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -487,55 +589,53 @@ function FinancialPlanTab({ customers }: { customers: Customer[] }) {
               <Th>Customer</Th>
               <Th>License Type</Th>
               <Th align="right">Monthly Amount</Th>
+              <Th align="right">Cumulative YTD</Th>
               <Th align="right">vs Last Month</Th>
-              <Th align="right">Cumulative</Th>
             </tr>
           </thead>
           <tbody>
             {data.map((customer) => (
               <tr 
                 key={customer.id} 
-                style={{ 
-                  borderBottom: `1px solid ${colors.border}`,
-                  transition: 'background 150ms ease-out',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = colors.surface2}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                style={{ borderBottom: `1px solid ${colors.border}` }}
               >
                 <Td>
                   <div style={{ fontSize: 13 }}>{customer.name}</div>
+                  <div style={{ fontSize: 11, color: colors.muted }}>{customer.id}</div>
                 </Td>
                 <Td style={{ color: colors.muted, fontSize: 13 }}>{customer.licenseType}</Td>
                 <Td align="right" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  €{customer.total.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
-                </Td>
-                <Td align="right" style={{ 
-                  fontVariantNumeric: 'tabular-nums',
-                  color: customer.change >= 0 ? colors.green : colors.red,
-                  fontSize: 13,
-                }}>
-                  {customer.change >= 0 ? '+' : ''}{customer.change.toFixed(1)}%
+                  {customer.total.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                 </Td>
                 <Td align="right" style={{ fontVariantNumeric: 'tabular-nums', color: colors.muted }}>
-                  €{customer.cumulative.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                  {customer.cumulative.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
+                </Td>
+                <Td align="right">
+                  <span style={{ 
+                    fontVariantNumeric: 'tabular-nums',
+                    color: customer.delta >= 0 ? colors.green : colors.red,
+                    fontSize: 13,
+                  }}>
+                    {customer.delta >= 0 ? '+' : ''}{customer.delta.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
+                  </span>
                 </Td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr style={{ background: colors.surface2 }}>
-              <Td colSpan={2} style={{ fontWeight: 500 }}>Total</Td>
+              <Td colSpan={2} style={{ fontWeight: 500 }}>Period Total</Td>
               <Td align="right" style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
-                €{totalThisMonth.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                {totalThisMonth.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
               </Td>
+              <Td />
               <Td align="right" style={{ 
                 fontWeight: 500, 
                 fontVariantNumeric: 'tabular-nums',
-                color: overallChange >= 0 ? colors.green : colors.red,
+                color: overallDelta >= 0 ? colors.green : colors.red,
               }}>
-                {overallChange >= 0 ? '+' : ''}{overallChange.toFixed(1)}%
+                {overallDelta >= 0 ? '+' : ''}{overallDelta.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
               </Td>
-              <Td />
             </tr>
           </tfoot>
         </table>
@@ -565,7 +665,7 @@ function SummaryCard({
         {label}
       </div>
       <div style={{ fontSize: 18, fontWeight: 500, color: color || colors.text, fontVariantNumeric: 'tabular-nums' }}>
-        €{value.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+        {value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
       </div>
     </div>
   );
@@ -573,10 +673,9 @@ function SummaryCard({
 
 function StatusBadge({ status }: { status: CustomerStatus }) {
   const config = {
-    Verified: { color: colors.green, bg: `${colors.green}15` },
+    Verified: { color: colors.green, bg: `${colors.green}12` },
     Pending: { color: colors.muted, bg: colors.surface2 },
-    Anomaly: { color: colors.amber, bg: `${colors.amber}15` },
-    Missing: { color: colors.red, bg: `${colors.red}15` },
+    Anomaly: { color: colors.amber, bg: `${colors.amber}12` },
   };
   
   const { color, bg } = config[status];
@@ -586,19 +685,15 @@ function StatusBadge({ status }: { status: CustomerStatus }) {
       display: 'inline-flex',
       alignItems: 'center',
       gap: 6,
-      padding: '4px 8px',
+      padding: '4px 10px',
       borderRadius: 4,
       background: bg,
       color,
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 500,
     }}>
-      {(status === 'Anomaly' || status === 'Missing') && (
-        <AlertTriangle size={12} strokeWidth={2} />
-      )}
-      {status === 'Verified' && (
-        <Check size={12} strokeWidth={2} />
-      )}
+      {status === 'Anomaly' && <AlertTriangle size={12} strokeWidth={2} />}
+      {status === 'Verified' && <Check size={12} strokeWidth={2} />}
       {status}
     </span>
   );

@@ -2,7 +2,17 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Check, Clock, AlertCircle, ChevronDown, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  Check,
+  Clock,
+  AlertCircle,
+  ChevronDown,
+  X,
+  RefreshCw,
+  FileText,
+  Flag,
+} from 'lucide-react';
 
 // Types
 type ReceiptStatus = 'sent' | 'pending' | 'failed';
@@ -22,7 +32,7 @@ interface Donation {
   email: string;
   address: string;
   amount: number;
-  paymentMethod: string;
+  paymentMethod: 'PayPal' | 'Stripe';
   transactionId: string;
   receiptStatus: ReceiptStatus;
   accountingStatus: AccountingStatus;
@@ -32,58 +42,148 @@ interface Donation {
 interface ActivityEvent {
   id: string;
   timestamp: Date;
-  message: string;
+  donorName: string;
+  action: string;
   type: 'receipt' | 'payment' | 'accounting' | 'error';
 }
 
-// Data generation
-const firstNames = ['James', 'Mary', 'Robert', 'Patricia', 'John', 'Jennifer', 'Michael', 'Linda', 'David', 'Elizabeth', 'William', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica', 'Thomas', 'Sarah', 'Christopher', 'Karen', 'Charles', 'Lisa', 'Daniel', 'Nancy', 'Matthew', 'Betty', 'Anthony', 'Margaret', 'Mark', 'Sandra', 'Donald', 'Ashley', 'Steven', 'Kimberly', 'Paul', 'Emily', 'Andrew', 'Donna', 'Joshua', 'Michelle'];
-const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson'];
-const streets = ['Oak St', 'Maple Ave', 'Cedar Ln', 'Pine Dr', 'Elm Way', 'Birch Rd', 'Walnut Ct', 'Cherry Blvd', 'Spruce Pl', 'Willow Ter'];
-const cities = ['San Francisco, CA', 'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Houston, TX', 'Phoenix, AZ', 'Philadelphia, PA', 'San Antonio, TX', 'San Diego, CA', 'Dallas, TX'];
+// Seeded random for consistent data
+function seededRandom(seed: number) {
+  return function () {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+}
 
-function generateTransactionId(): string {
+// Data generation
+const firstNames = [
+  'James', 'Mary', 'Robert', 'Patricia', 'John', 'Jennifer', 'Michael', 'Linda',
+  'David', 'Elizabeth', 'William', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica',
+  'Thomas', 'Sarah', 'Christopher', 'Karen', 'Charles', 'Lisa', 'Daniel', 'Nancy',
+  'Matthew', 'Betty', 'Anthony', 'Margaret', 'Mark', 'Sandra', 'Donald', 'Ashley',
+  'Steven', 'Kimberly', 'Paul', 'Emily', 'Andrew', 'Donna', 'Joshua', 'Michelle',
+  'Kenneth', 'Dorothy', 'Kevin', 'Carol', 'Brian', 'Amanda', 'George', 'Melissa',
+];
+
+const lastNames = [
+  'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',
+  'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson',
+  'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson',
+  'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson', 'Walker',
+  'Young', 'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Nguyen', 'Hill', 'Flores',
+];
+
+const streets = [
+  'Oak St', 'Maple Ave', 'Cedar Ln', 'Pine Dr', 'Elm Way', 'Birch Rd', 'Walnut Ct',
+  'Cherry Blvd', 'Spruce Pl', 'Willow Ter', 'Ash Ln', 'Poplar St', 'Hickory Ave',
+];
+
+const cities = [
+  'San Francisco, CA', 'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Houston, TX',
+  'Phoenix, AZ', 'Philadelphia, PA', 'San Antonio, TX', 'San Diego, CA', 'Dallas, TX',
+  'Austin, TX', 'Seattle, WA', 'Denver, CO', 'Boston, MA', 'Portland, OR',
+];
+
+const emailDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'icloud.com', 'proton.me'];
+
+function generateTransactionId(random: () => number): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
   for (let i = 0; i < 17; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars.charAt(Math.floor(random() * chars.length));
   }
   return result;
 }
 
 function generateDonations(count: number): Donation[] {
+  const random = seededRandom(42);
   const donations: Donation[] = [];
   const now = new Date();
-  
+
   for (let i = 0; i < count; i++) {
-    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const firstName = firstNames[Math.floor(random() * firstNames.length)];
+    const lastName = lastNames[Math.floor(random() * lastNames.length)];
     const name = `${firstName} ${lastName}`;
-    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${['gmail.com', 'yahoo.com', 'outlook.com', 'icloud.com'][Math.floor(Math.random() * 4)]}`;
-    const streetNum = Math.floor(Math.random() * 9999) + 1;
-    const street = streets[Math.floor(Math.random() * streets.length)];
-    const city = cities[Math.floor(Math.random() * cities.length)];
-    const zip = String(Math.floor(Math.random() * 90000) + 10000);
-    
-    const daysAgo = Math.floor(Math.random() * 30);
-    const hoursAgo = Math.floor(Math.random() * 24);
-    const date = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000 - hoursAgo * 60 * 60 * 1000);
-    
-    const amounts = [10, 25, 50, 75, 100, 150, 200, 250, 500, 750, 1000, 2500, 5000];
-    const amount = amounts[Math.floor(Math.random() * amounts.length)] + (Math.random() < 0.3 ? Math.floor(Math.random() * 50) : 0);
-    
-    const receiptRoll = Math.random();
-    const receiptStatus: ReceiptStatus = receiptRoll < 0.75 ? 'sent' : receiptRoll < 0.9 ? 'pending' : 'failed';
-    const accountingStatus: AccountingStatus = receiptStatus === 'sent' && Math.random() < 0.85 ? 'logged' : 'pending';
-    
+    const domain = emailDomains[Math.floor(random() * emailDomains.length)];
+    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${domain}`;
+    const streetNum = Math.floor(random() * 9999) + 1;
+    const street = streets[Math.floor(random() * streets.length)];
+    const city = cities[Math.floor(random() * cities.length)];
+    const zip = String(Math.floor(random() * 90000) + 10000);
+
+    const daysAgo = Math.floor(random() * 30);
+    const hoursAgo = Math.floor(random() * 24);
+    const minutesAgo = Math.floor(random() * 60);
+    const date = new Date(
+      now.getTime() -
+        daysAgo * 24 * 60 * 60 * 1000 -
+        hoursAgo * 60 * 60 * 1000 -
+        minutesAgo * 60 * 1000
+    );
+
+    // Realistic donation amounts with weighted distribution
+    const amountRoll = random();
+    let amount: number;
+    if (amountRoll < 0.4) {
+      // 40% small donations $10-$50
+      amount = [10, 15, 20, 25, 30, 35, 40, 50][Math.floor(random() * 8)];
+    } else if (amountRoll < 0.7) {
+      // 30% medium donations $75-$250
+      amount = [75, 100, 125, 150, 175, 200, 250][Math.floor(random() * 7)];
+    } else if (amountRoll < 0.9) {
+      // 20% larger donations $500-$1000
+      amount = [500, 750, 1000][Math.floor(random() * 3)];
+    } else {
+      // 10% major donations $2500-$5000
+      amount = [2500, 3000, 5000][Math.floor(random() * 3)];
+    }
+
+    const receiptRoll = random();
+    const receiptStatus: ReceiptStatus =
+      receiptRoll < 0.72 ? 'sent' : receiptRoll < 0.88 ? 'pending' : 'failed';
+    const accountingStatus: AccountingStatus =
+      receiptStatus === 'sent' && random() < 0.82 ? 'logged' : 'pending';
+
+    const paymentMethod: 'PayPal' | 'Stripe' = random() < 0.65 ? 'PayPal' : 'Stripe';
+
     const workflowSteps: WorkflowStep[] = [
-      { name: 'Payment Captured', status: 'completed', timestamp: date },
-      { name: 'Data Logged', status: 'completed', timestamp: new Date(date.getTime() + 2000) },
-      { name: 'Receipt Generated', status: receiptStatus === 'failed' ? 'failed' : 'completed', timestamp: receiptStatus === 'failed' ? null : new Date(date.getTime() + 5000) },
-      { name: 'Receipt Sent', status: receiptStatus === 'sent' ? 'completed' : receiptStatus === 'pending' ? 'pending' : 'failed', timestamp: receiptStatus === 'sent' ? new Date(date.getTime() + 8000) : null },
-      { name: 'Accounting Entry', status: accountingStatus === 'logged' ? 'completed' : 'pending', timestamp: accountingStatus === 'logged' ? new Date(date.getTime() + 15000) : null },
+      {
+        name: 'Payment Captured',
+        status: 'completed',
+        timestamp: date,
+      },
+      {
+        name: 'Data Logged',
+        status: 'completed',
+        timestamp: new Date(date.getTime() + 1500 + random() * 1000),
+      },
+      {
+        name: 'Receipt Generated',
+        status: receiptStatus === 'failed' ? 'failed' : 'completed',
+        timestamp:
+          receiptStatus === 'failed' ? null : new Date(date.getTime() + 4000 + random() * 2000),
+      },
+      {
+        name: 'Receipt Sent',
+        status:
+          receiptStatus === 'sent'
+            ? 'completed'
+            : receiptStatus === 'pending'
+              ? 'pending'
+              : 'failed',
+        timestamp:
+          receiptStatus === 'sent' ? new Date(date.getTime() + 7000 + random() * 3000) : null,
+      },
+      {
+        name: 'Accounting Entry',
+        status: accountingStatus === 'logged' ? 'completed' : 'pending',
+        timestamp:
+          accountingStatus === 'logged'
+            ? new Date(date.getTime() + 12000 + random() * 5000)
+            : null,
+      },
     ];
-    
+
     donations.push({
       id: `DON-${String(i + 1).padStart(5, '0')}`,
       date,
@@ -91,58 +191,62 @@ function generateDonations(count: number): Donation[] {
       email,
       address: `${streetNum} ${street}, ${city} ${zip}`,
       amount,
-      paymentMethod: Math.random() < 0.9 ? 'PayPal' : 'Stripe',
-      transactionId: generateTransactionId(),
+      paymentMethod,
+      transactionId: generateTransactionId(random),
       receiptStatus,
       accountingStatus,
       workflow: workflowSteps,
     });
   }
-  
+
   return donations.sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
 function generateActivityEvents(donations: Donation[]): ActivityEvent[] {
   const events: ActivityEvent[] = [];
   let eventId = 0;
-  
-  donations.slice(0, 20).forEach((donation) => {
+
+  donations.slice(0, 25).forEach((donation) => {
     events.push({
       id: String(eventId++),
       timestamp: donation.date,
-      message: `Payment $${donation.amount.toLocaleString()} captured from ${donation.paymentMethod}`,
+      donorName: donation.donorName,
+      action: `$${donation.amount.toLocaleString()} via ${donation.paymentMethod}`,
       type: 'payment',
     });
-    
+
     if (donation.receiptStatus === 'sent') {
       events.push({
         id: String(eventId++),
-        timestamp: new Date(donation.date.getTime() + 8000),
-        message: `Receipt sent to ${donation.donorName}`,
+        timestamp: donation.workflow[3].timestamp!,
+        donorName: donation.donorName,
+        action: 'Receipt delivered',
         type: 'receipt',
       });
     }
-    
+
     if (donation.accountingStatus === 'logged') {
       events.push({
         id: String(eventId++),
-        timestamp: new Date(donation.date.getTime() + 15000),
-        message: `Accounting entry created for ${donation.id}`,
+        timestamp: donation.workflow[4].timestamp!,
+        donorName: donation.donorName,
+        action: 'Logged to accounting',
         type: 'accounting',
       });
     }
-    
+
     if (donation.receiptStatus === 'failed') {
       events.push({
         id: String(eventId++),
         timestamp: new Date(donation.date.getTime() + 5000),
-        message: `Receipt generation failed for ${donation.donorName}`,
+        donorName: donation.donorName,
+        action: 'Receipt failed',
         type: 'error',
       });
     }
   });
-  
-  return events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 30);
+
+  return events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 40);
 }
 
 const donations = generateDonations(45);
@@ -153,18 +257,18 @@ function formatDate(date: Date): string {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const days = Math.floor(diff / (24 * 60 * 60 * 1000));
-  
+
   if (days === 0) {
     const hours = Math.floor(diff / (60 * 60 * 1000));
     if (hours === 0) {
       const mins = Math.floor(diff / (60 * 1000));
-      return `${mins}m ago`;
+      return mins <= 1 ? 'Just now' : `${mins}m ago`;
     }
     return `${hours}h ago`;
   }
   if (days === 1) return 'Yesterday';
   if (days < 7) return `${days}d ago`;
-  
+
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
@@ -183,44 +287,105 @@ function formatCurrency(amount: number): string {
 }
 
 // Components
-function StatusBadge({ status, type }: { status: string; type: 'receipt' | 'accounting' }) {
-  const colors = {
-    sent: 'text-[#16a34a]',
-    logged: 'text-[#16a34a]',
-    pending: 'text-[#d97706]',
-    failed: 'text-[#dc2626]',
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { color: string; bg: string }> = {
+    sent: { color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)' },
+    logged: { color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)' },
+    pending: { color: '#d97706', bg: 'rgba(217, 119, 6, 0.08)' },
+    failed: { color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)' },
   };
-  
+
+  const { color, bg } = config[status] || { color: '#737373', bg: 'transparent' };
+
   return (
-    <span className={`text-[13px] ${colors[status as keyof typeof colors] || 'text-[#737373]'}`}>
+    <span
+      className="inline-flex px-2 py-0.5 text-[12px] rounded"
+      style={{ color, backgroundColor: bg }}
+    >
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
 }
 
-function WorkflowStepIndicator({ step }: { step: WorkflowStep }) {
-  const colors = {
-    completed: 'bg-[#16a34a]',
-    pending: 'bg-[#d97706]',
-    failed: 'bg-[#dc2626]',
-  };
-  
-  const icons = {
-    completed: <Check size={12} strokeWidth={2.5} />,
-    pending: <Clock size={12} strokeWidth={2} />,
-    failed: <AlertCircle size={12} strokeWidth={2} />,
-  };
-  
+function WorkflowVisualization({ steps }: { steps: WorkflowStep[] }) {
   return (
-    <div className="flex items-start gap-3">
-      <div className={`w-5 h-5 rounded-full ${colors[step.status]} flex items-center justify-center flex-shrink-0 mt-0.5`}>
-        <span className="text-[#191919]">{icons[step.status]}</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] text-[#191919]">{step.name}</p>
-        <p className="text-[11px] text-[#737373]">
-          {step.timestamp ? formatTimestamp(step.timestamp) : step.status === 'pending' ? 'Waiting...' : 'Failed'}
-        </p>
+    <div className="space-y-0">
+      {steps.map((step, i) => {
+        const isLast = i === steps.length - 1;
+        const statusColors = {
+          completed: '#16a34a',
+          pending: '#d97706',
+          failed: '#dc2626',
+        };
+        const color = statusColors[step.status];
+
+        return (
+          <div key={i} className="flex">
+            {/* Timeline */}
+            <div className="flex flex-col items-center mr-3">
+              <div
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: color }}
+              />
+              {!isLast && (
+                <div
+                  className="w-px flex-1 min-h-[32px]"
+                  style={{
+                    backgroundColor: steps[i + 1].status === 'completed' ? '#16a34a' : '#e5e5e3',
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Content */}
+            <div className={`flex-1 ${isLast ? 'pb-0' : 'pb-3'}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] text-[#191919]">{step.name}</span>
+                {step.status === 'completed' && (
+                  <Check size={14} strokeWidth={2} style={{ color }} />
+                )}
+                {step.status === 'pending' && (
+                  <Clock size={14} strokeWidth={1.5} style={{ color }} />
+                )}
+                {step.status === 'failed' && (
+                  <AlertCircle size={14} strokeWidth={1.5} style={{ color }} />
+                )}
+              </div>
+              <span className="text-[11px] text-[#737373]">
+                {step.timestamp
+                  ? formatTimestamp(step.timestamp)
+                  : step.status === 'pending'
+                    ? 'Waiting'
+                    : 'Failed'}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ActivityItem({ event }: { event: ActivityEvent }) {
+  const typeColors: Record<string, string> = {
+    payment: '#2563eb',
+    receipt: '#16a34a',
+    accounting: '#737373',
+    error: '#dc2626',
+  };
+
+  return (
+    <div className="px-4 py-3 border-b border-[#e5e5e3] last:border-b-0">
+      <div className="flex items-start gap-3">
+        <div
+          className="w-1.5 h-1.5 rounded-full mt-[7px] flex-shrink-0"
+          style={{ backgroundColor: typeColors[event.type] }}
+        />
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] text-[#191919] truncate">{event.donorName}</p>
+          <p className="text-[12px] text-[#737373]">{event.action}</p>
+          <p className="text-[11px] text-[#a3a3a3] mt-0.5">{formatDate(event.timestamp)}</p>
+        </div>
       </div>
     </div>
   );
@@ -228,18 +393,24 @@ function WorkflowStepIndicator({ step }: { step: WorkflowStep }) {
 
 export default function DonationWorkflowPage() {
   const [selectedDonation, setSelectedDonation] = useState<Donation | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | ReceiptStatus>('all');
+  const [receiptFilter, setReceiptFilter] = useState<'all' | ReceiptStatus>('all');
+  const [accountingFilter, setAccountingFilter] = useState<'all' | AccountingStatus>('all');
   const [sortField, setSortField] = useState<'date' | 'amount'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [filterOpen, setFilterOpen] = useState(false);
-  
+  const [receiptDropdownOpen, setReceiptDropdownOpen] = useState(false);
+  const [accountingDropdownOpen, setAccountingDropdownOpen] = useState(false);
+
   const filteredDonations = useMemo(() => {
     let result = [...donations];
-    
-    if (statusFilter !== 'all') {
-      result = result.filter((d) => d.receiptStatus === statusFilter);
+
+    if (receiptFilter !== 'all') {
+      result = result.filter((d) => d.receiptStatus === receiptFilter);
     }
-    
+
+    if (accountingFilter !== 'all') {
+      result = result.filter((d) => d.accountingStatus === accountingFilter);
+    }
+
     result.sort((a, b) => {
       const multiplier = sortDir === 'desc' ? -1 : 1;
       if (sortField === 'date') {
@@ -247,18 +418,20 @@ export default function DonationWorkflowPage() {
       }
       return (a.amount - b.amount) * multiplier;
     });
-    
+
     return result;
-  }, [statusFilter, sortField, sortDir]);
-  
+  }, [receiptFilter, accountingFilter, sortField, sortDir]);
+
   const stats = useMemo(() => {
     const total = donations.length;
     const totalAmount = donations.reduce((sum, d) => sum + d.amount, 0);
     const receiptsSent = donations.filter((d) => d.receiptStatus === 'sent').length;
-    const pending = donations.filter((d) => d.receiptStatus === 'pending' || d.accountingStatus === 'pending').length;
+    const pending = donations.filter(
+      (d) => d.receiptStatus === 'pending' || d.accountingStatus === 'pending'
+    ).length;
     return { total, totalAmount, receiptsSent, pending };
   }, []);
-  
+
   const handleSort = (field: 'date' | 'amount') => {
     if (sortField === field) {
       setSortDir(sortDir === 'desc' ? 'asc' : 'desc');
@@ -267,66 +440,86 @@ export default function DonationWorkflowPage() {
       setSortDir('desc');
     }
   };
-  
+
   return (
-    <div className="min-h-screen bg-[#fafaf9] text-[#191919] flex flex-col">
+    <div className="h-screen bg-[#fafaf9] text-[#191919] flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-[#e5e5e3] px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-[#737373] hover:text-[#191919] transition-colors duration-150">
-            <ArrowLeft size={20} strokeWidth={1.5} />
-          </Link>
-          <h1 className="text-[18px] font-medium">Donation Workflow</h1>
-        </div>
+      <header className="flex-shrink-0 border-b border-[#e5e5e3] px-6 h-14 flex items-center">
+        <Link
+          href="/"
+          className="text-[#737373] hover:text-[#191919] transition-colors duration-150 mr-4"
+        >
+          <ArrowLeft size={20} strokeWidth={1.5} />
+        </Link>
+        <span className="text-[15px] font-medium">Donation Workflow</span>
       </header>
-      
-      {/* Summary Row */}
-      <div className="flex-shrink-0 border-b border-[#e5e5e3] px-6 py-4">
-        <div className="flex gap-12">
+
+      {/* Stats Row */}
+      <div className="flex-shrink-0 border-b border-[#e5e5e3] px-6 py-5 bg-[#f5f5f4]">
+        <div className="flex gap-16">
           <div>
-            <p className="text-[11px] text-[#737373] uppercase tracking-wide mb-1">Total Donations</p>
-            <p className="text-[24px] font-medium">{stats.total}</p>
+            <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-1">
+              Total Donations
+            </p>
+            <p className="text-[28px] font-semibold tracking-tight">{stats.total}</p>
           </div>
           <div>
-            <p className="text-[11px] text-[#737373] uppercase tracking-wide mb-1">Total Amount</p>
-            <p className="text-[24px] font-medium">{formatCurrency(stats.totalAmount)}</p>
+            <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-1">Total Amount</p>
+            <p className="text-[28px] font-semibold tracking-tight">
+              {formatCurrency(stats.totalAmount)}
+            </p>
           </div>
           <div>
-            <p className="text-[11px] text-[#737373] uppercase tracking-wide mb-1">Receipts Sent</p>
-            <p className="text-[24px] font-medium">{stats.receiptsSent}</p>
+            <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-1">
+              Receipts Sent
+            </p>
+            <p className="text-[28px] font-semibold tracking-tight">{stats.receiptsSent}</p>
           </div>
           <div>
-            <p className="text-[11px] text-[#737373] uppercase tracking-wide mb-1">Pending Actions</p>
-            <p className="text-[24px] font-medium text-[#d97706]">{stats.pending}</p>
+            <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-1">
+              Pending Actions
+            </p>
+            <p className="text-[28px] font-semibold tracking-tight text-[#d97706]">
+              {stats.pending}
+            </p>
           </div>
         </div>
       </div>
-      
+
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Donations Table */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Table Controls */}
-          <div className="flex-shrink-0 px-6 py-3 border-b border-[#e5e5e3] flex items-center gap-4">
+          {/* Filter Bar */}
+          <div className="flex-shrink-0 px-6 py-3 border-b border-[#e5e5e3] flex items-center gap-6">
+            {/* Receipt Filter */}
             <div className="relative">
               <button
-                onClick={() => setFilterOpen(!filterOpen)}
-                className="flex items-center gap-2 text-[13px] text-[#737373] hover:text-[#191919] transition-colors duration-150"
+                onClick={() => {
+                  setReceiptDropdownOpen(!receiptDropdownOpen);
+                  setAccountingDropdownOpen(false);
+                }}
+                className="flex items-center gap-1.5 text-[13px] text-[#737373] hover:text-[#191919] transition-colors duration-150"
               >
-                Status: {statusFilter === 'all' ? 'All' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+                <span>Receipt:</span>
+                <span className="text-[#191919]">
+                  {receiptFilter === 'all'
+                    ? 'All'
+                    : receiptFilter.charAt(0).toUpperCase() + receiptFilter.slice(1)}
+                </span>
                 <ChevronDown size={14} strokeWidth={1.5} />
               </button>
-              {filterOpen && (
-                <div className="absolute top-full left-0 mt-1 bg-[#fafaf9] border border-[#e5e5e3] rounded py-1 z-10">
+              {receiptDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1 bg-[#fafaf9] border border-[#e5e5e3] rounded py-1 z-20 min-w-[100px] shadow-sm">
                   {(['all', 'sent', 'pending', 'failed'] as const).map((status) => (
                     <button
                       key={status}
                       onClick={() => {
-                        setStatusFilter(status);
-                        setFilterOpen(false);
+                        setReceiptFilter(status);
+                        setReceiptDropdownOpen(false);
                       }}
-                      className={`block w-full text-left px-4 py-1.5 text-[13px] hover:bg-[#eeeeec] transition-colors duration-150 ${
-                        statusFilter === status ? 'text-[#191919]' : 'text-[#737373]'
+                      className={`block w-full text-left px-3 py-1.5 text-[13px] hover:bg-[#eeeeec] transition-colors duration-150 ${
+                        receiptFilter === status ? 'text-[#191919]' : 'text-[#737373]'
                       }`}
                     >
                       {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
@@ -335,88 +528,138 @@ export default function DonationWorkflowPage() {
                 </div>
               )}
             </div>
-            <span className="text-[#e5e5e3]">|</span>
-            <span className="text-[13px] text-[#737373]">{filteredDonations.length} donations</span>
+
+            {/* Accounting Filter */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setAccountingDropdownOpen(!accountingDropdownOpen);
+                  setReceiptDropdownOpen(false);
+                }}
+                className="flex items-center gap-1.5 text-[13px] text-[#737373] hover:text-[#191919] transition-colors duration-150"
+              >
+                <span>Accounting:</span>
+                <span className="text-[#191919]">
+                  {accountingFilter === 'all'
+                    ? 'All'
+                    : accountingFilter.charAt(0).toUpperCase() + accountingFilter.slice(1)}
+                </span>
+                <ChevronDown size={14} strokeWidth={1.5} />
+              </button>
+              {accountingDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1 bg-[#fafaf9] border border-[#e5e5e3] rounded py-1 z-20 min-w-[100px] shadow-sm">
+                  {(['all', 'logged', 'pending'] as const).map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => {
+                        setAccountingFilter(status);
+                        setAccountingDropdownOpen(false);
+                      }}
+                      className={`block w-full text-left px-3 py-1.5 text-[13px] hover:bg-[#eeeeec] transition-colors duration-150 ${
+                        accountingFilter === status ? 'text-[#191919]' : 'text-[#737373]'
+                      }`}
+                    >
+                      {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1" />
+            <span className="text-[13px] text-[#737373]">
+              {filteredDonations.length} donation{filteredDonations.length !== 1 ? 's' : ''}
+            </span>
           </div>
-          
+
           {/* Table Header */}
-          <div className="flex-shrink-0 px-6 py-2 border-b border-[#e5e5e3] bg-[#fafaf9]">
-            <div className="grid grid-cols-[100px_1fr_1fr_100px_100px_100px_100px] gap-4 text-[11px] text-[#737373] uppercase tracking-wide">
+          <div className="flex-shrink-0 px-6 py-2.5 border-b border-[#e5e5e3] bg-[#f5f5f4]">
+            <div className="grid grid-cols-[90px_1fr_1.2fr_100px_80px_80px_90px] gap-4 text-[11px] text-[#737373] uppercase tracking-wider">
               <button
                 onClick={() => handleSort('date')}
-                className="text-left hover:text-[#191919] transition-colors duration-150"
+                className="text-left hover:text-[#191919] transition-colors duration-150 flex items-center gap-1"
               >
-                Date {sortField === 'date' && (sortDir === 'desc' ? '↓' : '↑')}
+                Date
+                {sortField === 'date' && (
+                  <span className="text-[#191919]">{sortDir === 'desc' ? '↓' : '↑'}</span>
+                )}
               </button>
               <span>Donor</span>
               <span>Email</span>
               <button
                 onClick={() => handleSort('amount')}
-                className="text-right hover:text-[#191919] transition-colors duration-150"
+                className="text-right hover:text-[#191919] transition-colors duration-150 flex items-center justify-end gap-1"
               >
-                Amount {sortField === 'amount' && (sortDir === 'desc' ? '↓' : '↑')}
+                Amount
+                {sortField === 'amount' && (
+                  <span className="text-[#191919]">{sortDir === 'desc' ? '↓' : '↑'}</span>
+                )}
               </button>
               <span>Method</span>
               <span>Receipt</span>
               <span>Accounting</span>
             </div>
           </div>
-          
+
           {/* Table Body */}
           <div className="flex-1 overflow-y-auto">
             {filteredDonations.map((donation) => (
               <button
                 key={donation.id}
                 onClick={() => setSelectedDonation(donation)}
-                className={`w-full px-6 py-3 border-b border-[#e5e5e3] hover:bg-[#fafaf9] transition-colors duration-150 text-left ${
-                  selectedDonation?.id === donation.id ? 'bg-[#fafaf9]' : ''
+                className={`w-full px-6 py-3 border-b border-[#e5e5e3] text-left transition-colors duration-150 ${
+                  selectedDonation?.id === donation.id
+                    ? 'bg-[#eeeeec]'
+                    : 'hover:bg-[#f5f5f4]'
                 }`}
               >
-                <div className="grid grid-cols-[100px_1fr_1fr_100px_100px_100px_100px] gap-4 text-[13px]">
+                <div className="grid grid-cols-[90px_1fr_1.2fr_100px_80px_80px_90px] gap-4 text-[13px] items-center">
                   <span className="text-[#737373]">{formatDate(donation.date)}</span>
-                  <span className="truncate">{donation.donorName}</span>
+                  <span className="truncate font-medium">{donation.donorName}</span>
                   <span className="truncate text-[#737373]">{donation.email}</span>
-                  <span className="text-right">{formatCurrency(donation.amount)}</span>
+                  <span className="text-right tabular-nums">{formatCurrency(donation.amount)}</span>
                   <span className="text-[#737373]">{donation.paymentMethod}</span>
-                  <StatusBadge status={donation.receiptStatus} type="receipt" />
-                  <StatusBadge status={donation.accountingStatus} type="accounting" />
+                  <StatusBadge status={donation.receiptStatus} />
+                  <StatusBadge status={donation.accountingStatus} />
                 </div>
               </button>
             ))}
           </div>
         </div>
-        
-        {/* Right Panel: Detail or Activity */}
-        <div className="w-[360px] flex-shrink-0 border-l border-[#e5e5e3] flex flex-col overflow-hidden">
+
+        {/* Right Panel */}
+        <div className="w-[380px] flex-shrink-0 border-l border-[#e5e5e3] flex flex-col overflow-hidden bg-[#f5f5f4]">
           {selectedDonation ? (
-            /* Donation Detail Panel */
             <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-shrink-0 px-4 py-3 border-b border-[#e5e5e3] flex items-center justify-between">
-                <span className="text-[13px] text-[#737373]">{selectedDonation.id}</span>
+              {/* Panel Header */}
+              <div className="flex-shrink-0 px-4 py-3 border-b border-[#e5e5e3] flex items-center justify-between bg-[#fafaf9]">
+                <span className="text-[13px] font-medium">{selectedDonation.id}</span>
                 <button
                   onClick={() => setSelectedDonation(null)}
-                  className="text-[#737373] hover:text-[#191919] transition-colors duration-150"
+                  className="text-[#737373] hover:text-[#191919] transition-colors duration-150 p-1"
                 >
                   <X size={16} strokeWidth={1.5} />
                 </button>
               </div>
-              
-              <div className="flex-1 overflow-y-auto p-4 space-y-6">
+
+              <div className="flex-1 overflow-y-auto">
                 {/* Donor Info */}
-                <div>
-                  <p className="text-[11px] text-[#737373] uppercase tracking-wide mb-2">Donor</p>
-                  <p className="text-[15px] mb-1">{selectedDonation.donorName}</p>
-                  <p className="text-[13px] text-[#737373] mb-1">{selectedDonation.email}</p>
+                <div className="p-4 border-b border-[#e5e5e3] bg-[#fafaf9]">
+                  <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-2">Donor</p>
+                  <p className="text-[15px] font-medium mb-1">{selectedDonation.donorName}</p>
+                  <p className="text-[13px] text-[#737373] mb-0.5">{selectedDonation.email}</p>
                   <p className="text-[13px] text-[#737373]">{selectedDonation.address}</p>
                 </div>
-                
+
                 {/* Payment Details */}
-                <div>
-                  <p className="text-[11px] text-[#737373] uppercase tracking-wide mb-2">Payment</p>
-                  <div className="space-y-1">
+                <div className="p-4 border-b border-[#e5e5e3] bg-[#fafaf9]">
+                  <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-3">
+                    Payment Details
+                  </p>
+                  <div className="space-y-2">
                     <div className="flex justify-between text-[13px]">
                       <span className="text-[#737373]">Amount</span>
-                      <span>{formatCurrency(selectedDonation.amount)}</span>
+                      <span className="font-medium">{formatCurrency(selectedDonation.amount)}</span>
                     </div>
                     <div className="flex justify-between text-[13px]">
                       <span className="text-[#737373]">Method</span>
@@ -424,60 +667,60 @@ export default function DonationWorkflowPage() {
                     </div>
                     <div className="flex justify-between text-[13px]">
                       <span className="text-[#737373]">Transaction ID</span>
-                      <span className="font-mono text-[11px]">{selectedDonation.transactionId}</span>
+                      <span className="text-[12px] text-[#737373]">
+                        {selectedDonation.transactionId}
+                      </span>
                     </div>
                     <div className="flex justify-between text-[13px]">
-                      <span className="text-[#737373]">Date</span>
+                      <span className="text-[#737373]">Timestamp</span>
                       <span>{formatTimestamp(selectedDonation.date)}</span>
                     </div>
                   </div>
                 </div>
-                
-                {/* Workflow Status */}
-                <div>
-                  <p className="text-[11px] text-[#737373] uppercase tracking-wide mb-3">Workflow</p>
-                  <div className="space-y-4">
-                    {selectedDonation.workflow.map((step, i) => (
-                      <div key={i} className="relative">
-                        {i < selectedDonation.workflow.length - 1 && (
-                          <div className="absolute left-2.5 top-6 bottom-0 w-px bg-[#e5e5e3] -mb-4" />
-                        )}
-                        <WorkflowStepIndicator step={step} />
-                      </div>
-                    ))}
-                  </div>
+
+                {/* Workflow */}
+                <div className="p-4 border-b border-[#e5e5e3] bg-[#fafaf9]">
+                  <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-4">
+                    Workflow Status
+                  </p>
+                  <WorkflowVisualization steps={selectedDonation.workflow} />
                 </div>
-                
+
                 {/* Actions */}
-                <div className="pt-2">
-                  <p className="text-[11px] text-[#737373] uppercase tracking-wide mb-3">Actions</p>
-                  <div className="space-y-2">
-                    <button className="w-full py-2 px-3 text-[13px] bg-[#eeeeec] hover:bg-[#e5e5e3] rounded transition-colors duration-150 text-left">
+                <div className="p-4 bg-[#fafaf9]">
+                  <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-3">
+                    Actions
+                  </p>
+                  <div className="flex gap-2">
+                    <button className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-[13px] bg-[#eeeeec] hover:bg-[#e5e5e3] rounded transition-colors duration-150">
+                      <RefreshCw size={14} strokeWidth={1.5} />
                       Resend Receipt
                     </button>
-                    <button className="w-full py-2 px-3 text-[13px] bg-[#eeeeec] hover:bg-[#e5e5e3] rounded transition-colors duration-150 text-left">
+                    <button className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-[13px] bg-[#eeeeec] hover:bg-[#e5e5e3] rounded transition-colors duration-150">
+                      <FileText size={14} strokeWidth={1.5} />
                       Manual Log
                     </button>
-                    <button className="w-full py-2 px-3 text-[13px] bg-[#eeeeec] hover:bg-[#e5e5e3] rounded transition-colors duration-150 text-left text-[#dc2626]">
-                      Flag Issue
-                    </button>
                   </div>
+                  <button className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 px-3 text-[13px] text-[#dc2626] bg-[#eeeeec] hover:bg-[#e5e5e3] rounded transition-colors duration-150">
+                    <Flag size={14} strokeWidth={1.5} />
+                    Flag Issue
+                  </button>
                 </div>
               </div>
             </div>
           ) : (
-            /* Activity Feed */
             <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-shrink-0 px-4 py-3 border-b border-[#e5e5e3]">
-                <p className="text-[11px] text-[#737373] uppercase tracking-wide">Activity</p>
+              {/* Activity Header */}
+              <div className="flex-shrink-0 px-4 py-3 border-b border-[#e5e5e3] bg-[#fafaf9]">
+                <p className="text-[11px] text-[#737373] uppercase tracking-wider">
+                  Recent Activity
+                </p>
               </div>
-              
-              <div className="flex-1 overflow-y-auto">
+
+              {/* Activity Feed */}
+              <div className="flex-1 overflow-y-auto bg-[#fafaf9]">
                 {activityEvents.map((event) => (
-                  <div key={event.id} className="px-4 py-3 border-b border-[#e5e5e3]">
-                    <p className="text-[13px] mb-1">{event.message}</p>
-                    <p className="text-[11px] text-[#737373]">{formatTimestamp(event.timestamp)}</p>
-                  </div>
+                  <ActivityItem key={event.id} event={event} />
                 ))}
               </div>
             </div>

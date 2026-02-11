@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Upload, Check, AlertCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Upload, Check, AlertCircle } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -14,7 +14,6 @@ import {
   Cell,
 } from 'recharts';
 
-// Design system colors
 const colors = {
   bg: '#fafaf9',
   surface: '#f5f5f4',
@@ -28,7 +27,6 @@ const colors = {
   red: '#dc2626',
 };
 
-// Day types
 type DayType = 'workday' | 'weekend' | 'vacation' | 'sick' | 'comp' | 'holiday';
 
 interface DayData {
@@ -54,18 +52,16 @@ interface ImportRecord {
   errors?: string[];
 }
 
-// Seed-based random for consistent data
-function seededRandom(seed: number) {
+function seededRandom(seed: number): number {
   const x = Math.sin(seed) * 10000;
   return x - Math.floor(x);
 }
 
-// Generate employees with realistic German names
 function generateEmployees(): Employee[] {
   const employees = [
     { name: 'Markus Weber', role: 'Senior Developer' },
     { name: 'Anna Schmidt', role: 'Project Manager' },
-    { name: 'Thomas Müller', role: 'Backend Developer' },
+    { name: 'Thomas Muller', role: 'Backend Developer' },
     { name: 'Sabine Fischer', role: 'UX Designer' },
     { name: 'Klaus Hoffmann', role: 'DevOps Engineer' },
     { name: 'Julia Becker', role: 'Frontend Developer' },
@@ -75,7 +71,6 @@ function generateEmployees(): Employee[] {
   return employees.map((emp, idx) => {
     const monthlyData: DayData[] = [];
     const today = new Date();
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -89,33 +84,29 @@ function generateEmployees(): Employee[] {
 
       if (dayOfWeek === 0 || dayOfWeek === 6) {
         type = 'weekend';
-        // Occasional weekend work
-        if (rand > 0.9) {
-          hours = Math.floor(rand * 4) + 2;
+        if (rand > 0.92) {
+          hours = Math.floor(rand * 3) + 2;
         }
       } else if (date > today) {
-        // Future days
         type = 'workday';
         hours = 0;
       } else {
-        // Past workdays
         const typeRand = seededRandom(seed + 500);
-        if (typeRand > 0.95) {
+        if (typeRand > 0.96) {
           type = 'sick';
           hours = 0;
-        } else if (typeRand > 0.9) {
+        } else if (typeRand > 0.91) {
           type = 'vacation';
           hours = 0;
-        } else if (typeRand > 0.88) {
+        } else if (typeRand > 0.89) {
           type = 'comp';
           hours = 0;
         } else {
           type = 'workday';
-          // Normal work hours with some variation
           const baseHours = 8;
-          const variation = (rand - 0.5) * 3;
-          hours = Math.max(6, Math.min(10, baseHours + variation));
-          hours = Math.round(hours * 2) / 2; // Round to half hours
+          const variation = (rand - 0.5) * 2.5;
+          hours = Math.max(6.5, Math.min(9.5, baseHours + variation));
+          hours = Math.round(hours * 2) / 2;
         }
       }
 
@@ -132,33 +123,33 @@ function generateEmployees(): Employee[] {
   });
 }
 
-// Generate import history
 function generateImportHistory(): ImportRecord[] {
   const records: ImportRecord[] = [];
   const today = new Date();
 
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 10; i++) {
     const date = new Date(today);
-    date.setDate(date.getDate() - i * 7);
+    date.setDate(date.getDate() - i * 7 - Math.floor(seededRandom(i * 50) * 3));
     const seed = i * 100;
     const rand = seededRandom(seed);
 
     let status: 'success' | 'partial' | 'failed' = 'success';
     let errors: string[] | undefined;
 
-    if (rand > 0.9) {
+    if (rand > 0.88) {
       status = 'failed';
-      errors = ['Connection timeout to NGTeco device', 'Retry scheduled'];
-    } else if (rand > 0.8) {
+      errors = ['Connection timeout to NGTeco device'];
+    } else if (rand > 0.75) {
       status = 'partial';
-      errors = ['2 records skipped: invalid badge ID'];
+      const skipCount = Math.floor(seededRandom(seed + 10) * 4) + 1;
+      errors = [`${skipCount} records skipped: invalid badge ID`];
     }
 
     records.push({
       id: `import-${i}`,
       date,
       fileName: `ngteco_export_${date.toISOString().split('T')[0].replace(/-/g, '')}.csv`,
-      recordsImported: status === 'failed' ? 0 : Math.floor(seededRandom(seed + 1) * 50) + 80,
+      recordsImported: status === 'failed' ? 0 : Math.floor(seededRandom(seed + 1) * 40) + 85,
       status,
       errors,
     });
@@ -167,7 +158,6 @@ function generateImportHistory(): ImportRecord[] {
   return records;
 }
 
-// Get current week data for an employee
 function getCurrentWeekData(employee: Employee): DayData[] {
   const today = new Date();
   const dayOfWeek = today.getDay();
@@ -185,7 +175,6 @@ function getCurrentWeekData(employee: Employee): DayData[] {
   });
 }
 
-// Calculate employee status
 function getEmployeeStatus(employee: Employee): 'on-track' | 'behind' | 'over' {
   const weekData = getCurrentWeekData(employee);
   const today = new Date();
@@ -199,13 +188,45 @@ function getEmployeeStatus(employee: Employee): 'on-track' | 'behind' | 'over' {
   return 'on-track';
 }
 
-// Format date
 function formatDate(date: Date): string {
   return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-// Day names
+function formatShortDate(date: Date): string {
+  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+}
+
 const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const fullDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const getDayTypeColor = (type: DayType): string => {
+  switch (type) {
+    case 'vacation': return colors.blue;
+    case 'sick': return colors.red;
+    case 'comp': return colors.amber;
+    case 'weekend': return colors.muted;
+    default: return colors.green;
+  }
+};
+
+const getDayTypeLabel = (type: DayType): string => {
+  switch (type) {
+    case 'vacation': return 'Vacation';
+    case 'sick': return 'Sick';
+    case 'comp': return 'Comp Time';
+    case 'weekend': return 'Weekend';
+    case 'holiday': return 'Holiday';
+    default: return 'Workday';
+  }
+};
+
+const getStatusColor = (status: 'on-track' | 'behind' | 'over'): string => {
+  switch (status) {
+    case 'over': return colors.amber;
+    case 'behind': return colors.red;
+    default: return colors.green;
+  }
+};
 
 export default function TimeTrackingPage() {
   const employees = useMemo(() => generateEmployees(), []);
@@ -217,7 +238,6 @@ export default function TimeTrackingPage() {
   const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId)!;
   const weekData = getCurrentWeekData(selectedEmployee);
 
-  // Summary stats
   const totalWeekHours = employees.reduce((sum, emp) => {
     const week = getCurrentWeekData(emp);
     return sum + week.reduce((s, d) => s + d.hours, 0);
@@ -231,7 +251,6 @@ export default function TimeTrackingPage() {
 
   const pendingImports = importHistory.filter((i) => i.status === 'partial').length;
 
-  // Weekly chart data
   const weeklyChartData = weekData.map((d, idx) => ({
     day: dayNames[idx],
     hours: d.hours,
@@ -243,42 +262,21 @@ export default function TimeTrackingPage() {
   const weekTarget = 40;
   const weekBalance = weekActual - weekTarget;
 
-  // Day type colors
-  const getDayTypeColor = (type: DayType): string => {
-    switch (type) {
-      case 'vacation':
-        return colors.blue;
-      case 'sick':
-        return colors.red;
-      case 'comp':
-        return colors.amber;
-      case 'weekend':
-        return colors.muted;
-      default:
-        return colors.green;
-    }
-  };
-
-  // Status color
-  const getStatusColor = (status: 'on-track' | 'behind' | 'over'): string => {
-    switch (status) {
-      case 'over':
-        return colors.amber;
-      case 'behind':
-        return colors.red;
-      default:
-        return colors.green;
-    }
-  };
+  const monthlyTotals = useMemo(() => {
+    const data = selectedEmployee.monthlyData;
+    return {
+      totalHours: data.reduce((sum, d) => sum + d.hours, 0),
+      workdays: data.filter((d) => d.type === 'workday' && d.hours > 0).length,
+      vacation: data.filter((d) => d.type === 'vacation').length,
+      sick: data.filter((d) => d.type === 'sick').length,
+      comp: data.filter((d) => d.type === 'comp').length,
+    };
+  }, [selectedEmployee]);
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{ backgroundColor: colors.bg, color: colors.text }}
-    >
-      {/* Header */}
+    <div className="h-screen flex flex-col" style={{ backgroundColor: colors.bg, color: colors.text }}>
       <header
-        className="flex items-center justify-between px-6 py-4"
+        className="flex items-center justify-between px-6 py-3 flex-shrink-0"
         style={{ borderBottom: `1px solid ${colors.border}` }}
       >
         <div className="flex items-center gap-4">
@@ -288,86 +286,72 @@ export default function TimeTrackingPage() {
             style={{ color: colors.muted }}
           >
             <ArrowLeft size={16} />
-            Back
           </Link>
-          <h1 className="text-lg font-medium">Time Tracking</h1>
+          <span className="text-base font-medium">Time Tracking</span>
         </div>
-        <div className="flex items-center gap-6 text-sm">
-          <div>
+        <div className="flex items-center gap-8 text-sm">
+          <div className="flex items-center gap-2">
             <span style={{ color: colors.muted }}>Employees</span>
-            <span className="ml-2 font-medium">{employees.length}</span>
+            <span className="font-medium">{employees.length}</span>
           </div>
-          <div>
+          <div className="flex items-center gap-2">
             <span style={{ color: colors.muted }}>Week Total</span>
-            <span className="ml-2 font-medium">{totalWeekHours.toFixed(1)}h</span>
+            <span className="font-medium">{totalWeekHours.toFixed(1)}h</span>
           </div>
-          <div>
+          <div className="flex items-center gap-2">
             <span style={{ color: colors.muted }}>Overtime</span>
-            <span className="ml-2 font-medium" style={{ color: overtimeHours > 0 ? colors.amber : colors.text }}>
+            <span className="font-medium" style={{ color: overtimeHours > 0 ? colors.amber : colors.text }}>
               {overtimeHours.toFixed(1)}h
             </span>
           </div>
-          <div>
+          <div className="flex items-center gap-2">
             <span style={{ color: colors.muted }}>Pending</span>
-            <span className="ml-2 font-medium" style={{ color: pendingImports > 0 ? colors.amber : colors.text }}>
+            <span className="font-medium" style={{ color: pendingImports > 0 ? colors.amber : colors.text }}>
               {pendingImports}
             </span>
           </div>
         </div>
       </header>
 
-      {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Employee list */}
         <aside
-          className="w-64 flex-shrink-0 overflow-y-auto"
+          className="w-56 flex-shrink-0 overflow-y-auto"
           style={{ borderRight: `1px solid ${colors.border}`, backgroundColor: colors.surface }}
         >
-          <div className="p-4">
-            <div className="text-xs uppercase tracking-wide mb-3" style={{ color: colors.muted }}>
-              Employees
-            </div>
-            <div className="space-y-1">
-              {employees.map((emp) => {
-                const status = getEmployeeStatus(emp);
-                const weekHours = getCurrentWeekData(emp).reduce((sum, d) => sum + d.hours, 0);
-                const isSelected = emp.id === selectedEmployeeId;
+          <div className="p-3">
+            {employees.map((emp) => {
+              const status = getEmployeeStatus(emp);
+              const weekHours = getCurrentWeekData(emp).reduce((sum, d) => sum + d.hours, 0);
+              const isSelected = emp.id === selectedEmployeeId;
 
-                return (
-                  <button
-                    key={emp.id}
-                    onClick={() => setSelectedEmployeeId(emp.id)}
-                    className="w-full text-left p-3 rounded transition-colors"
-                    style={{
-                      backgroundColor: isSelected ? colors.surface2 : 'transparent',
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm">{emp.name}</span>
-                      <span
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: getStatusColor(status) }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs" style={{ color: colors.muted }}>
-                        {emp.role}
-                      </span>
-                      <span className="text-xs" style={{ color: colors.muted }}>
-                        {weekHours.toFixed(1)}h
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+              return (
+                <button
+                  key={emp.id}
+                  onClick={() => setSelectedEmployeeId(emp.id)}
+                  className="w-full text-left px-3 py-2.5 rounded transition-colors"
+                  style={{ backgroundColor: isSelected ? colors.surface2 : 'transparent' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{emp.name}</span>
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: getStatusColor(status) }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between mt-0.5">
+                    <span className="text-xs" style={{ color: colors.muted }}>{emp.role}</span>
+                    <span className="text-xs tabular-nums" style={{ color: colors.muted }}>
+                      {weekHours.toFixed(1)}h
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </aside>
 
-        {/* Main area */}
         <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Tabs */}
-          <div className="flex gap-6 px-6 pt-4" style={{ borderBottom: `1px solid ${colors.border}` }}>
+          <div className="flex gap-6 px-6 pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${colors.border}` }}>
             {[
               { id: 'weekly', label: 'Weekly Overview' },
               { id: 'monthly', label: 'Monthly Report' },
@@ -377,83 +361,52 @@ export default function TimeTrackingPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className="pb-3 text-sm transition-colors relative"
-                style={{
-                  color: activeTab === tab.id ? colors.text : colors.muted,
-                }}
+                style={{ color: activeTab === tab.id ? colors.text : colors.muted }}
               >
                 {tab.label}
                 {activeTab === tab.id && (
-                  <div
-                    className="absolute bottom-0 left-0 right-0 h-px"
-                    style={{ backgroundColor: colors.text }}
-                  />
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: colors.text }} />
                 )}
               </button>
             ))}
           </div>
 
-          {/* Tab content */}
           <div className="flex-1 overflow-y-auto p-6">
             {activeTab === 'weekly' && (
-              <div className="space-y-6">
-                {/* Employee info */}
-                <div className="flex items-center justify-between">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="text-xl font-medium">{selectedEmployee.name}</h2>
-                    <p className="text-sm mt-1" style={{ color: colors.muted }}>
-                      {selectedEmployee.role}
-                    </p>
+                    <div className="text-lg font-medium">{selectedEmployee.name}</div>
+                    <div className="text-sm" style={{ color: colors.muted }}>{selectedEmployee.role}</div>
                   </div>
                   <div className="flex gap-8 text-right">
                     <div>
-                      <div className="text-2xl font-medium">{weekActual.toFixed(1)}h</div>
-                      <div className="text-xs" style={{ color: colors.muted }}>
-                        Actual
-                      </div>
+                      <div className="text-xl font-medium tabular-nums">{weekActual.toFixed(1)}h</div>
+                      <div className="text-xs" style={{ color: colors.muted }}>Actual</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-medium" style={{ color: colors.muted }}>
-                        {weekTarget}h
-                      </div>
-                      <div className="text-xs" style={{ color: colors.muted }}>
-                        Target
-                      </div>
+                      <div className="text-xl font-medium tabular-nums" style={{ color: colors.muted }}>{weekTarget}h</div>
+                      <div className="text-xs" style={{ color: colors.muted }}>Target</div>
                     </div>
                     <div>
                       <div
-                        className="text-2xl font-medium"
+                        className="text-xl font-medium tabular-nums"
                         style={{
-                          color:
-                            weekBalance > 0
-                              ? colors.amber
-                              : weekBalance < -4
-                                ? colors.red
-                                : colors.green,
+                          color: weekBalance > 0 ? colors.amber : weekBalance < -4 ? colors.red : colors.green,
                         }}
                       >
-                        {weekBalance >= 0 ? '+' : ''}
-                        {weekBalance.toFixed(1)}h
+                        {weekBalance >= 0 ? '+' : ''}{weekBalance.toFixed(1)}h
                       </div>
-                      <div className="text-xs" style={{ color: colors.muted }}>
-                        Balance
-                      </div>
+                      <div className="text-xs" style={{ color: colors.muted }}>Balance</div>
                     </div>
                   </div>
                 </div>
 
-                {/* Chart */}
-                <div
-                  className="p-6 rounded-lg"
-                  style={{ backgroundColor: colors.surface, border: `1px solid ${colors.border}` }}
-                >
-                  <div className="h-64">
+                <div className="p-4 rounded" style={{ backgroundColor: colors.surface, border: `1px solid ${colors.border}` }}>
+                  <div className="h-44">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={weeklyChartData} barCategoryGap="20%">
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          stroke={colors.border}
-                          vertical={false}
-                        />
+                      <BarChart data={weeklyChartData} barCategoryGap="25%">
+                        <CartesianGrid strokeDasharray="3 3" stroke={colors.border} vertical={false} />
                         <XAxis
                           dataKey="day"
                           axisLine={false}
@@ -465,6 +418,8 @@ export default function TimeTrackingPage() {
                           tickLine={false}
                           tick={{ fill: colors.muted, fontSize: 12 }}
                           domain={[0, 10]}
+                          ticks={[0, 2, 4, 6, 8, 10]}
+                          width={24}
                         />
                         <Tooltip
                           contentStyle={{
@@ -472,15 +427,12 @@ export default function TimeTrackingPage() {
                             border: `1px solid ${colors.border}`,
                             borderRadius: 4,
                             fontSize: 12,
+                            padding: '8px 12px',
                           }}
-                          labelStyle={{ color: colors.text }}
-                          itemStyle={{ color: colors.muted }}
-                          formatter={(value: number, name: string) => [
-                            `${value.toFixed(1)}h`,
-                            name === 'hours' ? 'Hours' : 'Target',
-                          ]}
+                          labelStyle={{ color: colors.text, marginBottom: 4 }}
+                          formatter={(value: number) => [`${value.toFixed(1)}h`, 'Hours']}
                         />
-                        <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
+                        <Bar dataKey="hours" radius={[2, 2, 0, 0]}>
                           {weeklyChartData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={getDayTypeColor(entry.type)} />
                           ))}
@@ -488,263 +440,183 @@ export default function TimeTrackingPage() {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="flex gap-6 mt-4 pt-4" style={{ borderTop: `1px solid ${colors.border}` }}>
+                  <div className="flex gap-5 mt-3 pt-3" style={{ borderTop: `1px solid ${colors.border}` }}>
                     {[
-                      { type: 'workday', label: 'Workday' },
-                      { type: 'vacation', label: 'Vacation' },
-                      { type: 'sick', label: 'Sick' },
-                      { type: 'comp', label: 'Comp Time' },
+                      { type: 'workday' as DayType, label: 'Workday' },
+                      { type: 'vacation' as DayType, label: 'Vacation' },
+                      { type: 'sick' as DayType, label: 'Sick' },
+                      { type: 'comp' as DayType, label: 'Comp' },
                     ].map((item) => (
                       <div key={item.type} className="flex items-center gap-2 text-xs">
-                        <div
-                          className="w-3 h-3 rounded"
-                          style={{ backgroundColor: getDayTypeColor(item.type as DayType) }}
-                        />
+                        <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: getDayTypeColor(item.type) }} />
                         <span style={{ color: colors.muted }}>{item.label}</span>
                       </div>
                     ))}
                   </div>
                 </div>
+
+                <div className="rounded overflow-hidden" style={{ border: `1px solid ${colors.border}` }}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ backgroundColor: colors.surface }}>
+                        <th className="text-left p-3 font-medium text-xs" style={{ color: colors.muted }}>Day</th>
+                        <th className="text-left p-3 font-medium text-xs" style={{ color: colors.muted }}>Date</th>
+                        <th className="text-left p-3 font-medium text-xs" style={{ color: colors.muted }}>Type</th>
+                        <th className="text-right p-3 font-medium text-xs" style={{ color: colors.muted }}>Hours</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {weekData.map((day, idx) => {
+                        const today = new Date();
+                        const isToday = day.date.toDateString() === today.toDateString();
+                        return (
+                          <tr
+                            key={idx}
+                            style={{
+                              borderTop: `1px solid ${colors.border}`,
+                              backgroundColor: isToday ? colors.surface : colors.bg,
+                            }}
+                          >
+                            <td className="p-3 font-medium">{dayNames[idx]}</td>
+                            <td className="p-3 tabular-nums" style={{ color: colors.muted }}>{formatShortDate(day.date)}</td>
+                            <td className="p-3">
+                              <span style={{ color: getDayTypeColor(day.type) }}>{getDayTypeLabel(day.type)}</span>
+                            </td>
+                            <td className="p-3 text-right tabular-nums font-medium">
+                              {day.hours > 0 ? `${day.hours.toFixed(1)}h` : '-'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
             {activeTab === 'monthly' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-medium">{selectedEmployee.name}</h2>
-                  <div className="text-sm" style={{ color: colors.muted }}>
-                    {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-lg font-medium">{selectedEmployee.name}</div>
+                    <div className="text-sm" style={{ color: colors.muted }}>
+                      {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </div>
+                  </div>
+                  <div className="flex gap-6 text-sm">
+                    <div className="text-right">
+                      <span style={{ color: colors.muted }}>Total </span>
+                      <span className="font-medium tabular-nums">{monthlyTotals.totalHours.toFixed(1)}h</span>
+                    </div>
+                    <div className="text-right">
+                      <span style={{ color: colors.muted }}>Workdays </span>
+                      <span className="font-medium tabular-nums">{monthlyTotals.workdays}</span>
+                    </div>
+                    <div className="text-right">
+                      <span style={{ color: colors.blue }}>Vacation </span>
+                      <span className="font-medium tabular-nums">{monthlyTotals.vacation}</span>
+                    </div>
+                    <div className="text-right">
+                      <span style={{ color: colors.red }}>Sick </span>
+                      <span className="font-medium tabular-nums">{monthlyTotals.sick}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Calendar grid */}
-                <div
-                  className="rounded-lg overflow-hidden"
-                  style={{ backgroundColor: colors.surface, border: `1px solid ${colors.border}` }}
-                >
-                  {/* Header */}
-                  <div
-                    className="grid grid-cols-7 text-xs"
-                    style={{ borderBottom: `1px solid ${colors.border}` }}
-                  >
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-                      <div
-                        key={day}
-                        className="p-3 text-center"
-                        style={{ color: colors.muted }}
-                      >
-                        {day}
-                      </div>
-                    ))}
-                  </div>
+                <div className="rounded overflow-hidden" style={{ border: `1px solid ${colors.border}` }}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ backgroundColor: colors.surface }}>
+                        <th className="text-left p-3 font-medium text-xs w-24" style={{ color: colors.muted }}>Date</th>
+                        <th className="text-left p-3 font-medium text-xs w-28" style={{ color: colors.muted }}>Day</th>
+                        <th className="text-left p-3 font-medium text-xs" style={{ color: colors.muted }}>Type</th>
+                        <th className="text-right p-3 font-medium text-xs w-20" style={{ color: colors.muted }}>Hours</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedEmployee.monthlyData.map((day, idx) => {
+                        const today = new Date();
+                        const isToday = day.date.toDateString() === today.toDateString();
+                        const isFuture = day.date > today;
+                        const dayOfWeek = day.date.getDay();
 
-                  {/* Days */}
-                  <div className="grid grid-cols-7">
-                    {(() => {
-                      const today = new Date();
-                      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-                      const startOffset = (firstDay.getDay() + 6) % 7;
-                      const cells: React.ReactNode[] = [];
-
-                      // Empty cells before first day
-                      for (let i = 0; i < startOffset; i++) {
-                        cells.push(
-                          <div
-                            key={`empty-${i}`}
-                            className="p-3 min-h-[72px]"
-                            style={{ borderBottom: `1px solid ${colors.border}`, borderRight: `1px solid ${colors.border}` }}
-                          />
-                        );
-                      }
-
-                      // Day cells
-                      selectedEmployee.monthlyData.forEach((dayData, idx) => {
-                        const isToday =
-                          dayData.date.toDateString() === today.toDateString();
-                        const isFuture = dayData.date > today;
-
-                        cells.push(
-                          <div
+                        return (
+                          <tr
                             key={idx}
-                            className="p-3 min-h-[72px]"
                             style={{
-                              borderBottom: `1px solid ${colors.border}`,
-                              borderRight: `1px solid ${colors.border}`,
-                              backgroundColor: isToday ? colors.surface2 : 'transparent',
+                              borderTop: `1px solid ${colors.border}`,
+                              backgroundColor: isToday ? colors.surface : colors.bg,
+                              opacity: isFuture ? 0.5 : 1,
                             }}
                           >
-                            <div className="flex items-center justify-between">
-                              <span
-                                className="text-sm"
-                                style={{ color: isFuture ? colors.muted : colors.text }}
-                              >
-                                {dayData.date.getDate()}
-                              </span>
-                              {dayData.type !== 'workday' && dayData.type !== 'weekend' && (
-                                <span
-                                  className="w-2 h-2 rounded-full"
-                                  style={{ backgroundColor: getDayTypeColor(dayData.type) }}
-                                />
-                              )}
-                            </div>
-                            {dayData.hours > 0 && (
-                              <div
-                                className="text-xs mt-2"
-                                style={{ color: getDayTypeColor(dayData.type) }}
-                              >
-                                {dayData.hours.toFixed(1)}h
-                              </div>
-                            )}
-                            {dayData.type === 'vacation' && (
-                              <div className="text-xs mt-2" style={{ color: colors.blue }}>
-                                Vacation
-                              </div>
-                            )}
-                            {dayData.type === 'sick' && (
-                              <div className="text-xs mt-2" style={{ color: colors.red }}>
-                                Sick
-                              </div>
-                            )}
-                            {dayData.type === 'comp' && (
-                              <div className="text-xs mt-2" style={{ color: colors.amber }}>
-                                Comp
-                              </div>
-                            )}
-                          </div>
+                            <td className="p-3 tabular-nums" style={{ color: isToday ? colors.text : colors.muted }}>
+                              {formatShortDate(day.date)}
+                            </td>
+                            <td className="p-3" style={{ color: day.type === 'weekend' ? colors.muted : colors.text }}>
+                              {fullDayNames[dayOfWeek]}
+                            </td>
+                            <td className="p-3">
+                              <span style={{ color: getDayTypeColor(day.type) }}>{getDayTypeLabel(day.type)}</span>
+                            </td>
+                            <td className="p-3 text-right tabular-nums font-medium">
+                              {day.hours > 0 ? `${day.hours.toFixed(1)}h` : '-'}
+                            </td>
+                          </tr>
                         );
-                      });
-
-                      return cells;
-                    })()}
-                  </div>
-
-                  {/* Summary */}
-                  <div
-                    className="p-4 flex gap-8"
-                    style={{ borderTop: `1px solid ${colors.border}`, backgroundColor: colors.surface2 }}
-                  >
-                    <div>
-                      <span className="text-xs" style={{ color: colors.muted }}>
-                        Total Hours
-                      </span>
-                      <span className="ml-2 font-medium">
-                        {selectedEmployee.monthlyData.reduce((sum, d) => sum + d.hours, 0).toFixed(1)}h
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-xs" style={{ color: colors.muted }}>
-                        Workdays
-                      </span>
-                      <span className="ml-2 font-medium">
-                        {selectedEmployee.monthlyData.filter((d) => d.type === 'workday' && d.hours > 0).length}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-xs" style={{ color: colors.muted }}>
-                        Vacation
-                      </span>
-                      <span className="ml-2 font-medium">
-                        {selectedEmployee.monthlyData.filter((d) => d.type === 'vacation').length}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-xs" style={{ color: colors.muted }}>
-                        Sick Days
-                      </span>
-                      <span className="ml-2 font-medium">
-                        {selectedEmployee.monthlyData.filter((d) => d.type === 'sick').length}
-                      </span>
-                    </div>
-                  </div>
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ borderTop: `1px solid ${colors.border}`, backgroundColor: colors.surface2 }}>
+                        <td colSpan={3} className="p-3 font-medium">Total</td>
+                        <td className="p-3 text-right tabular-nums font-medium">{monthlyTotals.totalHours.toFixed(1)}h</td>
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
               </div>
             )}
 
             {activeTab === 'imports' && (
-              <div className="space-y-6">
-                {/* Import action */}
+              <div className="space-y-4">
                 <div
-                  className="p-4 rounded-lg flex items-center justify-between"
+                  className="p-4 rounded flex items-center justify-between"
                   style={{ backgroundColor: colors.surface, border: `1px solid ${colors.border}` }}
                 >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: colors.surface2 }}
-                    >
-                      <Clock size={20} style={{ color: colors.muted }} />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium">NGTeco CSV Import</div>
-                      <div className="text-xs mt-1" style={{ color: colors.muted }}>
-                        Last import: {formatDate(importHistory[0].date)} - {importHistory[0].recordsImported} records
-                      </div>
+                  <div>
+                    <div className="text-sm font-medium">NGTeco CSV Import</div>
+                    <div className="text-xs mt-1" style={{ color: colors.muted }}>
+                      Last import: {formatDate(importHistory[0].date)} ({importHistory[0].recordsImported} records)
                     </div>
                   </div>
                   <button
                     className="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-opacity hover:opacity-80"
-                    style={{ backgroundColor: colors.blue, color: colors.bg }}
+                    style={{ backgroundColor: colors.blue, color: '#fff' }}
                   >
                     <Upload size={16} />
-                    Process Import
+                    Import
                   </button>
                 </div>
 
-                {/* Import history table */}
-                <div
-                  className="rounded-lg overflow-hidden"
-                  style={{ backgroundColor: colors.surface, border: `1px solid ${colors.border}` }}
-                >
+                <div className="rounded overflow-hidden" style={{ border: `1px solid ${colors.border}` }}>
                   <table className="w-full text-sm">
                     <thead>
-                      <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
-                        <th
-                          className="text-left p-4 font-medium text-xs uppercase tracking-wide"
-                          style={{ color: colors.muted }}
-                        >
-                          Date
-                        </th>
-                        <th
-                          className="text-left p-4 font-medium text-xs uppercase tracking-wide"
-                          style={{ color: colors.muted }}
-                        >
-                          File
-                        </th>
-                        <th
-                          className="text-left p-4 font-medium text-xs uppercase tracking-wide"
-                          style={{ color: colors.muted }}
-                        >
-                          Records
-                        </th>
-                        <th
-                          className="text-left p-4 font-medium text-xs uppercase tracking-wide"
-                          style={{ color: colors.muted }}
-                        >
-                          Status
-                        </th>
-                        <th
-                          className="text-left p-4 font-medium text-xs uppercase tracking-wide"
-                          style={{ color: colors.muted }}
-                        >
-                          Notes
-                        </th>
+                      <tr style={{ backgroundColor: colors.surface }}>
+                        <th className="text-left p-3 font-medium text-xs w-28" style={{ color: colors.muted }}>Date</th>
+                        <th className="text-left p-3 font-medium text-xs" style={{ color: colors.muted }}>File</th>
+                        <th className="text-left p-3 font-medium text-xs w-24" style={{ color: colors.muted }}>Records</th>
+                        <th className="text-left p-3 font-medium text-xs w-24" style={{ color: colors.muted }}>Status</th>
+                        <th className="text-left p-3 font-medium text-xs" style={{ color: colors.muted }}>Notes</th>
                       </tr>
                     </thead>
                     <tbody>
                       {importHistory.map((record, idx) => (
-                        <tr
-                          key={record.id}
-                          style={{
-                            borderBottom:
-                              idx < importHistory.length - 1 ? `1px solid ${colors.border}` : undefined,
-                          }}
-                        >
-                          <td className="p-4">{formatDate(record.date)}</td>
-                          <td className="p-4" style={{ color: colors.muted }}>
+                        <tr key={record.id} style={{ borderTop: `1px solid ${colors.border}` }}>
+                          <td className="p-3 tabular-nums" style={{ color: colors.muted }}>{formatDate(record.date)}</td>
+                          <td className="p-3" style={{ color: colors.muted, fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>
                             {record.fileName}
                           </td>
-                          <td className="p-4">{record.recordsImported}</td>
-                          <td className="p-4">
+                          <td className="p-3 tabular-nums">{record.recordsImported}</td>
+                          <td className="p-3">
                             <span
                               className="inline-flex items-center gap-1.5"
                               style={{
@@ -757,12 +629,11 @@ export default function TimeTrackingPage() {
                               }}
                             >
                               {record.status === 'success' && <Check size={14} />}
-                              {record.status === 'partial' && <AlertCircle size={14} />}
-                              {record.status === 'failed' && <AlertCircle size={14} />}
+                              {record.status !== 'success' && <AlertCircle size={14} />}
                               {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                             </span>
                           </td>
-                          <td className="p-4" style={{ color: colors.muted }}>
+                          <td className="p-3" style={{ color: colors.muted }}>
                             {record.errors?.join(', ') || '-'}
                           </td>
                         </tr>

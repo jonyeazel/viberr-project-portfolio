@@ -2,16 +2,17 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Search, Grid3X3, List, X, Eye } from 'lucide-react';
+import { ArrowLeft, Search, Grid3X3, List, X, Eye, TrendingUp, ShoppingCart, Heart } from 'lucide-react';
 
-type Category = 'Trading Cards' | 'Vinyl' | 'Comics' | 'Sneakers' | 'Watches' | 'Art';
-type Condition = 'Mint' | 'Near Mint' | 'Good' | 'Fair';
-type Status = 'For Sale' | 'Auction' | 'Sold' | 'In Collection';
+type Category = 'Trading Cards' | 'Vinyl Records' | 'Comics' | 'Sneakers' | 'Watches' | 'Art';
+type Condition = 'Mint' | 'Near Mint' | 'Excellent' | 'Good' | 'Fair';
+type Status = 'For Sale' | 'Auction' | 'Sold';
 type Tab = 'Marketplace' | 'My Collection' | 'Watchlist';
 
 interface PriceHistory {
   date: string;
   price: number;
+  event: string;
 }
 
 interface Collectible {
@@ -28,154 +29,187 @@ interface Collectible {
   priceHistory: PriceHistory[];
   owned: boolean;
   watched: boolean;
-  imageHue: number;
+  year: number;
+  rarity: string;
+  auctionEnds?: string;
 }
 
-const categories: Category[] = ['Trading Cards', 'Vinyl', 'Comics', 'Sneakers', 'Watches', 'Art'];
-const conditions: Condition[] = ['Mint', 'Near Mint', 'Good', 'Fair'];
-const statuses: Status[] = ['For Sale', 'Auction', 'Sold', 'In Collection'];
+const categories: Category[] = ['Trading Cards', 'Vinyl Records', 'Comics', 'Sneakers', 'Watches', 'Art'];
+const conditions: Condition[] = ['Mint', 'Near Mint', 'Excellent', 'Good', 'Fair'];
 
-const firstNames = ['James', 'Michael', 'David', 'Robert', 'Sarah', 'Emily', 'Jessica', 'Amanda', 'Chris', 'Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley'];
-const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Martinez', 'Anderson', 'Wilson', 'Moore', 'Taylor', 'Thomas', 'Lee'];
+const categoryColors: Record<Category, { bg: string; text: string }> = {
+  'Trading Cards': { bg: '#dbeafe', text: '#1e40af' },
+  'Vinyl Records': { bg: '#fce7f3', text: '#9d174d' },
+  'Comics': { bg: '#dcfce7', text: '#166534' },
+  'Sneakers': { bg: '#fef3c7', text: '#92400e' },
+  'Watches': { bg: '#e0e7ff', text: '#3730a3' },
+  'Art': { bg: '#ffe4e6', text: '#9f1239' },
+};
+
+const firstNames = ['James', 'Michael', 'David', 'Robert', 'Sarah', 'Emily', 'Jessica', 'Amanda', 'Chris', 'Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Marcus', 'Elena', 'Nathan', 'Sophia', 'William'];
+const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Martinez', 'Anderson', 'Wilson', 'Moore', 'Taylor', 'Thomas', 'Lee', 'Chen', 'Rivera', 'Kim', 'Patel', 'Cohen'];
 
 const tradingCards = [
-  '1989 Upper Deck Ken Griffey Jr. PSA 9',
-  '1986 Fleer Michael Jordan Rookie PSA 8',
-  '1952 Topps Mickey Mantle PSA 4',
-  '1993 SP Foil Derek Jeter Rookie PSA 10',
-  '2003 Topps Chrome LeBron James Refractor',
-  '1996 Pokemon Base Set Charizard Holo PSA 9',
-  '1999 Pokemon 1st Edition Shadowless Pikachu',
-  '2020 Panini Prizm Justin Herbert Silver',
-  '1984 Topps Don Mattingly Rookie PSA 9',
-  '2018 Panini National Treasures Luka Doncic /99',
+  { name: '1989 Upper Deck Ken Griffey Jr. Rookie', grade: 'PSA 9', year: 1989 },
+  { name: '1986 Fleer Michael Jordan Rookie', grade: 'PSA 8', year: 1986 },
+  { name: '1952 Topps Mickey Mantle', grade: 'PSA 4', year: 1952 },
+  { name: '1993 SP Foil Derek Jeter Rookie', grade: 'PSA 10', year: 1993 },
+  { name: '2003 Topps Chrome LeBron James Refractor', grade: 'BGS 9.5', year: 2003 },
+  { name: '1996 Pokemon Base Set Charizard Holo', grade: 'PSA 9', year: 1996 },
+  { name: '1999 Pokemon 1st Edition Shadowless Pikachu', grade: 'PSA 10', year: 1999 },
+  { name: '2020 Panini Prizm Justin Herbert Silver', grade: 'PSA 10', year: 2020 },
+  { name: '1984 Topps Don Mattingly Rookie', grade: 'PSA 9', year: 1984 },
+  { name: '2018 Panini National Treasures Luka Doncic', grade: '/99', year: 2018 },
 ];
 
-const vinyls = [
-  'The Beatles - Abbey Road (1969 UK First Press)',
-  'Pink Floyd - Dark Side of the Moon (1973 UK)',
-  'Led Zeppelin - IV (1971 Atlantic First Press)',
-  'Nirvana - Nevermind (1991 DGC Original)',
-  'Miles Davis - Kind of Blue (1959 Columbia 6-Eye)',
-  'Radiohead - OK Computer (1997 UK First Press)',
-  'Fleetwood Mac - Rumours (1977 Warner Bros)',
-  'David Bowie - Ziggy Stardust (1972 RCA First)',
-  'Prince - Purple Rain (1984 Warner Bros Sealed)',
-  'Kendrick Lamar - To Pimp a Butterfly (2015 Ltd)',
+const vinylRecords = [
+  { name: 'The Beatles - Abbey Road', press: 'UK First Press', year: 1969 },
+  { name: 'Pink Floyd - Dark Side of the Moon', press: 'UK Original', year: 1973 },
+  { name: 'Led Zeppelin - IV', press: 'Atlantic First Press', year: 1971 },
+  { name: 'Nirvana - Nevermind', press: 'DGC Original', year: 1991 },
+  { name: 'Miles Davis - Kind of Blue', press: 'Columbia 6-Eye', year: 1959 },
+  { name: 'Radiohead - OK Computer', press: 'UK First Press', year: 1997 },
+  { name: 'Fleetwood Mac - Rumours', press: 'Warner Bros Original', year: 1977 },
+  { name: 'David Bowie - Ziggy Stardust', press: 'RCA First Press', year: 1972 },
+  { name: 'Prince - Purple Rain', press: 'Warner Bros Sealed', year: 1984 },
+  { name: 'Kendrick Lamar - To Pimp a Butterfly', press: 'Limited Edition', year: 2015 },
 ];
 
 const comics = [
-  'Amazing Fantasy #15 (First Spider-Man) CGC 4.0',
-  'Action Comics #1 (First Superman) CGC 1.8',
-  'Detective Comics #27 (First Batman) CGC 3.0',
-  'X-Men #1 (1963) CGC 7.5',
-  'Incredible Hulk #181 (First Wolverine) CGC 9.0',
-  'Giant-Size X-Men #1 CGC 9.6',
-  'Amazing Spider-Man #129 (First Punisher) CGC 8.5',
-  'Batman #1 (1940) CGC 5.5',
-  'Tales of Suspense #39 (First Iron Man) CGC 6.0',
-  'Fantastic Four #1 CGC 4.5',
+  { name: 'Amazing Fantasy #15', note: 'First Spider-Man', grade: 'CGC 4.0', year: 1962 },
+  { name: 'Action Comics #1', note: 'First Superman', grade: 'CGC 1.8', year: 1938 },
+  { name: 'Detective Comics #27', note: 'First Batman', grade: 'CGC 3.0', year: 1939 },
+  { name: 'X-Men #1', note: 'Original Team', grade: 'CGC 7.5', year: 1963 },
+  { name: 'Incredible Hulk #181', note: 'First Wolverine', grade: 'CGC 9.0', year: 1974 },
+  { name: 'Giant-Size X-Men #1', note: 'New Team Debut', grade: 'CGC 9.6', year: 1975 },
+  { name: 'Amazing Spider-Man #129', note: 'First Punisher', grade: 'CGC 8.5', year: 1974 },
+  { name: 'Batman #1', note: 'First Joker', grade: 'CGC 5.5', year: 1940 },
+  { name: 'Tales of Suspense #39', note: 'First Iron Man', grade: 'CGC 6.0', year: 1963 },
+  { name: 'Fantastic Four #1', note: 'Team Origin', grade: 'CGC 4.5', year: 1961 },
 ];
 
 const sneakers = [
-  'Air Jordan 1 Retro High OG Chicago 2015',
-  'Nike Air Mag Back to the Future 2016',
-  'Air Jordan 11 Concord 2018 DS',
-  'Nike Dunk Low Off-White Lot 01',
-  'Yeezy Boost 350 V2 Zebra DS',
-  'Air Jordan 4 Retro OG White Cement 2016',
-  'Nike SB Dunk Low Paris Special Box',
-  'Air Jordan 3 Retro Black Cement 2018',
-  'Travis Scott x Air Jordan 1 High OG',
-  'Nike Air Force 1 Low Supreme Box Logo',
+  { name: 'Air Jordan 1 Retro High OG Chicago', size: '10.5', year: 2015 },
+  { name: 'Nike Air Mag Back to the Future', size: '10', year: 2016 },
+  { name: 'Air Jordan 11 Concord', size: '11', year: 2018 },
+  { name: 'Nike Dunk Low Off-White Lot 01', size: '9.5', year: 2021 },
+  { name: 'Yeezy Boost 350 V2 Zebra', size: '10', year: 2017 },
+  { name: 'Air Jordan 4 Retro OG White Cement', size: '10.5', year: 2016 },
+  { name: 'Nike SB Dunk Low Paris', size: '9', year: 2003 },
+  { name: 'Air Jordan 3 Retro Black Cement', size: '11', year: 2018 },
+  { name: 'Travis Scott x Air Jordan 1 High OG', size: '10', year: 2019 },
+  { name: 'Nike Air Force 1 Low Supreme', size: '10.5', year: 2020 },
 ];
 
 const watches = [
-  'Rolex Submariner 5513 Gilt Dial 1966',
-  'Patek Philippe Nautilus 5711/1A Blue',
-  'Omega Speedmaster Professional Moonwatch',
-  'Audemars Piguet Royal Oak 15400ST',
-  'Rolex Daytona 116500LN Panda Dial',
-  'Cartier Santos de Cartier Large',
-  'IWC Portugieser Chronograph IW371446',
-  'Tudor Black Bay 58 Blue',
-  'Jaeger-LeCoultre Reverso Classic',
-  'Grand Seiko Snowflake SBGA211',
+  { name: 'Rolex Submariner 5513 Gilt Dial', ref: 'Ref. 5513', year: 1966 },
+  { name: 'Patek Philippe Nautilus', ref: 'Ref. 5711/1A', year: 2020 },
+  { name: 'Omega Speedmaster Professional Moonwatch', ref: 'Ref. 311.30.42.30', year: 2019 },
+  { name: 'Audemars Piguet Royal Oak', ref: 'Ref. 15400ST', year: 2018 },
+  { name: 'Rolex Daytona Panda Dial', ref: 'Ref. 116500LN', year: 2021 },
+  { name: 'Cartier Santos de Cartier Large', ref: 'WSSA0018', year: 2022 },
+  { name: 'IWC Portugieser Chronograph', ref: 'Ref. IW371446', year: 2017 },
+  { name: 'Tudor Black Bay 58 Blue', ref: 'Ref. M79030B', year: 2020 },
+  { name: 'Jaeger-LeCoultre Reverso Classic', ref: 'Ref. Q3858520', year: 2019 },
+  { name: 'Grand Seiko Snowflake', ref: 'Ref. SBGA211', year: 2021 },
 ];
 
 const artPieces = [
-  'KAWS - Companion (Open Edition) Grey',
-  'Banksy - Girl with Balloon Print /600',
-  'Takashi Murakami - Flower Ball Print',
-  'Daniel Arsham - Eroded Porsche 911',
-  'Invader - Rubik Kubrick Print /400',
-  'Shepard Fairey - Hope Print Signed',
-  'RETNA - Marquis Lewis Original',
-  'Jean-Michel Basquiat - Skull Lithograph',
-  'Keith Haring - Pop Shop Quad Print',
-  'Jeff Koons - Balloon Dog (Yellow) Replica',
+  { name: 'KAWS - Companion (Open Edition)', edition: 'Grey Colorway', year: 2020 },
+  { name: 'Banksy - Girl with Balloon', edition: 'Print /600', year: 2004 },
+  { name: 'Takashi Murakami - Flower Ball', edition: 'Offset Print', year: 2017 },
+  { name: 'Daniel Arsham - Eroded Porsche 911', edition: 'Limited /500', year: 2020 },
+  { name: 'Invader - Rubik Kubrick', edition: 'Print /400', year: 2018 },
+  { name: 'Shepard Fairey - Hope', edition: 'Signed Print', year: 2008 },
+  { name: 'RETNA - Marquis Lewis', edition: 'Original Work', year: 2019 },
+  { name: 'Jean-Michel Basquiat - Skull', edition: 'Lithograph', year: 1982 },
+  { name: 'Keith Haring - Pop Shop Quad', edition: 'Screen Print', year: 1989 },
+  { name: 'Jeff Koons - Balloon Dog', edition: 'Yellow Replica', year: 2021 },
 ];
 
-const itemsByCategory: Record<Category, string[]> = {
-  'Trading Cards': tradingCards,
-  'Vinyl': vinyls,
-  'Comics': comics,
-  'Sneakers': sneakers,
-  'Watches': watches,
-  'Art': artPieces,
+const priceRanges: Record<Category, [number, number]> = {
+  'Trading Cards': [150, 75000],
+  'Vinyl Records': [45, 8500],
+  'Comics': [250, 250000],
+  'Sneakers': [180, 25000],
+  'Watches': [2500, 185000],
+  'Art': [350, 85000],
 };
 
-const priceRanges: Record<Category, [number, number]> = {
-  'Trading Cards': [50, 50000],
-  'Vinyl': [30, 5000],
-  'Comics': [100, 100000],
-  'Sneakers': [150, 15000],
-  'Watches': [500, 150000],
-  'Art': [200, 50000],
-};
+const events = ['Listed', 'Sold', 'Auction', 'Price Drop'];
 
 function generateCollectibles(): Collectible[] {
   const items: Collectible[] = [];
   let id = 1;
 
-  categories.forEach((category) => {
-    const categoryItems = itemsByCategory[category];
+  const allItems: { category: Category; data: { name: string; detail: string; year: number }[] }[] = [
+    { category: 'Trading Cards', data: tradingCards.map(c => ({ name: c.name, detail: c.grade, year: c.year })) },
+    { category: 'Vinyl Records', data: vinylRecords.map(v => ({ name: v.name, detail: v.press, year: v.year })) },
+    { category: 'Comics', data: comics.map(c => ({ name: `${c.name} (${c.note})`, detail: c.grade, year: c.year })) },
+    { category: 'Sneakers', data: sneakers.map(s => ({ name: s.name, detail: `Size ${s.size}`, year: s.year })) },
+    { category: 'Watches', data: watches.map(w => ({ name: w.name, detail: w.ref, year: w.year })) },
+    { category: 'Art', data: artPieces.map(a => ({ name: a.name, detail: a.edition, year: a.year })) },
+  ];
+
+  allItems.forEach(({ category, data }) => {
     const [minPrice, maxPrice] = priceRanges[category];
 
-    categoryItems.forEach((name, idx) => {
-      const condition = conditions[Math.floor((idx * 7) % conditions.length)];
-      const status = statuses[Math.floor((idx * 3) % statuses.length)];
-      const basePrice = minPrice + ((idx * 1337) % (maxPrice - minPrice));
-      const price = Math.round(basePrice / 10) * 10;
-      const seller = `${firstNames[idx % firstNames.length]} ${lastNames[(idx * 3) % lastNames.length]}`;
+    data.forEach((item, idx) => {
+      const conditionIdx = (idx * 7 + category.length) % conditions.length;
+      const condition = conditions[conditionIdx];
+      const statusOptions: Status[] = ['For Sale', 'Auction', 'Sold'];
+      const status = statusOptions[(idx * 3 + category.charCodeAt(0)) % statusOptions.length];
+      const basePrice = minPrice + ((idx * 2137 + category.charCodeAt(0) * 100) % (maxPrice - minPrice));
+      const price = Math.round(basePrice / 50) * 50;
+      const sellerIdx = (idx * 3 + category.length) % firstNames.length;
+      const seller = `${firstNames[sellerIdx]} ${lastNames[(sellerIdx * 2) % lastNames.length]}`;
 
       const priceHistory: PriceHistory[] = [];
-      let historyPrice = price * 0.6;
+      let historyPrice = price * 0.55;
       for (let i = 0; i < 4; i++) {
         const year = 2022 + i;
-        const month = ((idx * 2 + i * 3) % 12) + 1;
+        const month = ((idx * 2 + i * 4) % 12) + 1;
         priceHistory.push({
-          date: `${year}-${month.toString().padStart(2, '0')}`,
+          date: `${year}-${month.toString().padStart(2, '0')}-${((idx * 5 + i * 7) % 28 + 1).toString().padStart(2, '0')}`,
           price: Math.round(historyPrice),
+          event: events[(idx + i) % events.length],
         });
-        historyPrice *= 1.1 + (idx % 3) * 0.05;
+        historyPrice *= 1.12 + (idx % 4) * 0.03;
       }
+
+      const conditionDescriptions: Record<Condition, string> = {
+        'Mint': 'Flawless condition. Factory perfect with no visible wear, marks, or imperfections. Original packaging intact.',
+        'Near Mint': 'Exceptional condition with only the most minor signs of handling. No significant flaws visible.',
+        'Excellent': 'Very good overall condition with light wear consistent with careful ownership. Minor surface marks possible.',
+        'Good': 'Solid condition showing normal wear from regular use. All functions intact. Some visible aging.',
+        'Fair': 'Usable condition with notable wear. May have scratches, marks, or other cosmetic issues. Functional.',
+      };
+
+      const provenanceOptions = [
+        `Acquired from Heritage Auctions in ${2015 + (idx % 8)}. Complete documentation and certificate of authenticity included.`,
+        `Purchased directly from Sotheby's ${['Spring', 'Fall'][idx % 2]} ${2016 + (idx % 7)} auction. Full provenance chain available.`,
+        `Estate sale acquisition from noted collector. Previously exhibited at major conventions.`,
+        `Private collection purchase with original receipt and authentication papers from ${2014 + (idx % 9)}.`,
+        `Certified by leading industry experts. Comes with detailed condition report and insurance valuation.`,
+      ];
 
       items.push({
         id: id++,
-        name,
+        name: item.name,
         category,
         condition,
         price,
         seller,
         status,
-        description: `Authentic ${name}. ${condition} condition with original packaging. Verified by certified graders.`,
-        provenance: `Originally purchased from ${['Heritage Auctions', 'Sotheby\'s', 'Christie\'s', 'Private Collection', 'Estate Sale'][idx % 5]} in ${2015 + (idx % 8)}. Chain of custody documented.`,
-        conditionNotes: condition === 'Mint' ? 'Perfect condition. No visible flaws.' : condition === 'Near Mint' ? 'Minor surface wear only. Excellent presentation.' : condition === 'Good' ? 'Light wear consistent with age. No major defects.' : 'Moderate wear. Some visible imperfections.',
+        description: `${item.name} - ${item.detail}. A remarkable example from ${item.year}. ${condition} condition verified by professional graders. This piece represents a significant opportunity for serious collectors.`,
+        provenance: provenanceOptions[(idx * 3 + category.length) % provenanceOptions.length],
+        conditionNotes: conditionDescriptions[condition],
         priceHistory,
-        owned: (idx * 7) % 10 === 0,
-        watched: (idx * 11) % 8 === 0,
-        imageHue: (idx * 37) % 360,
+        owned: (idx * 7 + category.charCodeAt(0)) % 12 === 0,
+        watched: (idx * 11 + category.charCodeAt(0)) % 9 === 0,
+        year: item.year,
+        rarity: item.detail,
+        auctionEnds: status === 'Auction' ? `${2 + (idx % 5)}d ${12 + (idx % 12)}h` : undefined,
       });
     });
   });
@@ -184,6 +218,14 @@ function generateCollectibles(): Collectible[] {
 }
 
 const initialCollectibles = generateCollectibles();
+
+function getInitials(name: string): string {
+  const words = name.split(' ').filter(w => w.length > 0);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+}
 
 export default function CollectablesPage() {
   const [collectibles, setCollectibles] = useState<Collectible[]>(initialCollectibles);
@@ -203,7 +245,7 @@ export default function CollectablesPage() {
     } else if (activeTab === 'Watchlist') {
       items = items.filter((item) => item.watched);
     } else {
-      items = items.filter((item) => item.status !== 'In Collection' || item.owned);
+      items = items.filter((item) => !item.owned);
     }
 
     if (searchQuery) {
@@ -212,7 +254,8 @@ export default function CollectablesPage() {
         (item) =>
           item.name.toLowerCase().includes(query) ||
           item.category.toLowerCase().includes(query) ||
-          item.seller.toLowerCase().includes(query)
+          item.seller.toLowerCase().includes(query) ||
+          item.rarity.toLowerCase().includes(query)
       );
     }
 
@@ -239,7 +282,7 @@ export default function CollectablesPage() {
   const handleBuy = (item: Collectible) => {
     setCollectibles((prev) =>
       prev.map((c) =>
-        c.id === item.id ? { ...c, owned: true, status: 'In Collection' as Status } : c
+        c.id === item.id ? { ...c, owned: true, status: 'Sold' as Status } : c
       )
     );
     setSelectedItem(null);
@@ -262,40 +305,59 @@ export default function CollectablesPage() {
     }).format(price);
   };
 
-  const getStatusColor = (status: Status) => {
+  const getStatusStyle = (status: Status) => {
     switch (status) {
       case 'For Sale':
-        return '#16a34a';
+        return { color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)' };
       case 'Auction':
-        return '#d97706';
+        return { color: '#d97706', bg: 'rgba(217, 119, 6, 0.08)' };
       case 'Sold':
-        return '#dc2626';
-      case 'In Collection':
-        return '#2563eb';
+        return { color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)' };
+    }
+  };
+
+  const getConditionStyle = (condition: Condition) => {
+    switch (condition) {
+      case 'Mint':
+        return { color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)' };
+      case 'Near Mint':
+        return { color: '#2563eb', bg: 'rgba(37, 99, 235, 0.08)' };
+      case 'Excellent':
+        return { color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.08)' };
+      case 'Good':
+        return { color: '#d97706', bg: 'rgba(217, 119, 6, 0.08)' };
+      case 'Fair':
+        return { color: '#737373', bg: 'rgba(115, 115, 115, 0.08)' };
     }
   };
 
   const tabs: Tab[] = ['Marketplace', 'My Collection', 'Watchlist'];
+
+  const tabCounts = useMemo(() => ({
+    'Marketplace': collectibles.filter((c) => !c.owned).length,
+    'My Collection': collectibles.filter((c) => c.owned).length,
+    'Watchlist': collectibles.filter((c) => c.watched).length,
+  }), [collectibles]);
 
   return (
     <div
       style={{
         backgroundColor: '#fafaf9',
         color: '#191919',
-        minHeight: '100vh',
+        height: '100vh',
         display: 'flex',
         flexDirection: 'column',
+        overflow: 'hidden',
       }}
     >
-      {/* Top Bar */}
       <header
         style={{
           borderBottom: '1px solid #e5e5e3',
-          padding: '16px 24px',
+          padding: '12px 24px',
           display: 'flex',
           alignItems: 'center',
-          gap: '24px',
-          flexWrap: 'wrap',
+          gap: '16px',
+          flexShrink: 0,
         }}
       >
         <Link
@@ -305,15 +367,14 @@ export default function CollectablesPage() {
             textDecoration: 'none',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             fontSize: '13px',
             transition: 'color 150ms ease-out',
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = '#191919')}
           onMouseLeave={(e) => (e.currentTarget.style.color = '#737373')}
         >
-          <ArrowLeft size={18} strokeWidth={1.5} />
-          Back
+          <ArrowLeft size={16} strokeWidth={1.5} />
         </Link>
 
         <div
@@ -321,15 +382,15 @@ export default function CollectablesPage() {
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            backgroundColor: '#fafaf9',
+            backgroundColor: '#f5f5f4',
             border: '1px solid #e5e5e3',
             borderRadius: '6px',
             padding: '8px 12px',
             flex: '1',
-            maxWidth: '400px',
+            maxWidth: '320px',
           }}
         >
-          <Search size={18} strokeWidth={1.5} style={{ color: '#737373' }} />
+          <Search size={16} strokeWidth={1.5} style={{ color: '#737373', flexShrink: 0 }} />
           <input
             type="text"
             placeholder="Search collectibles..."
@@ -346,18 +407,19 @@ export default function CollectablesPage() {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value as Category | 'All')}
             style={{
-              backgroundColor: '#fafaf9',
+              backgroundColor: '#f5f5f4',
               border: '1px solid #e5e5e3',
               borderRadius: '6px',
               padding: '8px 12px',
               color: '#191919',
               fontSize: '13px',
               cursor: 'pointer',
+              outline: 'none',
             }}
           >
             <option value="All">All Categories</option>
@@ -372,13 +434,14 @@ export default function CollectablesPage() {
             value={selectedCondition}
             onChange={(e) => setSelectedCondition(e.target.value as Condition | 'All')}
             style={{
-              backgroundColor: '#fafaf9',
+              backgroundColor: '#f5f5f4',
               border: '1px solid #e5e5e3',
               borderRadius: '6px',
               padding: '8px 12px',
               color: '#191919',
               fontSize: '13px',
               cursor: 'pointer',
+              outline: 'none',
             }}
           >
             <option value="All">All Conditions</option>
@@ -395,13 +458,14 @@ export default function CollectablesPage() {
               setPriceRange(e.target.value as 'All' | 'Under $500' | '$500-$5000' | '$5000+')
             }
             style={{
-              backgroundColor: '#fafaf9',
+              backgroundColor: '#f5f5f4',
               border: '1px solid #e5e5e3',
               borderRadius: '6px',
               padding: '8px 12px',
               color: '#191919',
               fontSize: '13px',
               cursor: 'pointer',
+              outline: 'none',
             }}
           >
             <option value="All">All Prices</option>
@@ -409,104 +473,98 @@ export default function CollectablesPage() {
             <option value="$500-$5000">$500 - $5,000</option>
             <option value="$5000+">$5,000+</option>
           </select>
-        </div>
 
-        <div
-          style={{
-            display: 'flex',
-            gap: '4px',
-            backgroundColor: '#fafaf9',
-            border: '1px solid #e5e5e3',
-            borderRadius: '6px',
-            padding: '4px',
-          }}
-        >
-          <button
-            onClick={() => setViewMode('grid')}
+          <div
             style={{
-              background: viewMode === 'grid' ? '#eeeeec' : 'transparent',
-              border: 'none',
-              borderRadius: '4px',
-              padding: '6px 8px',
-              cursor: 'pointer',
-              color: viewMode === 'grid' ? '#191919' : '#737373',
               display: 'flex',
-              alignItems: 'center',
-              transition: 'all 150ms ease-out',
+              backgroundColor: '#f5f5f4',
+              border: '1px solid #e5e5e3',
+              borderRadius: '6px',
+              padding: '2px',
             }}
           >
-            <Grid3X3 size={18} strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            style={{
-              background: viewMode === 'list' ? '#eeeeec' : 'transparent',
-              border: 'none',
-              borderRadius: '4px',
-              padding: '6px 8px',
-              cursor: 'pointer',
-              color: viewMode === 'list' ? '#191919' : '#737373',
-              display: 'flex',
-              alignItems: 'center',
-              transition: 'all 150ms ease-out',
-            }}
-          >
-            <List size={18} strokeWidth={1.5} />
-          </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              style={{
+                background: viewMode === 'grid' ? '#fafaf9' : 'transparent',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '6px 8px',
+                cursor: 'pointer',
+                color: viewMode === 'grid' ? '#191919' : '#737373',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'all 150ms ease-out',
+              }}
+            >
+              <Grid3X3 size={16} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              style={{
+                background: viewMode === 'list' ? '#fafaf9' : 'transparent',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '6px 8px',
+                cursor: 'pointer',
+                color: viewMode === 'list' ? '#191919' : '#737373',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'all 150ms ease-out',
+              }}
+            >
+              <List size={16} strokeWidth={1.5} />
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Tabs */}
       <nav
         style={{
           borderBottom: '1px solid #e5e5e3',
           padding: '0 24px',
           display: 'flex',
           gap: '32px',
+          flexShrink: 0,
         }}
       >
-        {tabs.map((tab) => {
-          const count =
-            tab === 'Marketplace'
-              ? collectibles.filter((c) => c.status !== 'In Collection' || c.owned).length
-              : tab === 'My Collection'
-                ? collectibles.filter((c) => c.owned).length
-                : collectibles.filter((c) => c.watched).length;
-          return (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+        {tabs.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === tab ? '2px solid #191919' : '2px solid transparent',
+              padding: '12px 0',
+              marginBottom: '-1px',
+              color: activeTab === tab ? '#191919' : '#737373',
+              fontSize: '13px',
+              fontWeight: activeTab === tab ? 500 : 400,
+              cursor: 'pointer',
+              display: 'flex',
+              gap: '8px',
+              alignItems: 'center',
+              transition: 'color 150ms ease-out',
+            }}
+          >
+            {tab}
+            <span
               style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: activeTab === tab ? '2px solid #191919' : '2px solid transparent',
-                padding: '16px 0',
+                backgroundColor: activeTab === tab ? '#eeeeec' : '#f5f5f4',
                 color: activeTab === tab ? '#191919' : '#737373',
-                fontSize: '13px',
-                cursor: 'pointer',
-                display: 'flex',
-                gap: '8px',
-                alignItems: 'center',
-                transition: 'all 150ms ease-out',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: 400,
               }}
             >
-              {tab}
-              <span
-                style={{
-                  backgroundColor: '#eeeeec',
-                  padding: '2px 8px',
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                }}
-              >
-                {count}
-              </span>
-            </button>
-          );
-        })}
+              {tabCounts[tab]}
+            </span>
+          </button>
+        ))}
       </nav>
 
-      {/* Main Content */}
       <main style={{ flex: 1, padding: '24px', overflow: 'auto' }}>
         {filteredItems.length === 0 ? (
           <div
@@ -515,7 +573,7 @@ export default function CollectablesPage() {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              height: '300px',
+              height: '100%',
               color: '#737373',
             }}
           >
@@ -526,226 +584,359 @@ export default function CollectablesPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
               gap: '16px',
             }}
           >
-            {filteredItems.map((item) => (
-              <article
-                key={item.id}
-                onClick={() => setSelectedItem(item)}
-                style={{
-                  backgroundColor: '#fafaf9',
-                  border: '1px solid #e5e5e3',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  cursor: 'pointer',
-                  transition: 'border-color 150ms ease-out',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#d4d4d2')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e5e5e3')}
-              >
-                <div
+            {filteredItems.map((item) => {
+              const catColor = categoryColors[item.category];
+              const statusStyle = getStatusStyle(item.status);
+              const condStyle = getConditionStyle(item.condition);
+              return (
+                <article
+                  key={item.id}
+                  onClick={() => setSelectedItem(item)}
                   style={{
-                    width: '100%',
-                    height: '160px',
-                    backgroundColor: `hsl(${item.imageHue}, 15%, 12%)`,
-                    borderRadius: '4px',
-                    marginBottom: '12px',
-                  }}
-                />
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    marginBottom: '8px',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      color: '#737373',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                    }}
-                  >
-                    {item.category}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      color: getStatusColor(item.status),
-                    }}
-                  >
-                    {item.status}
-                  </span>
-                </div>
-                <h3
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    marginBottom: '8px',
-                    lineHeight: 1.4,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
+                    backgroundColor: '#fafaf9',
+                    border: '1px solid #e5e5e3',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'border-color 150ms ease-out, box-shadow 150ms ease-out',
                     overflow: 'hidden',
                   }}
-                >
-                  {item.name}
-                </h3>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '8px',
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#d4d4d2';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#e5e5e3';
+                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
-                  <span style={{ fontSize: '11px', color: '#737373' }}>{item.condition}</span>
-                  <span style={{ fontSize: '15px', fontWeight: 500 }}>{formatPrice(item.price)}</span>
-                </div>
-                <p style={{ fontSize: '11px', color: '#737373' }}>{item.seller}</p>
-              </article>
-            ))}
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '140px',
+                      backgroundColor: catColor.bg,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      position: 'relative',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: '48px',
+                        fontWeight: 600,
+                        color: catColor.text,
+                        opacity: 0.25,
+                        letterSpacing: '-0.02em',
+                        userSelect: 'none',
+                      }}
+                    >
+                      {getInitials(item.name)}
+                    </span>
+                    {item.watched && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '8px',
+                          right: '8px',
+                          backgroundColor: '#fafaf9',
+                          borderRadius: '4px',
+                          padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Eye size={14} strokeWidth={1.5} style={{ color: '#2563eb' }} />
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ padding: '12px 14px 14px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          color: catColor.text,
+                          backgroundColor: catColor.bg,
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {item.category}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          color: statusStyle.color,
+                          backgroundColor: statusStyle.bg,
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {item.status}
+                        {item.auctionEnds && ` - ${item.auctionEnds}`}
+                      </span>
+                    </div>
+                    <h3
+                      style={{
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        marginBottom: '6px',
+                        lineHeight: 1.4,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        minHeight: '36px',
+                      }}
+                    >
+                      {item.name}
+                    </h3>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          color: condStyle.color,
+                          backgroundColor: condStyle.bg,
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                        }}
+                      >
+                        {item.condition}
+                      </span>
+                      <span style={{ fontSize: '15px', fontWeight: 600 }}>{formatPrice(item.price)}</span>
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <span style={{ fontSize: '11px', color: '#737373' }}>{item.seller}</span>
+                      <span style={{ fontSize: '11px', color: '#a3a3a3' }}>{item.year}</span>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {filteredItems.map((item) => (
-              <article
-                key={item.id}
-                onClick={() => setSelectedItem(item)}
-                style={{
-                  backgroundColor: '#fafaf9',
-                  border: '1px solid #e5e5e3',
-                  borderRadius: '8px',
-                  padding: '16px 20px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '20px',
-                  transition: 'border-color 150ms ease-out',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#d4d4d2')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e5e5e3')}
-              >
-                <div
+            {filteredItems.map((item) => {
+              const catColor = categoryColors[item.category];
+              const statusStyle = getStatusStyle(item.status);
+              const condStyle = getConditionStyle(item.condition);
+              return (
+                <article
+                  key={item.id}
+                  onClick={() => setSelectedItem(item)}
                   style={{
-                    width: '64px',
-                    height: '64px',
-                    backgroundColor: `hsl(${item.imageHue}, 15%, 12%)`,
-                    borderRadius: '4px',
-                    flexShrink: 0,
+                    backgroundColor: '#fafaf9',
+                    border: '1px solid #e5e5e3',
+                    borderRadius: '6px',
+                    padding: '12px 16px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px',
+                    transition: 'border-color 150ms ease-out',
                   }}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#d4d4d2')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e5e5e3')}
+                >
                   <div
                     style={{
+                      width: '56px',
+                      height: '56px',
+                      backgroundColor: catColor.bg,
+                      borderRadius: '6px',
+                      flexShrink: 0,
                       display: 'flex',
-                      gap: '12px',
-                      marginBottom: '4px',
                       alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: '18px',
+                        fontWeight: 600,
+                        color: catColor.text,
+                        opacity: 0.4,
+                        letterSpacing: '-0.02em',
+                      }}
+                    >
+                      {getInitials(item.name)}
+                    </span>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        marginBottom: '4px',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          color: catColor.text,
+                          backgroundColor: catColor.bg,
+                          padding: '1px 5px',
+                          borderRadius: '3px',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {item.category}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          color: condStyle.color,
+                          backgroundColor: condStyle.bg,
+                          padding: '1px 5px',
+                          borderRadius: '3px',
+                        }}
+                      >
+                        {item.condition}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#a3a3a3' }}>{item.year}</span>
+                    </div>
+                    <h3
+                      style={{
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {item.name}
+                    </h3>
+                    <p style={{ fontSize: '11px', color: '#737373', marginTop: '2px' }}>{item.seller}</p>
+                  </div>
+                  <div
+                    style={{
+                      textAlign: 'right',
+                      flexShrink: 0,
                     }}
                   >
                     <span
                       style={{
                         fontSize: '11px',
-                        color: '#737373',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
+                        color: statusStyle.color,
+                        backgroundColor: statusStyle.bg,
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        display: 'inline-block',
+                        marginBottom: '4px',
                       }}
                     >
-                      {item.category}
+                      {item.status}
                     </span>
-                    <span style={{ fontSize: '11px', color: '#737373' }}>{item.condition}</span>
+                    <p style={{ fontSize: '15px', fontWeight: 600 }}>{formatPrice(item.price)}</p>
                   </div>
-                  <h3
-                    style={{
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {item.name}
-                  </h3>
-                  <p style={{ fontSize: '11px', color: '#737373', marginTop: '4px' }}>{item.seller}</p>
-                </div>
-                <div
-                  style={{
-                    textAlign: 'right',
-                    flexShrink: 0,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      color: getStatusColor(item.status),
-                      display: 'block',
-                      marginBottom: '4px',
-                    }}
-                  >
-                    {item.status}
-                  </span>
-                  <span style={{ fontSize: '15px', fontWeight: 500 }}>{formatPrice(item.price)}</span>
-                </div>
-              </article>
-            ))}
+                  {item.watched && (
+                    <Eye size={16} strokeWidth={1.5} style={{ color: '#2563eb', flexShrink: 0 }} />
+                  )}
+                </article>
+              );
+            })}
           </div>
         )}
       </main>
 
-      {/* Detail Modal */}
       {selectedItem && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '24px',
-            zIndex: 100,
-          }}
-          onClick={() => setSelectedItem(null)}
-        >
+        <>
           <div
             style={{
-              backgroundColor: '#fafaf9',
-              border: '1px solid #e5e5e3',
-              borderRadius: '8px',
-              width: '100%',
-              maxWidth: '600px',
-              maxHeight: '90vh',
-              overflow: 'auto',
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.4)',
+              zIndex: 99,
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setSelectedItem(null)}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: '480px',
+              maxWidth: '100vw',
+              backgroundColor: '#fafaf9',
+              borderLeft: '1px solid #e5e5e3',
+              zIndex: 100,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
           >
             <div
               style={{
-                padding: '20px',
+                padding: '16px 20px',
                 borderBottom: '1px solid #e5e5e3',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'flex-start',
+                flexShrink: 0,
               }}
             >
-              <div>
-                <div style={{ display: 'flex', gap: '12px', marginBottom: '8px' }}>
+              <div style={{ flex: 1, minWidth: 0, paddingRight: '16px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
                   <span
                     style={{
                       fontSize: '11px',
-                      color: '#737373',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
+                      color: categoryColors[selectedItem.category].text,
+                      backgroundColor: categoryColors[selectedItem.category].bg,
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontWeight: 500,
                     }}
                   >
                     {selectedItem.category}
                   </span>
-                  <span style={{ fontSize: '11px', color: getStatusColor(selectedItem.status) }}>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: getConditionStyle(selectedItem.condition).color,
+                      backgroundColor: getConditionStyle(selectedItem.condition).bg,
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                    }}
+                  >
+                    {selectedItem.condition}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: getStatusStyle(selectedItem.status).color,
+                      backgroundColor: getStatusStyle(selectedItem.status).bg,
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                    }}
+                  >
                     {selectedItem.status}
                   </span>
                 </div>
@@ -762,6 +953,7 @@ export default function CollectablesPage() {
                   cursor: 'pointer',
                   padding: '4px',
                   transition: 'color 150ms ease-out',
+                  flexShrink: 0,
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#191919')}
                 onMouseLeave={(e) => (e.currentTarget.style.color = '#737373')}
@@ -770,167 +962,271 @@ export default function CollectablesPage() {
               </button>
             </div>
 
-            <div
-              style={{
-                width: '100%',
-                height: '200px',
-                backgroundColor: `hsl(${selectedItem.imageHue}, 15%, 12%)`,
-              }}
-            />
-
-            <div style={{ padding: '20px' }}>
+            <div style={{ flex: 1, overflow: 'auto' }}>
               <div
                 style={{
+                  width: '100%',
+                  height: '200px',
+                  backgroundColor: categoryColors[selectedItem.category].bg,
                   display: 'flex',
-                  justifyContent: 'space-between',
                   alignItems: 'center',
-                  marginBottom: '24px',
+                  justifyContent: 'center',
                 }}
               >
-                <div>
-                  <p style={{ fontSize: '11px', color: '#737373', marginBottom: '4px' }}>Price</p>
-                  <p style={{ fontSize: '24px', fontWeight: 500 }}>{formatPrice(selectedItem.price)}</p>
+                <span
+                  style={{
+                    fontSize: '72px',
+                    fontWeight: 600,
+                    color: categoryColors[selectedItem.category].text,
+                    opacity: 0.2,
+                    letterSpacing: '-0.02em',
+                    userSelect: 'none',
+                  }}
+                >
+                  {getInitials(selectedItem.name)}
+                </span>
+              </div>
+
+              <div style={{ padding: '20px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-end',
+                    marginBottom: '24px',
+                    paddingBottom: '16px',
+                    borderBottom: '1px solid #e5e5e3',
+                  }}
+                >
+                  <div>
+                    <p style={{ fontSize: '11px', color: '#737373', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Price</p>
+                    <p style={{ fontSize: '28px', fontWeight: 600, letterSpacing: '-0.02em' }}>{formatPrice(selectedItem.price)}</p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontSize: '11px', color: '#737373', marginBottom: '4px' }}>{selectedItem.year}</p>
+                    <p style={{ fontSize: '13px', color: '#191919' }}>{selectedItem.rarity}</p>
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '11px', color: '#737373', marginBottom: '4px' }}>Condition</p>
-                  <p style={{ fontSize: '15px' }}>{selectedItem.condition}</p>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#191919' }}>{selectedItem.description}</p>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <p style={{ fontSize: '11px', color: '#737373', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Provenance</p>
+                  <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#525252' }}>
+                    {selectedItem.provenance}
+                  </p>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <p style={{ fontSize: '11px', color: '#737373', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Condition Notes
+                  </p>
+                  <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#525252' }}>
+                    {selectedItem.conditionNotes}
+                  </p>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                    <TrendingUp size={14} strokeWidth={1.5} style={{ color: '#737373' }} />
+                    <p style={{ fontSize: '11px', color: '#737373', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Price History
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {selectedItem.priceHistory.map((ph, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          fontSize: '13px',
+                          padding: '10px 12px',
+                          backgroundColor: '#f5f5f4',
+                          borderRadius: '4px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          <span style={{ color: '#737373', fontSize: '12px', fontVariantNumeric: 'tabular-nums' }}>{ph.date}</span>
+                          <span style={{ color: '#a3a3a3', fontSize: '11px' }}>{ph.event}</span>
+                        </div>
+                        <span style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{formatPrice(ph.price)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '12px',
+                    backgroundColor: '#f5f5f4',
+                    borderRadius: '6px',
+                    marginBottom: '20px',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      backgroundColor: '#e5e5e3',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      color: '#525252',
+                    }}
+                  >
+                    {getInitials(selectedItem.seller)}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '13px', fontWeight: 500 }}>{selectedItem.seller}</p>
+                    <p style={{ fontSize: '11px', color: '#737373' }}>Verified Seller</p>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div style={{ marginBottom: '24px' }}>
-                <p style={{ fontSize: '11px', color: '#737373', marginBottom: '8px' }}>Description</p>
-                <p style={{ fontSize: '13px', lineHeight: 1.6 }}>{selectedItem.description}</p>
-              </div>
-
-              <div style={{ marginBottom: '24px' }}>
-                <p style={{ fontSize: '11px', color: '#737373', marginBottom: '8px' }}>Provenance</p>
-                <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#737373' }}>
-                  {selectedItem.provenance}
-                </p>
-              </div>
-
-              <div style={{ marginBottom: '24px' }}>
-                <p style={{ fontSize: '11px', color: '#737373', marginBottom: '8px' }}>
-                  Condition Notes
-                </p>
-                <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#737373' }}>
-                  {selectedItem.conditionNotes}
-                </p>
-              </div>
-
-              <div style={{ marginBottom: '24px' }}>
-                <p style={{ fontSize: '11px', color: '#737373', marginBottom: '12px' }}>
-                  Price History
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {selectedItem.priceHistory.map((ph, idx) => (
-                    <div
-                      key={idx}
+            <div
+              style={{
+                padding: '16px 20px',
+                borderTop: '1px solid #e5e5e3',
+                display: 'flex',
+                gap: '10px',
+                flexShrink: 0,
+                backgroundColor: '#fafaf9',
+              }}
+            >
+              {selectedItem.owned ? (
+                <div
+                  style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    color: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                    borderRadius: '6px',
+                  }}
+                >
+                  In Your Collection
+                </div>
+              ) : (
+                <>
+                  {selectedItem.status === 'For Sale' && (
+                    <button
+                      onClick={() => handleBuy(selectedItem)}
                       style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
+                        flex: 1,
+                        backgroundColor: '#191919',
+                        color: '#fafaf9',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '12px 16px',
                         fontSize: '13px',
-                        padding: '8px 12px',
-                        backgroundColor: '#eeeeec',
-                        borderRadius: '4px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        transition: 'opacity 150ms ease-out',
                       }}
+                      onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
+                      onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
                     >
-                      <span style={{ color: '#737373' }}>{ph.date}</span>
-                      <span>{formatPrice(ph.price)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <p style={{ fontSize: '11px', color: '#737373', marginBottom: '16px' }}>
-                Seller: {selectedItem.seller}
-              </p>
-
-              <div style={{ display: 'flex', gap: '12px' }}>
-                {selectedItem.status === 'For Sale' && !selectedItem.owned && (
-                  <button
-                    onClick={() => handleBuy(selectedItem)}
-                    style={{
-                      flex: 1,
-                      backgroundColor: '#fafaf9',
-                      color: '#191919',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '12px 16px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      transition: 'opacity 150ms ease-out',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-                    onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-                  >
-                    Buy Now
-                  </button>
-                )}
-                {selectedItem.status === 'Auction' && !selectedItem.owned && (
-                  <button
-                    style={{
-                      flex: 1,
-                      backgroundColor: '#fafaf9',
-                      color: '#191919',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '12px 16px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      transition: 'opacity 150ms ease-out',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-                    onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-                  >
-                    Make Offer
-                  </button>
-                )}
-                {!selectedItem.owned && (
+                      <ShoppingCart size={16} strokeWidth={1.5} />
+                      Buy Now
+                    </button>
+                  )}
+                  {selectedItem.status === 'Auction' && (
+                    <button
+                      style={{
+                        flex: 1,
+                        backgroundColor: '#191919',
+                        color: '#fafaf9',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '12px 16px',
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        transition: 'opacity 150ms ease-out',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
+                      onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                    >
+                      Place Bid
+                    </button>
+                  )}
+                  {selectedItem.status !== 'Sold' && (
+                    <button
+                      style={{
+                        flex: selectedItem.status === 'Sold' ? 1 : 0,
+                        minWidth: '100px',
+                        backgroundColor: 'transparent',
+                        color: '#191919',
+                        border: '1px solid #e5e5e3',
+                        borderRadius: '6px',
+                        padding: '12px 16px',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        transition: 'border-color 150ms ease-out',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#d4d4d2')}
+                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e5e5e3')}
+                    >
+                      Make Offer
+                    </button>
+                  )}
                   <button
                     onClick={() => handleWatch(selectedItem)}
                     style={{
-                      flex: selectedItem.status === 'Sold' ? 1 : 0,
-                      minWidth: selectedItem.status === 'Sold' ? 'auto' : '120px',
-                      backgroundColor: 'transparent',
-                      color: selectedItem.watched ? '#2563eb' : '#191919',
-                      border: `1px solid ${selectedItem.watched ? '#2563eb' : '#e5e5e3'}`,
+                      width: '44px',
+                      height: '44px',
+                      backgroundColor: selectedItem.watched ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+                      color: selectedItem.watched ? '#2563eb' : '#737373',
+                      border: `1px solid ${selectedItem.watched ? 'rgba(37, 99, 235, 0.2)' : '#e5e5e3'}`,
                       borderRadius: '6px',
-                      padding: '12px 16px',
-                      fontSize: '13px',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '8px',
                       transition: 'all 150ms ease-out',
+                      flexShrink: 0,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!selectedItem.watched) {
+                        e.currentTarget.style.borderColor = '#d4d4d2';
+                        e.currentTarget.style.color = '#191919';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!selectedItem.watched) {
+                        e.currentTarget.style.borderColor = '#e5e5e3';
+                        e.currentTarget.style.color = '#737373';
+                      }
                     }}
                   >
-                    <Eye size={16} strokeWidth={1.5} />
-                    {selectedItem.watched ? 'Watching' : 'Watch'}
+                    {selectedItem.watched ? <Heart size={18} strokeWidth={1.5} fill="#2563eb" /> : <Heart size={18} strokeWidth={1.5} />}
                   </button>
-                )}
-                {selectedItem.owned && (
-                  <div
-                    style={{
-                      flex: 1,
-                      textAlign: 'center',
-                      padding: '12px 16px',
-                      fontSize: '13px',
-                      color: '#2563eb',
-                      backgroundColor: 'rgba(74, 158, 255, 0.1)',
-                      borderRadius: '6px',
-                    }}
-                  >
-                    In Your Collection
-                  </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

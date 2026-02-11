@@ -12,7 +12,6 @@ import {
   Cell,
 } from 'recharts';
 
-// Design tokens
 const colors = {
   bg: '#fafaf9',
   surface: '#f5f5f4',
@@ -26,23 +25,27 @@ const colors = {
   red: '#dc2626',
 };
 
-// Types
+type SignalType = 'Funding' | 'Hiring' | 'Expansion' | 'Revenue';
+
 type GrowthSignal = {
-  type: 'Funding' | 'Hiring' | 'Expansion' | 'Revenue Growth';
+  type: SignalType;
   description: string;
   source: string;
   date: string;
 };
 
+type Industry = 'Manufacturing' | 'Logistics' | 'Biotech' | 'Software' | 'Energy';
+type Location = 'Berlin' | 'Brandenburg' | 'Potsdam';
+
 type Company = {
   id: number;
   name: string;
-  industry: 'Production' | 'Logistics' | 'Research' | 'Office' | 'Technology';
-  location: 'Berlin' | 'Brandenburg' | 'Potsdam';
+  industry: Industry;
+  location: Location;
   employees: number;
   founded: number;
   address: string;
-  growthScore: number;
+  score: number;
   signals: GrowthSignal[];
   subScores: {
     funding: number;
@@ -56,77 +59,122 @@ type Company = {
     email: string;
     phone: string;
   };
-  lastUpdated: string;
+  updated: string;
 };
 
-// Data generation
-const germanFirstNames = ['Thomas', 'Michael', 'Stefan', 'Andreas', 'Christian', 'Markus', 'Sebastian', 'Daniel', 'Julia', 'Anna', 'Sarah', 'Laura', 'Lisa', 'Katharina', 'Maria'];
-const germanLastNames = ['Müller', 'Schmidt', 'Schneider', 'Fischer', 'Weber', 'Meyer', 'Wagner', 'Becker', 'Schulz', 'Hoffmann', 'Koch', 'Richter', 'Klein', 'Wolf', 'Neumann'];
-const roles = ['CEO', 'Managing Director', 'Head of Operations', 'Business Development', 'CFO', 'COO'];
+const companyData: Array<{
+  name: string;
+  industry: Industry;
+  location: Location;
+  score: number;
+  employees: number;
+  founded: number;
+}> = [
+  { name: 'Infarm GmbH', industry: 'Biotech', location: 'Berlin', score: 94, employees: 420, founded: 2013 },
+  { name: 'GetYourGuide AG', industry: 'Software', location: 'Berlin', score: 91, employees: 850, founded: 2009 },
+  { name: 'Zalando Logistics SE', industry: 'Logistics', location: 'Brandenburg', score: 88, employees: 1200, founded: 2008 },
+  { name: 'N26 GmbH', industry: 'Software', location: 'Berlin', score: 85, employees: 1500, founded: 2013 },
+  { name: 'Lilium GmbH', industry: 'Manufacturing', location: 'Brandenburg', score: 82, employees: 950, founded: 2015 },
+  { name: 'Enpal GmbH', industry: 'Energy', location: 'Berlin', score: 79, employees: 680, founded: 2017 },
+  { name: 'Trade Republic Bank', industry: 'Software', location: 'Berlin', score: 76, employees: 520, founded: 2015 },
+  { name: 'Forto Logistics GmbH', industry: 'Logistics', location: 'Berlin', score: 73, employees: 340, founded: 2016 },
+  { name: 'BioNTech Manufacturing', industry: 'Biotech', location: 'Brandenburg', score: 89, employees: 280, founded: 2018 },
+  { name: 'Personio SE', industry: 'Software', location: 'Berlin', score: 71, employees: 1800, founded: 2015 },
+  { name: 'Sunfire GmbH', industry: 'Energy', location: 'Potsdam', score: 68, employees: 220, founded: 2010 },
+  { name: 'Sennder Technologies', industry: 'Logistics', location: 'Berlin', score: 65, employees: 890, founded: 2015 },
+  { name: 'Agile Robots AG', industry: 'Manufacturing', location: 'Berlin', score: 62, employees: 180, founded: 2018 },
+  { name: 'Celonis SE', industry: 'Software', location: 'Berlin', score: 92, employees: 2100, founded: 2011 },
+  { name: 'Northvolt Drei GmbH', industry: 'Manufacturing', location: 'Brandenburg', score: 78, employees: 450, founded: 2021 },
+  { name: 'Tier Mobility SE', industry: 'Logistics', location: 'Berlin', score: 59, employees: 950, founded: 2018 },
+  { name: 'Curevac AG', industry: 'Biotech', location: 'Potsdam', score: 56, employees: 620, founded: 2000 },
+  { name: 'Wefox Holding AG', industry: 'Software', location: 'Berlin', score: 67, employees: 1200, founded: 2015 },
+  { name: 'BASF Schwarzheide', industry: 'Manufacturing', location: 'Brandenburg', score: 64, employees: 2200, founded: 1990 },
+  { name: 'Gorillas Technologies', industry: 'Logistics', location: 'Berlin', score: 55, employees: 380, founded: 2020 },
+  { name: 'EcoG GmbH', industry: 'Energy', location: 'Potsdam', score: 72, employees: 85, founded: 2019 },
+  { name: 'Cheplapharm Arzneimittel', industry: 'Biotech', location: 'Brandenburg', score: 61, employees: 950, founded: 1998 },
+  { name: 'Volocopter GmbH', industry: 'Manufacturing', location: 'Berlin', score: 75, employees: 650, founded: 2011 },
+  { name: 'Mambu GmbH', industry: 'Software', location: 'Berlin', score: 84, employees: 780, founded: 2011 },
+  { name: 'Electrochaea GmbH', industry: 'Energy', location: 'Brandenburg', score: 58, employees: 45, founded: 2014 },
+  { name: 'Fraunhofer IZM', industry: 'Biotech', location: 'Berlin', score: 70, employees: 350, founded: 1993 },
+  { name: 'DB Cargo AG', industry: 'Logistics', location: 'Potsdam', score: 63, employees: 3400, founded: 1999 },
+  { name: 'LEAG Energy', industry: 'Energy', location: 'Brandenburg', score: 57, employees: 7800, founded: 2016 },
+];
 
-const companyPrefixes = ['Berlin', 'Brandenburg', 'Spree', 'Havel', 'Oder', 'Nord', 'Ost', 'West', 'Zentral', 'Metro'];
-const companySuffixes = ['Tech', 'Systems', 'Solutions', 'Industries', 'Manufacturing', 'Logistics', 'Labs', 'Dynamics', 'Group', 'Werke', 'Fabrik'];
-const internationalNames = ['Nexus', 'Vertex', 'Horizon', 'Quantum', 'Atlas', 'Apex', 'Fusion', 'Nova', 'Pulse', 'Vector'];
+const germanFirstNames = ['Thomas', 'Michael', 'Stefan', 'Andreas', 'Christian', 'Markus', 'Sebastian', 'Daniel', 'Julia', 'Anna', 'Sarah', 'Laura', 'Lisa', 'Katharina', 'Maria', 'Felix', 'Tobias', 'Jan', 'Florian', 'Martin', 'Nina', 'Sophie', 'Claudia', 'Eva', 'Petra', 'Frank', 'Jens', 'Sven'];
+const germanLastNames = ['Muller', 'Schmidt', 'Schneider', 'Fischer', 'Weber', 'Meyer', 'Wagner', 'Becker', 'Schulz', 'Hoffmann', 'Koch', 'Richter', 'Klein', 'Wolf', 'Neumann', 'Schwarz', 'Zimmermann', 'Braun', 'Hofmann', 'Kruger', 'Hartmann', 'Lange', 'Schmitt', 'Werner', 'Krause', 'Meier', 'Lehmann', 'Schmid'];
+const roles = ['CEO', 'Managing Director', 'Head of Operations', 'Business Development', 'CFO', 'COO', 'VP Sales', 'General Manager'];
 
-const berlinStreets = ['Alexanderplatz', 'Potsdamer Platz', 'Friedrichstraße', 'Kurfürstendamm', 'Prenzlauer Allee', 'Schönhauser Allee', 'Torstraße', 'Oranienstraße', 'Karl-Marx-Allee', 'Unter den Linden'];
-const brandenburgStreets = ['Hauptstraße', 'Bahnhofstraße', 'Industriestraße', 'Gewerbepark', 'Am Kanal', 'Fabrikstraße'];
-const potsdamStreets = ['Friedrich-Ebert-Straße', 'Breite Straße', 'Berliner Straße', 'Am Neuen Palais', 'Zeppelinstraße'];
+const berlinStreets = ['Alexanderplatz', 'Potsdamer Platz', 'Friedrichstrasse', 'Kurfurstendamm', 'Prenzlauer Allee', 'Schonhauser Allee', 'Torstrasse', 'Oranienstrasse', 'Karl-Marx-Allee', 'Unter den Linden'];
+const brandenburgStreets = ['Hauptstrasse', 'Bahnhofstrasse', 'Industriestrasse', 'Gewerbepark', 'Am Kanal', 'Fabrikstrasse'];
+const potsdamStreets = ['Friedrich-Ebert-Strasse', 'Breite Strasse', 'Berliner Strasse', 'Am Neuen Palais', 'Zeppelinstrasse'];
 
-const fundingSources = ['TechCrunch', 'Handelsblatt', 'Gründerszene', 'Finance Forward', 'Bloomberg', 'Reuters'];
+const fundingSources = ['TechCrunch', 'Handelsblatt', 'Grunderszene', 'Finance Forward', 'Bloomberg', 'Reuters'];
 const hiringSources = ['LinkedIn', 'StepStone', 'Indeed', 'XING', 'Company Website'];
-const expansionSources = ['Press Release', 'Local News', 'IHK Berlin', 'Wirtschaftsförderung Brandenburg'];
+const expansionSources = ['Press Release', 'Local News', 'IHK Berlin', 'Wirtschaftsforderung'];
 const revenueSources = ['Bundesanzeiger', 'Annual Report', 'Industry Analysis', 'Market Research'];
 
-const industries: Company['industry'][] = ['Production', 'Logistics', 'Research', 'Office', 'Technology'];
-const locations: Company['location'][] = ['Berlin', 'Brandenburg', 'Potsdam'];
-const signalTypes: GrowthSignal['type'][] = ['Funding', 'Hiring', 'Expansion', 'Revenue Growth'];
+const industries: Industry[] = ['Manufacturing', 'Logistics', 'Biotech', 'Software', 'Energy'];
+const locations: Location[] = ['Berlin', 'Brandenburg', 'Potsdam'];
+const signalTypes: SignalType[] = ['Funding', 'Hiring', 'Expansion', 'Revenue'];
 
-function generateCompanyName(index: number): string {
-  if (index % 3 === 0) {
-    return `${companyPrefixes[index % companyPrefixes.length]} ${companySuffixes[index % companySuffixes.length]} GmbH`;
-  } else if (index % 3 === 1) {
-    return `${internationalNames[index % internationalNames.length]} ${companySuffixes[(index + 3) % companySuffixes.length]} AG`;
-  }
-  return `${germanLastNames[index % germanLastNames.length]} & Partner ${companySuffixes[(index + 5) % companySuffixes.length]}`;
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed * 9999) * 10000;
+  return x - Math.floor(x);
 }
 
-function generateAddress(location: Company['location'], index: number): string {
-  const num = ((index * 7 + 13) % 150) + 1;
-  if (location === 'Berlin') return `${berlinStreets[index % berlinStreets.length]} ${num}, 10${115 + (index % 85)} Berlin`;
-  if (location === 'Potsdam') return `${potsdamStreets[index % potsdamStreets.length]} ${num}, 14467 Potsdam`;
-  return `${brandenburgStreets[index % brandenburgStreets.length]} ${num}, 14${400 + (index % 100)} Brandenburg`;
+function generateAddress(location: Location, index: number): string {
+  const num = Math.floor(seededRandom(index * 17) * 150) + 1;
+  if (location === 'Berlin') {
+    const postal = 10115 + Math.floor(seededRandom(index * 31) * 85);
+    return `${berlinStreets[index % berlinStreets.length]} ${num}, ${postal} Berlin`;
+  }
+  if (location === 'Potsdam') {
+    return `${potsdamStreets[index % potsdamStreets.length]} ${num}, 14467 Potsdam`;
+  }
+  const postal = 14400 + Math.floor(seededRandom(index * 23) * 100);
+  return `${brandenburgStreets[index % brandenburgStreets.length]} ${num}, ${postal} Brandenburg`;
 }
 
 function generateSignals(index: number, score: number): GrowthSignal[] {
   const signals: GrowthSignal[] = [];
-  const numSignals = Math.floor(score / 25) + 1;
+  const numSignals = score >= 80 ? 4 : score >= 65 ? 3 : score >= 50 ? 2 : 1;
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   
-  for (let i = 0; i < numSignals && i < 4; i++) {
-    const type = signalTypes[(index + i) % signalTypes.length];
-    const month = months[(12 - i - (index % 3)) % 12];
+  const orderedTypes: SignalType[] = [];
+  if (score >= 75) orderedTypes.push('Funding');
+  if (score >= 60) orderedTypes.push('Hiring');
+  orderedTypes.push('Revenue');
+  if (score >= 55) orderedTypes.push('Expansion');
+  
+  for (let i = 0; i < numSignals && i < orderedTypes.length; i++) {
+    const type = orderedTypes[i];
+    const monthIdx = (11 - i - (index % 3)) % 12;
+    const month = months[monthIdx >= 0 ? monthIdx : monthIdx + 12];
     const year = i === 0 ? '2026' : '2025';
     
     if (type === 'Funding') {
-      const amounts = ['€2.5M', '€5M', '€8M', '€12M', '€18M', '€25M', '€40M'];
-      const rounds = ['Seed', 'Series A', 'Series B', 'Growth Round'];
+      const amounts = ['2.5M', '5M', '8M', '12M', '18M', '25M', '40M', '65M'];
+      const rounds = ['Seed', 'Series A', 'Series B', 'Series C', 'Growth'];
+      const roundIdx = Math.min(Math.floor(score / 20), rounds.length - 1);
+      const amountIdx = Math.min(Math.floor((score - 50) / 7), amounts.length - 1);
       signals.push({
         type,
-        description: `${rounds[(index + i) % rounds.length]} - ${amounts[(index + i) % amounts.length]}`,
+        description: `${rounds[roundIdx]} - €${amounts[Math.max(0, amountIdx)]}`,
         source: fundingSources[(index + i) % fundingSources.length],
         date: `${month} ${year}`,
       });
     } else if (type === 'Hiring') {
-      const positions = ['Engineering Team', 'Sales Team', 'Operations', 'Management', 'Production Staff'];
-      const counts = ['+15', '+25', '+40', '+60', '+100'];
+      const positions = ['Engineering', 'Sales', 'Operations', 'Management', 'Production'];
+      const counts = ['+12', '+25', '+40', '+65', '+100', '+150'];
+      const countIdx = Math.min(Math.floor((score - 40) / 10), counts.length - 1);
       signals.push({
         type,
-        description: `${positions[(index + i) % positions.length]} expansion ${counts[(index + i) % counts.length]} positions`,
+        description: `${positions[(index + i) % positions.length]} ${counts[Math.max(0, countIdx)]} roles`,
         source: hiringSources[(index + i) % hiringSources.length],
         date: `${month} ${year}`,
       });
     } else if (type === 'Expansion') {
-      const expansions = ['New facility planned', 'Production capacity doubling', 'Opening second location', 'Warehouse expansion', 'R&D center construction'];
+      const expansions = ['New facility planned', 'Capacity doubling', 'Second location', 'Warehouse expansion', 'R&D center'];
       signals.push({
         type,
         description: expansions[(index + i) % expansions.length],
@@ -134,10 +182,11 @@ function generateSignals(index: number, score: number): GrowthSignal[] {
         date: `${month} ${year}`,
       });
     } else {
-      const growths = ['+35% YoY', '+52% YoY', '+28% YoY', '+45% YoY', '+67% YoY'];
+      const growths = ['+18%', '+24%', '+32%', '+45%', '+58%', '+72%'];
+      const growthIdx = Math.min(Math.floor((score - 40) / 10), growths.length - 1);
       signals.push({
         type,
-        description: `Revenue growth ${growths[(index + i) % growths.length]}`,
+        description: `${growths[Math.max(0, growthIdx)]} YoY`,
         source: revenueSources[(index + i) % revenueSources.length],
         date: `${month} ${year}`,
       });
@@ -147,61 +196,60 @@ function generateSignals(index: number, score: number): GrowthSignal[] {
   return signals;
 }
 
-function generateCompanies(count: number): Company[] {
-  return Array.from({ length: count }, (_, i) => {
-    const location = locations[i % locations.length];
-    const baseScore = 40 + Math.floor((Math.sin(i * 0.7) + 1) * 30);
-    const growthScore = Math.min(98, Math.max(25, baseScore + (i % 15)));
-    
-    const funding = Math.floor(growthScore * (0.6 + (i % 5) * 0.1));
-    const hiring = Math.floor(growthScore * (0.7 + ((i + 2) % 5) * 0.08));
-    const revenue = Math.floor(growthScore * (0.5 + ((i + 1) % 5) * 0.12));
-    const market = Math.floor(growthScore * (0.65 + ((i + 3) % 5) * 0.09));
-    
+function generateSubScores(score: number, index: number): Company['subScores'] {
+  const variance = (i: number) => Math.floor(seededRandom(index * 100 + i) * 20) - 10;
+  const base = score;
+  return {
+    funding: Math.max(0, Math.min(100, base + variance(1) + (score >= 80 ? 5 : -5))),
+    hiring: Math.max(0, Math.min(100, base + variance(2))),
+    revenue: Math.max(0, Math.min(100, base + variance(3) - 3)),
+    market: Math.max(0, Math.min(100, base + variance(4) + 2)),
+  };
+}
+
+function generateCompanies(): Company[] {
+  return companyData.map((data, i) => {
     const firstName = germanFirstNames[i % germanFirstNames.length];
-    const lastName = germanLastNames[(i + 5) % germanLastNames.length];
+    const lastName = germanLastNames[i % germanLastNames.length];
+    const companySlug = data.name.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '');
+    const daysAgo = Math.floor(seededRandom(i * 7) * 14) + 1;
     
     return {
       id: i + 1,
-      name: generateCompanyName(i),
-      industry: industries[i % industries.length],
-      location,
-      employees: 20 + (i * 17 + 50) % 480,
-      founded: 2008 + (i % 15),
-      address: generateAddress(location, i),
-      growthScore,
-      signals: generateSignals(i, growthScore),
-      subScores: {
-        funding: Math.min(100, funding),
-        hiring: Math.min(100, hiring),
-        revenue: Math.min(100, revenue),
-        market: Math.min(100, market),
-      },
+      name: data.name,
+      industry: data.industry,
+      location: data.location,
+      employees: data.employees,
+      founded: data.founded,
+      address: generateAddress(data.location, i),
+      score: data.score,
+      signals: generateSignals(i, data.score),
+      subScores: generateSubScores(data.score, i),
       contact: {
         name: `${firstName} ${lastName}`,
         role: roles[i % roles.length],
-        email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${generateCompanyName(i).split(' ')[0].toLowerCase()}.de`,
+        email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${companySlug}.de`,
         phone: `+49 30 ${String(2000000 + i * 12345).slice(0, 4)} ${String(1000 + i * 111).slice(0, 4)}`,
       },
-      lastUpdated: `${((i % 7) + 1)} day${(i % 7) === 0 ? '' : 's'} ago`,
+      updated: daysAgo === 1 ? '1 day ago' : `${daysAgo} days ago`,
     };
   });
 }
 
-const companies = generateCompanies(28);
+const companies = generateCompanies();
 
-type SortKey = 'name' | 'industry' | 'location' | 'employees' | 'growthScore' | 'lastUpdated';
+type SortKey = 'name' | 'industry' | 'location' | 'employees' | 'score' | 'updated';
 type SortDir = 'asc' | 'desc';
 
-function generateOutreachMessage(company: Company): string {
-  const primarySignal = company.signals[0];
+function generateOutreach(company: Company): string {
+  const primary = company.signals[0];
   let opener = '';
   
-  if (primarySignal?.type === 'Funding') {
-    opener = `Congratulations on your recent ${primarySignal.description.split(' - ')[0]}. This positions ${company.name} well for your next phase of growth.`;
-  } else if (primarySignal?.type === 'Expansion') {
+  if (primary?.type === 'Funding') {
+    opener = `Congratulations on your recent ${primary.description.split(' - ')[0]}. This positions ${company.name} well for the next growth phase.`;
+  } else if (primary?.type === 'Expansion') {
     opener = `I noticed ${company.name} is planning significant expansion. This is an exciting time for your organization.`;
-  } else if (primarySignal?.type === 'Hiring') {
+  } else if (primary?.type === 'Hiring') {
     opener = `Your team growth at ${company.name} signals strong momentum. Scaling operations often requires expanded facilities.`;
   } else {
     opener = `${company.name}'s recent performance has caught our attention. Your growth trajectory is impressive.`;
@@ -209,41 +257,56 @@ function generateOutreachMessage(company: Company): string {
   
   return `${opener}
 
-We specialize in identifying prime industrial and commercial properties in the Berlin-Brandenburg region. Given your current trajectory, I'd welcome the opportunity to discuss how we might support your facility requirements.
+We specialize in identifying prime industrial and commercial properties in Berlin-Brandenburg. Given your current trajectory, I'd welcome the opportunity to discuss how we might support your facility requirements.
 
 Would you have 15 minutes this week for a brief call?`;
 }
 
-export default function LeadIntelligencePage() {
-  const [locationFilter, setLocationFilter] = useState<string[]>([]);
-  const [industryFilter, setIndustryFilter] = useState<string[]>([]);
-  const [signalFilter, setSignalFilter] = useState<string[]>([]);
-  const [scoreThreshold, setScoreThreshold] = useState(0);
-  const [sortKey, setSortKey] = useState<SortKey>('growthScore');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+function getScoreColor(score: number): string {
+  if (score >= 80) return colors.green;
+  if (score >= 60) return colors.amber;
+  return colors.red;
+}
 
-  const filteredCompanies = useMemo(() => {
-    return companies.filter((company) => {
-      if (locationFilter.length > 0 && !locationFilter.includes(company.location)) return false;
-      if (industryFilter.length > 0 && !industryFilter.includes(company.industry)) return false;
+function getSignalColor(type: SignalType): string {
+  switch (type) {
+    case 'Funding': return colors.green;
+    case 'Hiring': return colors.blue;
+    case 'Expansion': return colors.amber;
+    case 'Revenue': return '#8b5cf6';
+  }
+}
+
+export default function LeadIntelligencePage() {
+  const [locationFilter, setLocationFilter] = useState<Location[]>([]);
+  const [industryFilter, setIndustryFilter] = useState<Industry[]>([]);
+  const [signalFilter, setSignalFilter] = useState<SignalType[]>([]);
+  const [minScore, setMinScore] = useState(0);
+  const [sortKey, setSortKey] = useState<SortKey>('score');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [selected, setSelected] = useState<Company | null>(null);
+
+  const filtered = useMemo(() => {
+    return companies.filter((c) => {
+      if (locationFilter.length > 0 && !locationFilter.includes(c.location)) return false;
+      if (industryFilter.length > 0 && !industryFilter.includes(c.industry)) return false;
       if (signalFilter.length > 0) {
-        const companySignalTypes = company.signals.map((s) => s.type);
-        if (!signalFilter.some((sf) => companySignalTypes.includes(sf as GrowthSignal['type']))) return false;
+        const types = c.signals.map((s) => s.type);
+        if (!signalFilter.some((f) => types.includes(f))) return false;
       }
-      if (company.growthScore < scoreThreshold) return false;
+      if (c.score < minScore) return false;
       return true;
     });
-  }, [locationFilter, industryFilter, signalFilter, scoreThreshold]);
+  }, [locationFilter, industryFilter, signalFilter, minScore]);
 
-  const sortedCompanies = useMemo(() => {
-    return [...filteredCompanies].sort((a, b) => {
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
       let aVal: string | number = a[sortKey];
       let bVal: string | number = b[sortKey];
       
-      if (sortKey === 'lastUpdated') {
-        aVal = parseInt(a.lastUpdated);
-        bVal = parseInt(b.lastUpdated);
+      if (sortKey === 'updated') {
+        aVal = parseInt(a.updated);
+        bVal = parseInt(b.updated);
       }
       
       if (typeof aVal === 'string' && typeof bVal === 'string') {
@@ -251,10 +314,10 @@ export default function LeadIntelligencePage() {
       }
       return sortDir === 'asc' ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
     });
-  }, [filteredCompanies, sortKey, sortDir]);
+  }, [filtered, sortKey, sortDir]);
 
   const topLeads = useMemo(() => {
-    return [...companies].sort((a, b) => b.growthScore - a.growthScore).slice(0, 5);
+    return [...companies].sort((a, b) => b.score - a.score).slice(0, 5);
   }, []);
 
   const toggleSort = (key: SortKey) => {
@@ -266,198 +329,148 @@ export default function LeadIntelligencePage() {
     }
   };
 
-  const toggleFilter = (value: string, current: string[], setter: (v: string[]) => void) => {
+  function toggleFilter<T>(value: T, current: T[], setter: (v: T[]) => void) {
     if (current.includes(value)) {
       setter(current.filter((v) => v !== value));
     } else {
       setter([...current, value]);
     }
-  };
+  }
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return colors.green;
-    if (score >= 60) return colors.blue;
-    if (score >= 40) return colors.amber;
-    return colors.muted;
-  };
-
-  const SortIcon = ({ column }: { column: SortKey }) => {
-    if (sortKey !== column) return null;
-    return sortDir === 'asc' ? (
-      <ChevronUp size={14} style={{ marginLeft: 4 }} />
-    ) : (
-      <ChevronDown size={14} style={{ marginLeft: 4 }} />
-    );
-  };
-
-  const FilterButton = ({
-    label,
-    active,
-    onClick,
-  }: {
-    label: string;
-    active: boolean;
-    onClick: () => void;
-  }) => (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '6px 12px',
-        fontSize: 13,
-        background: active ? colors.surface2 : 'transparent',
-        border: `1px solid ${active ? colors.blue : colors.border}`,
-        borderRadius: 4,
-        color: active ? colors.text : colors.muted,
-        cursor: 'pointer',
-        transition: 'all 150ms ease-out',
-      }}
-    >
-      {label}
-    </button>
-  );
-
-  const chartData = selectedCompany
+  const chartData = selected
     ? [
-        { name: 'Funding', value: selectedCompany.subScores.funding },
-        { name: 'Hiring', value: selectedCompany.subScores.hiring },
-        { name: 'Revenue', value: selectedCompany.subScores.revenue },
-        { name: 'Market', value: selectedCompany.subScores.market },
-      ]
+        { label: 'Funding', value: selected.subScores.funding, max: 25 },
+        { label: 'Hiring', value: selected.subScores.hiring, max: 25 },
+        { label: 'Revenue', value: selected.subScores.revenue, max: 25 },
+        { label: 'Market', value: selected.subScores.market, max: 25 },
+      ].map((d) => ({ ...d, scaled: Math.round(d.value / 4) }))
     : [];
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: colors.bg,
-        color: colors.text,
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-      }}
-    >
-      {/* Header */}
-      <header
-        style={{
-          padding: '16px 24px',
-          borderBottom: `1px solid ${colors.border}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: colors.bg, color: colors.text, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <header style={{ padding: '16px 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link
-            href="/"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              color: colors.muted,
-              textDecoration: 'none',
-              fontSize: 13,
-              transition: 'color 150ms ease-out',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = colors.text)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = colors.muted)}
-          >
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, color: colors.muted, textDecoration: 'none', fontSize: 13 }}>
             <ArrowLeft size={16} />
             Back
           </Link>
           <span style={{ color: colors.border }}>|</span>
-          <h1 style={{ fontSize: 18, fontWeight: 500, margin: 0 }}>Hybrick Lead Scout</h1>
+          <span style={{ fontSize: 18, fontWeight: 500 }}>Lead Scout</span>
         </div>
-        <div style={{ fontSize: 13, color: colors.muted }}>
-          {filteredCompanies.length} companies
-        </div>
+        <span style={{ fontSize: 13, color: colors.muted }}>{filtered.length} companies</span>
       </header>
 
-      <div style={{ display: 'flex', height: 'calc(100vh - 57px)' }}>
-        {/* Main content */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {/* Filter bar */}
-          <div
-            style={{
-              padding: '16px 24px',
-              borderBottom: `1px solid ${colors.border}`,
-              display: 'flex',
-              gap: 24,
-              alignItems: 'center',
-              flexWrap: 'wrap',
-            }}
-          >
-            {/* Location */}
+          <div style={{ padding: '16px 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', gap: 32, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 13, color: colors.muted }}>Location</span>
+              <span style={{ fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Location</span>
               <div style={{ display: 'flex', gap: 4 }}>
-                {locations.map((loc) => (
-                  <FilterButton
-                    key={loc}
-                    label={loc}
-                    active={locationFilter.includes(loc)}
-                    onClick={() => toggleFilter(loc, locationFilter, setLocationFilter)}
-                  />
-                ))}
+                {locations.map((loc) => {
+                  const active = locationFilter.includes(loc);
+                  return (
+                    <button
+                      key={loc}
+                      onClick={() => toggleFilter(loc, locationFilter, setLocationFilter)}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: 13,
+                        background: active ? colors.text : 'transparent',
+                        border: `1px solid ${active ? colors.text : colors.border}`,
+                        borderRadius: 4,
+                        color: active ? colors.bg : colors.muted,
+                        cursor: 'pointer',
+                        transition: 'all 100ms ease-out',
+                      }}
+                    >
+                      {loc}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Industry */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 13, color: colors.muted }}>Industry</span>
+              <span style={{ fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Industry</span>
               <div style={{ display: 'flex', gap: 4 }}>
-                {industries.map((ind) => (
-                  <FilterButton
-                    key={ind}
-                    label={ind}
-                    active={industryFilter.includes(ind)}
-                    onClick={() => toggleFilter(ind, industryFilter, setIndustryFilter)}
-                  />
-                ))}
+                {industries.map((ind) => {
+                  const active = industryFilter.includes(ind);
+                  return (
+                    <button
+                      key={ind}
+                      onClick={() => toggleFilter(ind, industryFilter, setIndustryFilter)}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: 13,
+                        background: active ? colors.text : 'transparent',
+                        border: `1px solid ${active ? colors.text : colors.border}`,
+                        borderRadius: 4,
+                        color: active ? colors.bg : colors.muted,
+                        cursor: 'pointer',
+                        transition: 'all 100ms ease-out',
+                      }}
+                    >
+                      {ind}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Signals */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 13, color: colors.muted }}>Signal</span>
+              <span style={{ fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Signal</span>
               <div style={{ display: 'flex', gap: 4 }}>
-                {signalTypes.map((sig) => (
-                  <FilterButton
-                    key={sig}
-                    label={sig}
-                    active={signalFilter.includes(sig)}
-                    onClick={() => toggleFilter(sig, signalFilter, setSignalFilter)}
-                  />
-                ))}
+                {signalTypes.map((sig) => {
+                  const active = signalFilter.includes(sig);
+                  return (
+                    <button
+                      key={sig}
+                      onClick={() => toggleFilter(sig, signalFilter, setSignalFilter)}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: 13,
+                        background: active ? colors.text : 'transparent',
+                        border: `1px solid ${active ? colors.text : colors.border}`,
+                        borderRadius: 4,
+                        color: active ? colors.bg : colors.muted,
+                        cursor: 'pointer',
+                        transition: 'all 100ms ease-out',
+                      }}
+                    >
+                      {sig}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Score threshold */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 13, color: colors.muted }}>Min Score</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+              <span style={{ fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Min Score</span>
               <input
                 type="range"
                 min={0}
                 max={90}
                 step={10}
-                value={scoreThreshold}
-                onChange={(e) => setScoreThreshold(Number(e.target.value))}
-                style={{ width: 100, accentColor: colors.blue }}
+                value={minScore}
+                onChange={(e) => setMinScore(Number(e.target.value))}
+                style={{ width: 80, accentColor: colors.text }}
               />
-              <span style={{ fontSize: 13, color: colors.text, minWidth: 24 }}>{scoreThreshold}</span>
+              <span style={{ fontSize: 13, color: colors.text, minWidth: 20, textAlign: 'right' }}>{minScore}</span>
             </div>
           </div>
 
-          {/* Table */}
           <div style={{ flex: 1, overflow: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
                   {[
-                    { key: 'name', label: 'Company' },
-                    { key: 'industry', label: 'Industry' },
-                    { key: 'location', label: 'Location' },
-                    { key: 'employees', label: 'Employees' },
-                    { key: 'growthScore', label: 'Score' },
-                    { key: 'signals', label: 'Signals', sortable: false },
-                    { key: 'lastUpdated', label: 'Updated' },
+                    { key: 'name', label: 'Company', width: undefined },
+                    { key: 'industry', label: 'Industry', width: 110 },
+                    { key: 'location', label: 'Location', width: 110 },
+                    { key: 'employees', label: 'Employees', width: 90 },
+                    { key: 'score', label: 'Score', width: 70 },
+                    { key: 'signals', label: 'Signals', width: 180, sortable: false },
+                    { key: 'updated', label: 'Updated', width: 100 },
                   ].map((col) => (
                     <th
                       key={col.key}
@@ -472,221 +485,161 @@ export default function LeadIntelligencePage() {
                         position: 'sticky',
                         top: 0,
                         background: colors.bg,
+                        width: col.width,
+                        fontSize: 12,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center' }}>
                         {col.label}
-                        {col.sortable !== false && <SortIcon column={col.key as SortKey} />}
+                        {sortKey === col.key && (
+                          sortDir === 'asc' ? <ChevronUp size={14} style={{ marginLeft: 4 }} /> : <ChevronDown size={14} style={{ marginLeft: 4 }} />
+                        )}
                       </div>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {sortedCompanies.map((company) => (
+                {sorted.map((company) => (
                   <tr
                     key={company.id}
-                    onClick={() => setSelectedCompany(company)}
+                    onClick={() => setSelected(company)}
                     style={{
                       borderBottom: `1px solid ${colors.border}`,
-                      background:
-                        selectedCompany?.id === company.id
-                          ? colors.surface2
-                          : company.growthScore >= 80
-                          ? `${colors.green}08`
-                          : 'transparent',
+                      background: selected?.id === company.id ? colors.surface2 : 'transparent',
                       cursor: 'pointer',
-                      transition: 'background 150ms ease-out',
+                      transition: 'background 100ms ease-out',
                     }}
                     onMouseEnter={(e) => {
-                      if (selectedCompany?.id !== company.id) {
-                        e.currentTarget.style.background = colors.surface;
-                      }
+                      if (selected?.id !== company.id) e.currentTarget.style.background = colors.surface;
                     }}
                     onMouseLeave={(e) => {
-                      if (selectedCompany?.id !== company.id) {
-                        e.currentTarget.style.background =
-                          company.growthScore >= 80 ? `${colors.green}08` : 'transparent';
-                      }
+                      if (selected?.id !== company.id) e.currentTarget.style.background = 'transparent';
                     }}
                   >
                     <td style={{ padding: '12px 16px', fontWeight: 500 }}>{company.name}</td>
                     <td style={{ padding: '12px 16px', color: colors.muted }}>{company.industry}</td>
                     <td style={{ padding: '12px 16px', color: colors.muted }}>{company.location}</td>
-                    <td style={{ padding: '12px 16px', color: colors.muted }}>{company.employees}</td>
+                    <td style={{ padding: '12px 16px', color: colors.muted }}>{company.employees.toLocaleString()}</td>
                     <td style={{ padding: '12px 16px' }}>
-                      <span
-                        style={{
-                          color: getScoreColor(company.growthScore),
-                          fontWeight: 500,
-                        }}
-                      >
-                        {company.growthScore}
+                      <span style={{ color: getScoreColor(company.score), fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                        {company.score}
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {company.signals.slice(0, 2).map((signal, i) => (
+                        {company.signals.slice(0, 3).map((signal, i) => (
                           <span
                             key={i}
                             style={{
-                              padding: '2px 8px',
+                              padding: '3px 8px',
                               fontSize: 11,
-                              background: colors.surface2,
+                              background: `${getSignalColor(signal.type)}12`,
                               borderRadius: 4,
-                              color: colors.muted,
+                              color: getSignalColor(signal.type),
+                              fontWeight: 500,
                             }}
                           >
                             {signal.type}
                           </span>
                         ))}
-                        {company.signals.length > 2 && (
-                          <span style={{ fontSize: 11, color: colors.muted }}>
-                            +{company.signals.length - 2}
-                          </span>
+                        {company.signals.length > 3 && (
+                          <span style={{ fontSize: 11, color: colors.muted, padding: '3px 0' }}>+{company.signals.length - 3}</span>
                         )}
                       </div>
                     </td>
-                    <td style={{ padding: '12px 16px', color: colors.muted }}>{company.lastUpdated}</td>
+                    <td style={{ padding: '12px 16px', color: colors.muted }}>{company.updated}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          {/* Weekly Report Summary */}
-          <div
-            style={{
-              padding: '16px 24px',
-              borderTop: `1px solid ${colors.border}`,
-              background: colors.surface,
-            }}
-          >
-            <div style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
-              This Week&apos;s Top Leads
-            </div>
-            <div style={{ display: 'flex', gap: 16 }}>
+          <div style={{ padding: '16px 24px', borderTop: `1px solid ${colors.border}`, background: colors.surface, flexShrink: 0 }}>
+            <div style={{ fontSize: 12, color: colors.muted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>This Week&apos;s Top Leads</div>
+            <div style={{ display: 'flex', gap: 12 }}>
               {topLeads.map((lead, i) => (
                 <div
                   key={lead.id}
-                  onClick={() => setSelectedCompany(lead)}
+                  onClick={() => setSelected(lead)}
                   style={{
                     flex: 1,
                     padding: 12,
-                    background: colors.surface2,
+                    background: colors.bg,
+                    border: `1px solid ${colors.border}`,
                     borderRadius: 4,
                     cursor: 'pointer',
-                    transition: 'background 150ms ease-out',
+                    transition: 'border-color 100ms ease-out',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = colors.border)}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = colors.surface2)}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = colors.muted)}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = colors.border)}
                 >
-                  <div style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>#{i + 1}</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>{lead.name}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, color: colors.muted }}>{lead.industry}</span>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: getScoreColor(lead.growthScore) }}>
-                      {lead.growthScore}
-                    </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, color: colors.muted }}>#{i + 1}</span>
+                    <span style={{ fontSize: 15, fontWeight: 600, color: getScoreColor(lead.score), fontVariantNumeric: 'tabular-nums' }}>{lead.score}</span>
                   </div>
+                  <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.name}</div>
+                  <div style={{ fontSize: 11, color: colors.muted }}>{lead.industry}</div>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Detail Panel */}
-        {selectedCompany && (
-          <div
-            style={{
-              width: 420,
-              borderLeft: `1px solid ${colors.border}`,
-              background: colors.surface,
-              overflow: 'auto',
-              flexShrink: 0,
-            }}
-          >
-            <div
-              style={{
-                padding: '16px 20px',
-                borderBottom: `1px solid ${colors.border}`,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-              }}
-            >
-              <div>
-                <h2 style={{ fontSize: 18, fontWeight: 500, margin: 0 }}>{selectedCompany.name}</h2>
-                <div style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>
-                  {selectedCompany.industry} · {selectedCompany.location}
-                </div>
+        {selected && (
+          <div style={{ width: 400, borderLeft: `1px solid ${colors.border}`, background: colors.surface, overflow: 'auto', flexShrink: 0 }}>
+            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 500, margin: 0, marginBottom: 4 }}>{selected.name}</h2>
+                <div style={{ fontSize: 13, color: colors.muted }}>{selected.industry} · {selected.location}</div>
               </div>
               <button
-                onClick={() => setSelectedCompany(null)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: colors.muted,
-                  cursor: 'pointer',
-                  padding: 4,
-                }}
+                onClick={() => setSelected(null)}
+                style={{ background: 'transparent', border: 'none', color: colors.muted, cursor: 'pointer', padding: 4, marginLeft: 8, flexShrink: 0 }}
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Overview */}
             <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}` }}>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: 16,
-                  fontSize: 13,
-                }}
-              >
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, fontSize: 13 }}>
                 <div>
-                  <div style={{ color: colors.muted, marginBottom: 4 }}>Founded</div>
-                  <div>{selectedCompany.founded}</div>
+                  <div style={{ color: colors.muted, marginBottom: 4, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Founded</div>
+                  <div>{selected.founded}</div>
                 </div>
                 <div>
-                  <div style={{ color: colors.muted, marginBottom: 4 }}>Employees</div>
-                  <div>{selectedCompany.employees}</div>
+                  <div style={{ color: colors.muted, marginBottom: 4, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Employees</div>
+                  <div>{selected.employees.toLocaleString()}</div>
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <div style={{ color: colors.muted, marginBottom: 4 }}>Address</div>
-                  <div>{selectedCompany.address}</div>
+                  <div style={{ color: colors.muted, marginBottom: 4, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Address</div>
+                  <div>{selected.address}</div>
                 </div>
               </div>
             </div>
 
-            {/* Growth Score */}
             <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <span style={{ fontSize: 13, color: colors.muted }}>Growth Score</span>
-                <span
-                  style={{
-                    fontSize: 24,
-                    fontWeight: 500,
-                    color: getScoreColor(selectedCompany.growthScore),
-                  }}
-                >
-                  {selectedCompany.growthScore}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
+                <span style={{ fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Growth Score</span>
+                <span style={{ fontSize: 32, fontWeight: 600, color: getScoreColor(selected.score), fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                  {selected.score}
                 </span>
               </div>
-              <div style={{ height: 120 }}>
+              <div style={{ height: 140 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 20 }}>
-                    <XAxis type="number" domain={[0, 100]} hide />
+                  <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
+                    <XAxis type="number" domain={[0, 25]} hide />
                     <YAxis
                       type="category"
-                      dataKey="name"
+                      dataKey="label"
                       tick={{ fill: colors.muted, fontSize: 11 }}
                       axisLine={false}
                       tickLine={false}
                       width={60}
                     />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
+                    <Bar dataKey="scaled" radius={[0, 4, 4, 0]} barSize={20} background={{ fill: colors.surface2, radius: [0, 4, 4, 0] }}>
                       {chartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={getScoreColor(entry.value)} />
                       ))}
@@ -694,61 +647,50 @@ export default function LeadIntelligencePage() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: colors.muted, marginTop: 8 }}>
+                <span>0</span>
+                <span>25 pts each</span>
+              </div>
             </div>
 
-            {/* Signals */}
             <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}` }}>
-              <div style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>Growth Signals</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {selectedCompany.signals.map((signal, i) => (
-                  <div key={i} style={{ fontSize: 13 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                      <span style={{ fontWeight: 500 }}>{signal.type}</span>
-                      <span style={{ color: colors.muted }}>{signal.date}</span>
+              <div style={{ fontSize: 11, color: colors.muted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Growth Signals</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {selected.signals.map((signal, i) => (
+                  <div key={i}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: getSignalColor(signal.type) }}>{signal.type}</span>
+                      <span style={{ fontSize: 11, color: colors.muted }}>{signal.date}</span>
                     </div>
-                    <div style={{ color: colors.muted }}>{signal.description}</div>
-                    <div style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>via {signal.source}</div>
+                    <div style={{ fontSize: 13, color: colors.text, marginBottom: 2 }}>{signal.description}</div>
+                    <div style={{ fontSize: 11, color: colors.muted }}>via {signal.source}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Contact */}
             <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}` }}>
-              <div style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>Contact</div>
+              <div style={{ fontSize: 11, color: colors.muted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact</div>
               <div style={{ fontSize: 13 }}>
-                <div style={{ fontWeight: 500 }}>{selectedCompany.contact.name}</div>
-                <div style={{ color: colors.muted, marginBottom: 8 }}>{selectedCompany.contact.role}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <Mail size={14} style={{ color: colors.muted }} />
-                  <a
-                    href={`mailto:${selectedCompany.contact.email}`}
-                    style={{ color: colors.blue, textDecoration: 'none' }}
-                  >
-                    {selectedCompany.contact.email}
+                <div style={{ fontWeight: 500, marginBottom: 2 }}>{selected.contact.name}</div>
+                <div style={{ color: colors.muted, marginBottom: 12 }}>{selected.contact.role}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <Mail size={14} style={{ color: colors.muted, flexShrink: 0 }} />
+                  <a href={`mailto:${selected.contact.email}`} style={{ color: colors.blue, textDecoration: 'none' }}>
+                    {selected.contact.email}
                   </a>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Phone size={14} style={{ color: colors.muted }} />
-                  <span>{selectedCompany.contact.phone}</span>
+                  <Phone size={14} style={{ color: colors.muted, flexShrink: 0 }} />
+                  <span>{selected.contact.phone}</span>
                 </div>
               </div>
             </div>
 
-            {/* Outreach */}
             <div style={{ padding: '16px 20px' }}>
-              <div style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>Suggested Outreach</div>
-              <div
-                style={{
-                  padding: 12,
-                  background: colors.surface2,
-                  borderRadius: 4,
-                  fontSize: 13,
-                  lineHeight: 1.6,
-                  whiteSpace: 'pre-wrap',
-                }}
-              >
-                {generateOutreachMessage(selectedCompany)}
+              <div style={{ fontSize: 11, color: colors.muted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Suggested Outreach</div>
+              <div style={{ padding: 16, background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 4, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                {generateOutreach(selected)}
               </div>
             </div>
           </div>
