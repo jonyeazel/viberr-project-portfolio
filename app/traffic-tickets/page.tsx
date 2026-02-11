@@ -173,9 +173,9 @@ function generateLicensePlate(random: () => number, city: string): string {
   return `${prefix}-${letter1}${letter2} ${numbers}`;
 }
 
-function generateEmail(firstName: string, lastName: string): string {
+function generateEmail(firstName: string, lastName: string, random: () => number): string {
   const domains = ['gmail.com', 'web.de', 'gmx.de', 't-online.de', 'outlook.de'];
-  const domain = domains[Math.floor(Math.random() * domains.length)];
+  const domain = domains[Math.floor(random() * domains.length)];
   return `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${domain}`;
 }
 
@@ -184,9 +184,9 @@ function generateTickets(): Ticket[] {
   const tickets: Ticket[] = [];
   const now = new Date();
 
-  // Generate 42 tickets with realistic distribution
-  // Target: >90% auto-processed rate, so ~38 dispatched, ~4 exceptions or in-progress
-  for (let i = 0; i < 42; i++) {
+  // Generate 80 tickets with realistic distribution
+  // Target: ~75% dispatched (60), ~10% in intermediate states (8), ~5% exceptions (4), ~10% recently received (8)
+  for (let i = 0; i < 80; i++) {
     const city = germanCities[Math.floor(random() * germanCities.length)];
     const street = streetNames[Math.floor(random() * streetNames.length)];
     const streetNumber = Math.floor(random() * 200) + 1;
@@ -228,22 +228,24 @@ function generateTickets(): Ticket[] {
     const deadlineDays = 14 + Math.floor(random() * 16);
     const deadline = new Date(dateReceived.getTime() + deadlineDays * 24 * 60 * 60 * 1000);
 
-    // Status distribution: 92% dispatched, 3% matched (in progress), 2% parsed, 3% exception
-    // This achieves the >90% auto-processing target
+    // Status distribution: ~75% dispatched, ~10% intermediate (ingested/parsed/matched), ~5% exception, ~10% ingested (new)
+    // This gives more tickets in the Incoming tab while still showing high automation rate
     const statusRandom = random();
     let status: TicketStatus;
     let exceptionReason: ExceptionReason | null = null;
     
-    if (statusRandom < 0.92) {
+    if (statusRandom < 0.75) {
       status = 'dispatched';
-    } else if (statusRandom < 0.95) {
-      status = 'matched';
-    } else if (statusRandom < 0.97) {
-      status = 'parsed';
-    } else {
+    } else if (statusRandom < 0.80) {
       status = 'exception';
       const exceptionTypes: ExceptionReason[] = ['unmatched_vehicle', 'ambiguous_renter', 'missing_data', 'deadline_risk'];
       exceptionReason = exceptionTypes[Math.floor(random() * exceptionTypes.length)];
+    } else if (statusRandom < 0.85) {
+      status = 'matched';
+    } else if (statusRandom < 0.92) {
+      status = 'parsed';
+    } else {
+      status = 'ingested';
     }
 
     // Renter info (for matched or dispatched tickets)
@@ -258,7 +260,7 @@ function generateTickets(): Ticket[] {
       const firstName = firstNames[Math.floor(random() * firstNames.length)];
       const lastName = lastNames[Math.floor(random() * lastNames.length)];
       renterName = `${firstName} ${lastName}`;
-      renterEmail = generateEmail(firstName, lastName);
+      renterEmail = generateEmail(firstName, lastName, random);
       renterConfidence = 92 + Math.floor(random() * 8); // 92-99%
       bookingId = `BK-${Math.floor(100000 + random() * 900000)}`;
       
@@ -270,7 +272,7 @@ function generateTickets(): Ticket[] {
       const firstName = firstNames[Math.floor(random() * firstNames.length)];
       const lastName = lastNames[Math.floor(random() * lastNames.length)];
       renterName = `${firstName} ${lastName}`;
-      renterEmail = generateEmail(firstName, lastName);
+      renterEmail = generateEmail(firstName, lastName, random);
       renterConfidence = 45 + Math.floor(random() * 30); // 45-74% (ambiguous)
       bookingId = `BK-${Math.floor(100000 + random() * 900000)}`;
     }
@@ -483,9 +485,10 @@ export default function TrafficTicketsPage() {
       );
       const dispatched = dayTickets.filter(t => t.status === 'dispatched');
       // High auto-processing rate (90-98% range)
+      // Use deterministic fallback based on day index to avoid hydration errors
       const rate = dayTickets.length > 0 
         ? (dispatched.length / dayTickets.length) * 100 
-        : 90 + Math.random() * 8;
+        : 90 + (i % 8);
       
       rateData.push({
         name: date.toLocaleDateString('de-DE', { weekday: 'short' }),
@@ -529,15 +532,18 @@ export default function TrafficTicketsPage() {
     const random = seededRandom(Date.now());
     const firstName = firstNames[Math.floor(random() * firstNames.length)];
     const lastName = lastNames[Math.floor(random() * lastNames.length)];
+    const email = generateEmail(firstName, lastName, random);
+    const confidence = 95 + Math.floor(random() * 5);
+    const booking = `BK-${Math.floor(100000 + random() * 900000)}`;
     
     setTickets(prev => prev.map(ticket => {
       if (ticket.id !== ticketId) return ticket;
       return {
         ...ticket,
         renterName: `${firstName} ${lastName}`,
-        renterEmail: generateEmail(firstName, lastName),
-        renterConfidence: 95 + Math.floor(random() * 5),
-        bookingId: `BK-${Math.floor(100000 + random() * 900000)}`,
+        renterEmail: email,
+        renterConfidence: confidence,
+        bookingId: booking,
         status: 'matched' as TicketStatus,
         exceptionReason: null,
       };

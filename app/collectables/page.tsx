@@ -214,7 +214,23 @@ function generateCollectibles(): Collectible[] {
     });
   });
 
-  return items;
+  // Deterministic interleave: round-robin across categories for visual variety
+  const byCategory: Record<string, Collectible[]> = {};
+  items.forEach(item => {
+    if (!byCategory[item.category]) byCategory[item.category] = [];
+    byCategory[item.category].push(item);
+  });
+  const categoryKeys = Object.keys(byCategory);
+  const interleaved: Collectible[] = [];
+  const maxLen = Math.max(...categoryKeys.map(k => byCategory[k].length));
+  for (let i = 0; i < maxLen; i++) {
+    for (const key of categoryKeys) {
+      if (i < byCategory[key].length) {
+        interleaved.push(byCategory[key][i]);
+      }
+    }
+  }
+  return interleaved;
 }
 
 const initialCollectibles = generateCollectibles();

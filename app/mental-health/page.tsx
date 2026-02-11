@@ -32,6 +32,9 @@ import {
   Brain,
 } from 'lucide-react';
 
+// Fixed reference date to prevent SSR hydration mismatches
+const REFERENCE_DATE = new Date('2026-02-11T12:00:00Z');
+
 const colors = {
   bg: '#fafaf9',
   surface: '#f5f5f4',
@@ -111,7 +114,7 @@ interface MoodDataPoint {
 
 function generateMoodData(patientIndex: number, patient: Patient): MoodDataPoint[] {
   const data: MoodDataPoint[] = [];
-  const today = new Date();
+  const today = REFERENCE_DATE;
   let baseMood = patient.avgMood;
 
   for (let i = 29; i >= 0; i--) {
@@ -363,7 +366,7 @@ interface TimelineEvent {
 
 function generateTimeline(patientIndex: number, patient: Patient): TimelineEvent[] {
   const events: TimelineEvent[] = [];
-  const today = new Date();
+  const today = REFERENCE_DATE;
 
   const eventTemplates: Array<{ type: EventType; descriptions: string[]; details?: string[] }> = [
     {

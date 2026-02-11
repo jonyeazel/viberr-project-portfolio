@@ -14,6 +14,9 @@ import {
   Flag,
 } from 'lucide-react';
 
+// Fixed reference date to prevent SSR hydration mismatches
+const REFERENCE_DATE = new Date('2026-02-11T12:00:00Z');
+
 // Types
 type ReceiptStatus = 'sent' | 'pending' | 'failed';
 type AccountingStatus = 'logged' | 'pending';
@@ -98,7 +101,7 @@ function generateTransactionId(random: () => number): string {
 function generateDonations(count: number): Donation[] {
   const random = seededRandom(42);
   const donations: Donation[] = [];
-  const now = new Date();
+  const now = REFERENCE_DATE;
 
   for (let i = 0; i < count; i++) {
     const firstName = firstNames[Math.floor(random() * firstNames.length)];
@@ -254,7 +257,7 @@ const activityEvents = generateActivityEvents(donations);
 
 // Formatters
 function formatDate(date: Date): string {
-  const now = new Date();
+  const now = REFERENCE_DATE;
   const diff = now.getTime() - date.getTime();
   const days = Math.floor(diff / (24 * 60 * 60 * 1000));
 

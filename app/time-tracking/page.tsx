@@ -14,6 +14,9 @@ import {
   Cell,
 } from 'recharts';
 
+// Fixed reference date to prevent SSR hydration mismatches
+const REFERENCE_DATE = new Date('2026-02-11T12:00:00Z');
+
 const colors = {
   bg: '#fafaf9',
   surface: '#f5f5f4',
@@ -70,7 +73,7 @@ function generateEmployees(): Employee[] {
 
   return employees.map((emp, idx) => {
     const monthlyData: DayData[] = [];
-    const today = new Date();
+    const today = REFERENCE_DATE;
     const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -125,7 +128,7 @@ function generateEmployees(): Employee[] {
 
 function generateImportHistory(): ImportRecord[] {
   const records: ImportRecord[] = [];
-  const today = new Date();
+  const today = REFERENCE_DATE;
 
   for (let i = 0; i < 10; i++) {
     const date = new Date(today);
@@ -159,7 +162,7 @@ function generateImportHistory(): ImportRecord[] {
 }
 
 function getCurrentWeekData(employee: Employee): DayData[] {
-  const today = new Date();
+  const today = REFERENCE_DATE;
   const dayOfWeek = today.getDay();
   const monday = new Date(today);
   monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
@@ -177,7 +180,7 @@ function getCurrentWeekData(employee: Employee): DayData[] {
 
 function getEmployeeStatus(employee: Employee): 'on-track' | 'behind' | 'over' {
   const weekData = getCurrentWeekData(employee);
-  const today = new Date();
+  const today = REFERENCE_DATE;
   const dayOfWeek = today.getDay();
   const workdaysPassed = dayOfWeek === 0 ? 5 : Math.min(dayOfWeek, 5);
   const expectedHours = workdaysPassed * 8;
@@ -467,7 +470,7 @@ export default function TimeTrackingPage() {
                     </thead>
                     <tbody>
                       {weekData.map((day, idx) => {
-                        const today = new Date();
+                        const today = REFERENCE_DATE;
                         const isToday = day.date.toDateString() === today.toDateString();
                         return (
                           <tr
@@ -500,7 +503,7 @@ export default function TimeTrackingPage() {
                   <div>
                     <div className="text-lg font-medium">{selectedEmployee.name}</div>
                     <div className="text-sm" style={{ color: colors.muted }}>
-                      {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      {REFERENCE_DATE.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                     </div>
                   </div>
                   <div className="flex gap-6 text-sm">
@@ -535,7 +538,7 @@ export default function TimeTrackingPage() {
                     </thead>
                     <tbody>
                       {selectedEmployee.monthlyData.map((day, idx) => {
-                        const today = new Date();
+                        const today = REFERENCE_DATE;
                         const isToday = day.date.toDateString() === today.toDateString();
                         const isFuture = day.date > today;
                         const dayOfWeek = day.date.getDay();

@@ -124,20 +124,46 @@ const evidenceOptions = {
   ],
 };
 
-function generateCriteriaScore(key: keyof typeof evidenceOptions): CriteriaScore {
-  const score = Math.floor(Math.random() * 21);
-  const evidence = evidenceOptions[key][Math.floor(Math.random() * evidenceOptions[key].length)];
+// Seeded random number generator using linear congruential generator
+function seededRandom(seed: number): () => number {
+  return function() {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+}
+
+// Hash function to create a seed from a string
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
+function generateCriteriaScore(key: keyof typeof evidenceOptions, shopIndex: number): CriteriaScore {
+  // Create a deterministic seed based on shop index and criteria key
+  const seed = hashString(`${shopIndex}-${key}`);
+  const random = seededRandom(seed);
+  
+  const score = Math.floor(random() * 21);
+  const evidence = evidenceOptions[key][Math.floor(random() * evidenceOptions[key].length)];
   return { score, evidence };
 }
 
 function generateSubmissions(): Submission[] {
+  // Use a fixed base date for deterministic timestamps
+  const baseDate = new Date('2026-02-11T12:00:00Z').getTime();
+  
   return uniqueShops.map((shop, i) => {
     const scores: SustainabilityScores = {
-      ethicalSourcing: generateCriteriaScore('ethicalSourcing'),
-      environmentalImpact: generateCriteriaScore('environmentalImpact'),
-      fairLabor: generateCriteriaScore('fairLabor'),
-      packagingShipping: generateCriteriaScore('packagingShipping'),
-      certifications: generateCriteriaScore('certifications'),
+      ethicalSourcing: generateCriteriaScore('ethicalSourcing', i),
+      environmentalImpact: generateCriteriaScore('environmentalImpact', i),
+      fairLabor: generateCriteriaScore('fairLabor', i),
+      packagingShipping: generateCriteriaScore('packagingShipping', i),
+      certifications: generateCriteriaScore('certifications', i),
     };
     
     const totalScore = 
@@ -155,6 +181,11 @@ function generateSubmissions(): Submission[] {
     
     const submitter = submitters[i % submitters.length];
     
+    // Use seeded random for deterministic date offset
+    const dateSeed = hashString(`date-${i}`);
+    const dateRandom = seededRandom(dateSeed);
+    const dateOffset = (i * 1.5 + dateRandom() * 0.5) * 24 * 60 * 60 * 1000;
+    
     return {
       id: `sub-${i + 1}`,
       shopName: shop.name,
@@ -163,7 +194,7 @@ function generateSubmissions(): Submission[] {
       category: shop.category,
       submitterName: submitter.name,
       submitterEmail: submitter.email,
-      submittedAt: new Date(Date.now() - (i * 1.5 + Math.random()) * 24 * 60 * 60 * 1000),
+      submittedAt: new Date(baseDate - dateOffset),
       status,
       scores,
       totalScore,

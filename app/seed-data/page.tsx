@@ -18,6 +18,17 @@ import {
   Cell,
 } from 'recharts';
 
+// Fixed reference date for deterministic data generation (avoids SSR hydration mismatch)
+const REFERENCE_DATE = new Date('2026-02-11T12:00:00Z');
+
+// Seeded random function for deterministic random values
+function seededRandom(seed: number): () => number {
+  return function() {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+}
+
 const colors = {
   bg: '#fafaf9',
   surface: '#f5f5f4',
@@ -33,39 +44,42 @@ const colors = {
 
 const generateUsers = (count: number) => {
   const consentStatuses = ['Full', 'Partial', 'Paused'] as const;
-  const now = Date.now();
+  const referenceTime = REFERENCE_DATE.getTime();
+  const random = seededRandom(12345);
 
   return Array.from({ length: count }, (_, i) => {
-    const dataPoints = Math.floor(Math.random() * 450000) + 50000;
-    const streams = Math.floor(Math.random() * 5) + 1;
-    const dividend = (dataPoints / 10000) * (0.8 + Math.random() * 0.4);
-    const lastActiveHours = Math.floor(Math.random() * 72);
+    const dataPoints = Math.floor(random() * 450000) + 50000;
+    const streams = Math.floor(random() * 5) + 1;
+    const dividend = (dataPoints / 10000) * (0.8 + random() * 0.4);
+    const lastActiveHours = Math.floor(random() * 72);
 
     return {
       id: `USR-${String(i + 1).padStart(4, '0')}`,
       dataPoints,
       activeStreams: streams,
       monthlyDividend: Math.round(dividend * 100) / 100,
-      consentStatus: consentStatuses[Math.floor(Math.random() * 3)],
-      lastActive: new Date(now - lastActiveHours * 3600000).toISOString(),
-      dataQualityScore: Math.floor(Math.random() * 15) + 85,
+      consentStatus: consentStatuses[Math.floor(random() * 3)],
+      lastActive: new Date(referenceTime - lastActiveHours * 3600000).toISOString(),
+      dataQualityScore: Math.floor(random() * 15) + 85,
       earningsHistory: Array.from({ length: 6 }, (_, j) => ({
-        month: new Date(now - (5 - j) * 30 * 24 * 3600000).toLocaleDateString('en-US', { month: 'short' }),
-        amount: Math.round((dividend * (0.7 + Math.random() * 0.6)) * 100) / 100,
+        month: new Date(referenceTime - (5 - j) * 30 * 24 * 3600000).toLocaleDateString('en-US', { month: 'short' }),
+        amount: Math.round((dividend * (0.7 + random() * 0.6)) * 100) / 100,
       })),
       streamBreakdown: [
-        { name: 'Browsing', points: Math.floor(dataPoints * 0.32), active: Math.random() > 0.15 },
-        { name: 'App Usage', points: Math.floor(dataPoints * 0.26), active: Math.random() > 0.2 },
-        { name: 'Purchase Signals', points: Math.floor(dataPoints * 0.18), active: Math.random() > 0.35 },
-        { name: 'Location', points: Math.floor(dataPoints * 0.11), active: Math.random() > 0.5 },
-        { name: 'Content Prefs', points: Math.floor(dataPoints * 0.08), active: Math.random() > 0.25 },
-        { name: 'Social', points: Math.floor(dataPoints * 0.05), active: Math.random() > 0.55 },
+        { name: 'Browsing', points: Math.floor(dataPoints * 0.32), active: random() > 0.15 },
+        { name: 'App Usage', points: Math.floor(dataPoints * 0.26), active: random() > 0.2 },
+        { name: 'Purchase Signals', points: Math.floor(dataPoints * 0.18), active: random() > 0.35 },
+        { name: 'Location', points: Math.floor(dataPoints * 0.11), active: random() > 0.5 },
+        { name: 'Content Prefs', points: Math.floor(dataPoints * 0.08), active: random() > 0.25 },
+        { name: 'Social', points: Math.floor(dataPoints * 0.05), active: random() > 0.55 },
       ],
     };
   });
 };
 
 const generateDataStreams = () => {
+  const random = seededRandom(67890);
+  
   return [
     { name: 'Browsing Behavior', basePoints: 48200000, demand: 'High' as const, priceBase: 2.85 },
     { name: 'App Usage Patterns', basePoints: 35600000, demand: 'High' as const, priceBase: 2.42 },
@@ -76,11 +90,11 @@ const generateDataStreams = () => {
   ].map((s, i) => ({
     id: i + 1,
     name: s.name,
-    totalDataPoints: s.basePoints + Math.floor(Math.random() * s.basePoints * 0.08),
-    activeUsers: Math.floor(12000 + Math.random() * 3000 - i * 800),
+    totalDataPoints: s.basePoints + Math.floor(random() * s.basePoints * 0.08),
+    activeUsers: Math.floor(12000 + random() * 3000 - i * 800),
     buyerDemand: s.demand,
     pricePerThousand: Math.round(s.priceBase * 100) / 100,
-    weeklyGrowth: Math.round((Math.random() * 8 - 2) * 10) / 10,
+    weeklyGrowth: Math.round((random() * 8 - 2) * 10) / 10,
   }));
 };
 
@@ -98,11 +112,17 @@ const buyerCompanies = [
 const generateBuyers = () => {
   const statuses = ['Active', 'Trial', 'Pending'] as const;
   const streamOptions = ['Browsing', 'App Usage', 'Purchase', 'Location', 'Content', 'Social'];
+  const random = seededRandom(11111);
+  const referenceTime = REFERENCE_DATE.getTime();
 
   return buyerCompanies.map((company, i) => {
-    const streamCount = Math.floor(Math.random() * 3) + 2;
-    const selectedStreams = [...streamOptions].sort(() => Math.random() - 0.5).slice(0, streamCount);
-    const spend = Math.floor(18000 + Math.random() * 32000);
+    const streamCount = Math.floor(random() * 3) + 2;
+    // Create a deterministic shuffle using seeded random
+    const shuffledStreams = [...streamOptions].map((s, idx) => ({ s, sort: random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(item => item.s);
+    const selectedStreams = shuffledStreams.slice(0, streamCount);
+    const spend = Math.floor(18000 + random() * 32000);
 
     return {
       id: i + 1,
@@ -110,22 +130,23 @@ const generateBuyers = () => {
       streams: selectedStreams,
       monthlySpend: spend,
       recordsConsumed: Math.floor(spend / 0.0024),
-      status: i < 6 ? 'Active' : statuses[Math.floor(Math.random() * 3)] as typeof statuses[number],
-      contractEnd: new Date(Date.now() + (90 + Math.floor(Math.random() * 270)) * 24 * 3600000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      status: i < 6 ? 'Active' : statuses[Math.floor(random() * 3)] as typeof statuses[number],
+      contractEnd: new Date(referenceTime + (90 + Math.floor(random() * 270)) * 24 * 3600000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
     };
   });
 };
 
 const generateTimeSeriesData = (days: number) => {
-  const now = Date.now();
+  const referenceTime = REFERENCE_DATE.getTime();
+  const random = seededRandom(22222);
   let baseValue = 3200000;
 
   return Array.from({ length: days }, (_, i) => {
-    const dayOfWeek = new Date(now - (days - 1 - i) * 24 * 3600000).getDay();
+    const dayOfWeek = new Date(referenceTime - (days - 1 - i) * 24 * 3600000).getDay();
     const weekendFactor = dayOfWeek === 0 || dayOfWeek === 6 ? 0.85 : 1;
-    baseValue = baseValue * (0.98 + Math.random() * 0.06) * weekendFactor + 50000;
+    baseValue = baseValue * (0.98 + random() * 0.06) * weekendFactor + 50000;
     return {
-      date: new Date(now - (days - 1 - i) * 24 * 3600000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      date: new Date(referenceTime - (days - 1 - i) * 24 * 3600000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       volume: Math.floor(baseValue),
     };
   });
@@ -203,7 +224,8 @@ export default function SeedDataPage() {
   };
 
   const getTimeAgo = (isoString: string) => {
-    const hours = Math.floor((Date.now() - new Date(isoString).getTime()) / 3600000);
+    const referenceTime = REFERENCE_DATE.getTime();
+    const hours = Math.floor((referenceTime - new Date(isoString).getTime()) / 3600000);
     if (hours < 1) return 'Just now';
     if (hours < 24) return `${hours}h ago`;
     return `${Math.floor(hours / 24)}d ago`;

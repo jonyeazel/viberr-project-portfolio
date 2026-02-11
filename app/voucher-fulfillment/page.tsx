@@ -4,6 +4,9 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ChevronRight, X, AlertTriangle, Check, Clock, Mail, User } from 'lucide-react';
 
+// Fixed reference date to prevent SSR hydration mismatches
+const REFERENCE_DATE = new Date('2026-02-11T12:00:00Z');
+
 // Types
 type FulfillmentStage =
   | 'order_received'
@@ -103,7 +106,7 @@ function generateVoucherCode(random: () => number): string {
 function generateOrders(): Order[] {
   const random = seededRandom(42);
   const orders: Order[] = [];
-  const now = new Date();
+  const now = REFERENCE_DATE;
 
   for (let i = 0; i < 32; i++) {
     const firstName = firstNames[Math.floor(random() * firstNames.length)];
@@ -219,8 +222,7 @@ function formatCurrency(value: number): string {
 }
 
 function getRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
+  const diffMs = REFERENCE_DATE.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMins / 60);
 
@@ -242,7 +244,7 @@ export default function VoucherFulfillmentPage() {
 
   // Calculate stats
   const stats = useMemo(() => {
-    const today = new Date();
+    const today = new Date(REFERENCE_DATE);
     today.setHours(0, 0, 0, 0);
 
     const todayOrders = orders.filter((o) => o.createdAt >= today);

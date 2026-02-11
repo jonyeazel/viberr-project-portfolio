@@ -4,6 +4,9 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Search, Send, Check, X, Clock, RefreshCw } from 'lucide-react';
 
+// Fixed reference date to prevent SSR hydration mismatches
+const REFERENCE_DATE = new Date('2026-02-11T12:00:00Z');
+
 interface Contact {
   id: string;
   name: string;
@@ -113,7 +116,7 @@ function generateContacts(): Contact[] {
     
     const notes: CRMNote[] = Array.from({ length: 4 }, (_, j) => ({
       id: `note-${i}-${j}`,
-      date: new Date(Date.now() - (j * 7 + j * 2) * 24 * 60 * 60 * 1000),
+      date: new Date(REFERENCE_DATE.getTime() - (j * 7 + j * 2) * 24 * 60 * 60 * 1000),
       content: noteContents[(i + j) % noteContents.length](firstName),
       author: ['Alex Morgan', 'Jordan Lee', 'Casey Smith', 'Taylor Kim'][j % 4],
     }));
@@ -122,7 +125,7 @@ function generateContacts(): Contact[] {
       const template = emailSnippets[(i + j) % emailSnippets.length];
       return {
         id: `email-${i}-${j}`,
-        date: new Date(Date.now() - (j * 4 + 2) * 24 * 60 * 60 * 1000),
+        date: new Date(REFERENCE_DATE.getTime() - (j * 4 + 2) * 24 * 60 * 60 * 1000),
         subject: template.subject,
         snippet: template.snippet,
         direction: j % 2 === 0 ? 'inbound' : 'outbound',
@@ -132,7 +135,7 @@ function generateContacts(): Contact[] {
     const stageIndex = dealStages.indexOf(stage);
     const dealHistory: DealEvent[] = Array.from({ length: Math.min(stageIndex + 1, 3) }, (_, j) => ({
       id: `deal-${i}-${j}`,
-      date: new Date(Date.now() - (30 - j * 10) * 24 * 60 * 60 * 1000),
+      date: new Date(REFERENCE_DATE.getTime() - (30 - j * 10) * 24 * 60 * 60 * 1000),
       fromStage: stageLabels[dealStages[Math.max(0, stageIndex - j - 1)]],
       toStage: stageLabels[dealStages[Math.max(0, stageIndex - j)]],
       note: j === 0 ? 'Moved after successful demo' : undefined,
@@ -146,7 +149,7 @@ function generateContacts(): Contact[] {
       role: roles[i % roles.length],
       dealValue: dealValues[i],
       dealStage: stage,
-      lastActivity: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
+      lastActivity: new Date(REFERENCE_DATE.getTime() - daysAgo * 24 * 60 * 60 * 1000),
       notes,
       priorEmails,
       dealHistory,
@@ -188,8 +191,7 @@ Best regards`;
 }
 
 function formatDate(date: Date): string {
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = Math.floor((REFERENCE_DATE.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
   
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
