@@ -116,9 +116,14 @@ export default function Home() {
               <p className="text-[11px] text-muted tracking-[0.05em] uppercase">
                 {project.type}
               </p>
-              <p className="text-[13px] font-semibold text-foreground tabular-nums">
-                ${project.estimate.toLocaleString()}
-              </p>
+              <div className="text-right tabular-nums">
+                <p className="text-[13px] font-semibold text-foreground">
+                  ${project.estimate.toLocaleString()}
+                </p>
+                <p className="text-[11px] text-muted">
+                  You earn ${(project.estimate / 2).toLocaleString()}
+                </p>
+              </div>
             </div>
 
             <h2 className="text-[18px] font-semibold text-foreground">
