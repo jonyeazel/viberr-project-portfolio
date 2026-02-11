@@ -140,13 +140,13 @@ function generateSignals(index: number, score: number): GrowthSignal[] {
   const numSignals = score >= 80 ? 4 : score >= 65 ? 3 : score >= 50 ? 2 : 1;
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   
-  const orderedTypes: SignalType[] = [];
-  if (score >= 75) orderedTypes.push('Funding');
-  if (score >= 60) orderedTypes.push('Hiring');
-  orderedTypes.push('Revenue');
-  if (score >= 55) orderedTypes.push('Expansion');
+  // Rotate signal priority based on company index for variety
+  const allTypes: SignalType[] = ['Funding', 'Hiring', 'Expansion', 'Revenue'];
+  const rotation = index % allTypes.length;
+  const rotatedTypes = [...allTypes.slice(rotation), ...allTypes.slice(0, rotation)];
+  const orderedTypes = rotatedTypes.slice(0, numSignals);
   
-  for (let i = 0; i < numSignals && i < orderedTypes.length; i++) {
+  for (let i = 0; i < orderedTypes.length; i++) {
     const type = orderedTypes[i];
     const monthIdx = (11 - i - (index % 3)) % 12;
     const month = months[monthIdx >= 0 ? monthIdx : monthIdx + 12];

@@ -204,7 +204,7 @@ const generateDocuments = (): Document[] => {
     const totalRedactions = filteredRedactions.reduce((sum, r) => sum + r.count, 0);
 
     // Generate dates
-    const baseDate = new Date('2025-01-15');
+    const baseDate = new Date('2026-01-15');
     const dateOffset = Math.floor(seededRandom(seed + 50) * 45);
     const processedDate = new Date(baseDate);
     processedDate.setDate(processedDate.getDate() - dateOffset);
@@ -349,7 +349,7 @@ const generateAuditLog = (documents: Document[]): AuditEntry[] => {
   const actionWeights = [0.3, 0.2, 0.2, 0.1, 0.1, 0.05, 0.05];
 
   const entries: AuditEntry[] = [];
-  const baseDate = new Date('2025-02-10T18:00:00');
+  const baseDate = new Date('2026-02-10T18:00:00');
 
   for (let i = 0; i < 35; i++) {
     const seed = i * 500;

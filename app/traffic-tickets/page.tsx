@@ -179,10 +179,12 @@ function generateEmail(firstName: string, lastName: string, random: () => number
   return `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${domain}`;
 }
 
+const REFERENCE_DATE = new Date('2026-02-11T12:00:00Z');
+
 function generateTickets(): Ticket[] {
   const random = seededRandom(2024);
   const tickets: Ticket[] = [];
-  const now = new Date();
+  const now = REFERENCE_DATE;
 
   // Generate 80 tickets with realistic distribution
   // Target: ~75% dispatched (60), ~10% in intermediate states (8), ~5% exceptions (4), ~10% recently received (8)
@@ -381,8 +383,7 @@ function formatProcessingTime(ms: number): string {
 }
 
 function daysUntil(date: Date): number {
-  const now = new Date();
-  return Math.ceil((date.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+  return Math.ceil((date.getTime() - REFERENCE_DATE.getTime()) / (24 * 60 * 60 * 1000));
 }
 
 export default function TrafficTicketsPage() {
@@ -395,7 +396,7 @@ export default function TrafficTicketsPage() {
 
   // Calculate KPIs
   const kpis = useMemo(() => {
-    const today = new Date();
+    const today = new Date(REFERENCE_DATE);
     today.setHours(0, 0, 0, 0);
     
     const todayTickets = tickets.filter(t => t.dateReceived >= today);
@@ -451,7 +452,7 @@ export default function TrafficTicketsPage() {
     }));
 
     // Daily volume (last 7 days)
-    const now = new Date();
+    const now = REFERENCE_DATE;
     const dailyData: { name: string; count: number; date: Date }[] = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);

@@ -128,9 +128,9 @@ function generateCustomerData(): Customer[] {
     const changeFactors = [1.02, 0.98, 1.05, 0.97, 1.03, 0.99, 1.01, 0.96, 1.04, 1.00];
     const lastMonth = total / changeFactors[i % 10];
     
-    // Due dates spread across February 2025
+    // Due dates spread across February 2026
     const dueDays = [5, 10, 15, 20, 25];
-    const dueDate = new Date(2025, 1, dueDays[i % 5]);
+    const dueDate = new Date(2026, 1, dueDays[i % 5]);
     
     return {
       id: `CUS-${String(i + 1).padStart(4, '0')}`,
@@ -223,7 +223,7 @@ export default function BillingWorkflowPage() {
             <div style={{ width: 1, height: 24, background: colors.border }} />
             <div>
               <div style={{ fontSize: 15, fontWeight: 500 }}>Monthly Billing</div>
-              <div style={{ fontSize: 13, color: colors.muted }}>January 2025</div>
+              <div style={{ fontSize: 13, color: colors.muted }}>January 2026</div>
             </div>
           </div>
           
@@ -539,7 +539,7 @@ function FinancialPlanTab({ customers }: { customers: Customer[] }) {
       }}>
         <div>
           <div style={{ fontSize: 11, color: colors.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            January 2025
+            January 2026
           </div>
           <div style={{ fontSize: 24, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
             {totalThisMonth.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
