@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Github } from "lucide-react";
 
 const REPO_BASE =
   "https://github.com/jonyeazel/viberr-project-portfolio/blob/main/app";
@@ -166,18 +167,18 @@ export default function Home() {
         </h1>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {projects.map((project) => (
           <div
             key={project.slug}
-            className="border border-border rounded-lg p-6 flex flex-col gap-4 bg-card"
+            className="border border-border hover:border-foreground/15 rounded-lg p-6 flex flex-col bg-card transition-colors duration-150"
           >
             <div className="flex items-center justify-between">
               <p className="text-[11px] text-muted tracking-[0.05em] uppercase">
                 {project.type}
               </p>
               <div className="text-right tabular-nums">
-                <p className="text-[13px] font-semibold text-foreground">
+                <p className="text-[15px] font-semibold text-foreground">
                   ${project.estimate.toLocaleString()}
                 </p>
                 <p className="text-[11px] text-muted">
@@ -186,29 +187,29 @@ export default function Home() {
               </div>
             </div>
 
-            <h2 className="text-[18px] font-semibold text-foreground">
+            <h2 className="text-[18px] font-semibold text-foreground mt-4">
               {project.name}
             </h2>
 
-            <p className="text-[13px] text-muted leading-[1.6]">
+            <p className="text-[13px] text-muted leading-[1.6] mt-2">
               {project.description}
             </p>
 
-            <div className="flex-1">
+            <div className="flex-1 mt-4">
               <p className="text-[11px] text-muted tracking-[0.05em] uppercase mb-2">
                 To go live
               </p>
-              <ol className="space-y-1.5">
+              <ol className="space-y-1">
                 {project.steps.map((step, i) => (
-                  <li key={i} className="flex gap-2 text-[13px] leading-[1.5] text-foreground">
-                    <span className="text-muted flex-shrink-0 tabular-nums">{i + 1}.</span>
-                    {step}
+                  <li key={i} className="flex gap-2 text-[13px] leading-[1.5]">
+                    <span className="text-muted/60 flex-shrink-0 tabular-nums">{i + 1}.</span>
+                    <span className="text-foreground">{step}</span>
                   </li>
                 ))}
               </ol>
             </div>
 
-            <div className="flex items-center gap-3 pt-2 border-t border-border">
+            <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
               <Link
                 href={`/${project.slug}`}
                 className="text-[13px] font-medium text-primary hover:opacity-70 transition-opacity duration-150"
@@ -219,9 +220,10 @@ export default function Home() {
                 href={`${REPO_BASE}/${project.slug}/page.tsx`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[13px] text-muted hover:text-foreground transition-colors duration-150"
+                className="flex items-center gap-1.5 text-[13px] text-muted hover:text-foreground transition-colors duration-150"
               >
-                Source
+                <Github size={14} strokeWidth={1.5} />
+                GitHub
               </a>
             </div>
           </div>
