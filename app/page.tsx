@@ -10,6 +10,11 @@ const projects = [
     type: "Workflow Automation",
     description: "AI-assisted email drafts from CRM context with human review",
     estimate: 1200,
+    steps: [
+      "Provide CRM access (HubSpot, Salesforce, or Pipedrive)",
+      "Verify your sending domain for outbound emails",
+      "List team members who will review and approve drafts",
+    ],
   },
   {
     slug: "collectables",
@@ -17,6 +22,11 @@ const projects = [
     type: "Platform",
     description: "Track, buy, sell, and trade collectible assets",
     estimate: 1400,
+    steps: [
+      "Create a Stripe account for payment processing",
+      "Provide initial product catalog with photos",
+      "Decide on commission structure and listing fees",
+    ],
   },
   {
     slug: "compliance",
@@ -25,6 +35,11 @@ const projects = [
     description:
       "Policy-driven redaction and audit logging for sensitive data",
     estimate: 1350,
+    steps: [
+      "Document your redaction rules and data policies",
+      "Provide sample sensitive documents for testing",
+      "List authorized team members and their access levels",
+    ],
   },
   {
     slug: "voucher-fulfillment",
@@ -32,6 +47,11 @@ const projects = [
     type: "Workflow Automation",
     description: "Digital voucher generation, invoicing, and delivery",
     estimate: 1100,
+    steps: [
+      "Create a Stripe account for invoicing",
+      "Provide brand assets (logo, colors, fonts)",
+      "Supply voucher template designs or approve defaults",
+    ],
   },
   {
     slug: "donation-workflow",
@@ -40,6 +60,11 @@ const projects = [
     description:
       "Automated receipt generation and accounting for donations",
     estimate: 1050,
+    steps: [
+      "Create a Stripe account for donation processing",
+      "Provide organization details for tax receipts (EIN, address)",
+      "Share accounting software credentials (QuickBooks, Xero)",
+    ],
   },
   {
     slug: "time-tracking",
@@ -47,6 +72,11 @@ const projects = [
     type: "Platform",
     description: "Employee hours import, CSV workflows, biometric tracking",
     estimate: 1250,
+    steps: [
+      "Export current employee roster as CSV",
+      "Define pay period schedule and overtime rules",
+      "Provide biometric device model and connection details",
+    ],
   },
   {
     slug: "lead-intelligence",
@@ -54,6 +84,11 @@ const projects = [
     type: "Platform",
     description: "Automated lead scoring and growth signal detection",
     estimate: 1300,
+    steps: [
+      "Provide data enrichment API keys (Clearbit, Apollo, etc.)",
+      "Define your lead scoring criteria and thresholds",
+      "Share CRM connection details for two-way sync",
+    ],
   },
   {
     slug: "mental-health",
@@ -62,6 +97,11 @@ const projects = [
     description:
       "Crisis detection, resource provisioning, and wellness tracking",
     estimate: 1450,
+    steps: [
+      "Compile local crisis resource directory and hotline numbers",
+      "Review and approve the platform privacy policy",
+      "List care team members and their notification preferences",
+    ],
   },
   {
     slug: "billing-workflow",
@@ -69,6 +109,11 @@ const projects = [
     type: "Workflow Automation",
     description: "Monthly invoicing and financial plan automation",
     estimate: 950,
+    steps: [
+      "Create a Stripe account for recurring billing",
+      "Provide invoice branding (logo, payment terms, late fees)",
+      "Export existing client list with billing details",
+    ],
   },
   {
     slug: "seed-data",
@@ -76,6 +121,11 @@ const projects = [
     type: "Platform",
     description: "User-owned behavioral data economy platform",
     estimate: 1350,
+    steps: [
+      "Define your data taxonomy and categories",
+      "Decide on export formats (CSV, JSON, API)",
+      "Provide an initial seed dataset for onboarding",
+    ],
   },
   {
     slug: "sustainability-review",
@@ -84,6 +134,11 @@ const projects = [
     description:
       "Automated shop evaluation against sustainability criteria",
     estimate: 1150,
+    steps: [
+      "Set evaluation criteria and scoring weights",
+      "List reviewer team email addresses",
+      "Decide on notification preferences and review cadence",
+    ],
   },
   {
     slug: "traffic-tickets",
@@ -91,6 +146,11 @@ const projects = [
     type: "Platform",
     description: "Automated ticket triage, assignment, and dispatch",
     estimate: 1400,
+    steps: [
+      "Export vehicle fleet registry (plates, models, assignments)",
+      "Provide driver contact database",
+      "Share municipality ticket feed API credentials",
+    ],
   },
 ];
 
@@ -130,9 +190,23 @@ export default function Home() {
               {project.name}
             </h2>
 
-            <p className="text-[13px] text-muted leading-[1.6] flex-1">
+            <p className="text-[13px] text-muted leading-[1.6]">
               {project.description}
             </p>
+
+            <div className="flex-1">
+              <p className="text-[11px] text-muted tracking-[0.05em] uppercase mb-2">
+                To go live
+              </p>
+              <ol className="space-y-1.5">
+                {project.steps.map((step, i) => (
+                  <li key={i} className="flex gap-2 text-[13px] leading-[1.5] text-foreground">
+                    <span className="text-muted flex-shrink-0 tabular-nums">{i + 1}.</span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </div>
 
             <div className="flex items-center gap-3 pt-2 border-t border-border">
               <Link
