@@ -36,16 +36,16 @@ import {
 const REFERENCE_DATE = new Date('2026-02-11T12:00:00Z');
 
 const colors = {
-  bg: '#fafaf9',
-  surface: '#f5f5f4',
-  surface2: '#eeeeec',
-  border: '#e5e5e3',
-  text: '#191919',
-  muted: '#737373',
-  blue: '#2563eb',
-  green: '#16a34a',
-  amber: '#d97706',
-  red: '#dc2626',
+  bg: 'var(--background)',
+  surface: 'var(--surface)',
+  surface2: 'var(--surface-2)',
+  border: 'var(--border)',
+  text: 'var(--foreground)',
+  muted: 'var(--muted)',
+  blue: 'var(--primary)',
+  green: 'var(--success)',
+  amber: 'var(--warning)',
+  red: 'var(--destructive)',
 };
 
 function seededRandom(seed: number): number {

@@ -80,10 +80,10 @@ const stageLabels: Record<Contact['dealStage'], string> = {
 
 const stageColors: Record<Contact['dealStage'], string> = {
   lead: '#737373',
-  qualified: '#2563eb',
-  proposal: '#d97706',
-  negotiation: '#d97706',
-  closed: '#16a34a',
+  qualified: 'var(--primary)',
+  proposal: 'var(--warning)',
+  negotiation: 'var(--warning)',
+  closed: 'var(--success)',
 };
 
 const noteContents = [
@@ -304,7 +304,7 @@ export default function OutboundEmailPage() {
                 placeholder="Search contacts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-9 pl-9 pr-3 bg-[#f5f5f4] border border-[#e5e5e3] rounded text-[13px] text-[#191919] placeholder-[#737373] focus:outline-none focus:border-[#2563eb] transition-colors duration-150"
+                className="w-full h-9 pl-9 pr-3 bg-[#f5f5f4] border border-[#e5e5e3] rounded text-[13px] text-[#191919] placeholder-[#737373] focus:outline-none focus:border-primary transition-colors duration-150"
               />
             </div>
           </div>
@@ -421,7 +421,7 @@ export default function OutboundEmailPage() {
                               <span className="text-[11px] text-[#737373]">{formatDateFull(email.date)}</span>
                             </div>
                             <div className="flex items-center gap-2 mb-2">
-                              <span className={`text-[11px] ${email.direction === 'inbound' ? 'text-[#2563eb]' : 'text-[#737373]'}`}>
+                              <span className={`text-[11px] ${email.direction === 'inbound' ? 'text-primary' : 'text-[#737373]'}`}>
                                 {email.direction === 'inbound' ? 'Received' : 'Sent'}
                               </span>
                             </div>
@@ -467,7 +467,7 @@ export default function OutboundEmailPage() {
                     <textarea
                       value={currentDraft}
                       onChange={(e) => handleDraftChange(e.target.value)}
-                      className="flex-1 min-h-[300px] w-full bg-[#f5f5f4] border border-[#e5e5e3] rounded p-4 text-[13px] leading-relaxed resize-none focus:outline-none focus:border-[#2563eb] transition-colors duration-150"
+                      className="flex-1 min-h-[300px] w-full bg-[#f5f5f4] border border-[#e5e5e3] rounded p-4 text-[13px] leading-relaxed resize-none focus:outline-none focus:border-primary transition-colors duration-150"
                     />
                   </div>
                 )}
@@ -477,9 +477,9 @@ export default function OutboundEmailPage() {
                     <div className="flex items-center gap-4 mb-6">
                       <div className="text-[11px] text-[#737373] uppercase tracking-wide">Status</div>
                       <span className={`inline-flex items-center gap-1.5 text-[13px] font-medium ${
-                        currentStatus === 'approved' ? 'text-[#16a34a]' :
-                        currentStatus === 'rejected' ? 'text-[#dc2626]' :
-                        'text-[#d97706]'
+                        currentStatus === 'approved' ? 'text-success' :
+                        currentStatus === 'rejected' ? 'text-destructive' :
+                        'text-warning'
                       }`}>
                         {currentStatus === 'approved' && <Check size={14} strokeWidth={2} />}
                         {currentStatus === 'rejected' && <X size={14} strokeWidth={2} />}
@@ -506,13 +506,13 @@ export default function OutboundEmailPage() {
                               }
                             }}
                             placeholder="Add notes for the sender..."
-                            className="w-full h-20 bg-[#f5f5f4] border border-[#e5e5e3] rounded p-3 text-[13px] resize-none focus:outline-none focus:border-[#2563eb] transition-colors duration-150 placeholder-[#737373]"
+                            className="w-full h-20 bg-[#f5f5f4] border border-[#e5e5e3] rounded p-3 text-[13px] resize-none focus:outline-none focus:border-primary transition-colors duration-150 placeholder-[#737373]"
                           />
                         </div>
                         <div className="flex gap-3">
                           <button
                             onClick={handleApprove}
-                            className="h-10 px-5 bg-[#16a34a] text-white text-[13px] font-medium rounded hover:bg-[#15803d] transition-colors duration-150 flex items-center gap-2"
+                            className="h-10 px-5 bg-success text-white text-[13px] font-medium rounded hover:bg-success/90 transition-colors duration-150 flex items-center gap-2"
                           >
                             <Send size={14} strokeWidth={1.5} />
                             Approve & Send

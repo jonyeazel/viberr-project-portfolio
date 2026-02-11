@@ -5,16 +5,16 @@ import Link from 'next/link';
 import { ArrowLeft, Check, AlertTriangle, ChevronRight } from 'lucide-react';
 
 const colors = {
-  bg: '#fafaf9',
-  surface: '#f5f5f4',
-  surface2: '#eeeeec',
-  border: '#e5e5e3',
-  text: '#191919',
-  muted: '#737373',
-  blue: '#2563eb',
-  green: '#16a34a',
-  amber: '#d97706',
-  red: '#dc2626',
+  bg: 'var(--background)',
+  surface: 'var(--surface)',
+  surface2: 'var(--surface-2)',
+  border: 'var(--border)',
+  text: 'var(--foreground)',
+  muted: 'var(--muted)',
+  primary: 'var(--primary)',
+  success: 'var(--success)',
+  warning: 'var(--warning)',
+  destructive: 'var(--destructive)',
 };
 
 // Realistic German company names
@@ -250,7 +250,7 @@ export default function BillingWorkflowPage() {
                     width: 20,
                     height: 20,
                     borderRadius: 10,
-                    background: i < stepIndex ? colors.green : i === stepIndex ? colors.bg : colors.surface2,
+                    background: i < stepIndex ? colors.success : i === stepIndex ? colors.bg : colors.surface2,
                     color: i < stepIndex ? colors.bg : i === stepIndex ? colors.text : colors.muted,
                     fontSize: 11,
                     display: 'flex',
@@ -280,9 +280,9 @@ export default function BillingWorkflowPage() {
         <Stat label="Active Customers" value={stats.active} />
         <Stat label="Monthly Revenue" value={`${stats.monthlyRevenue.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`} />
         <Stat label="Pending Invoices" value={stats.pendingInvoices} />
-        <Stat label="Anomalies" value={stats.anomalies} highlight={stats.anomalies > 0} highlightColor={colors.amber} />
+        <Stat label="Anomalies" value={stats.anomalies} highlight={stats.anomalies > 0} highlightColor={colors.warning} />
         {currentStep === 'review' && (
-          <Stat label="Verified" value={`${stats.verified}/${stats.active}`} highlight={stats.verified === stats.active} highlightColor={colors.green} />
+          <Stat label="Verified" value={`${stats.verified}/${stats.active}`} highlight={stats.verified === stats.active} highlightColor={colors.success} />
         )}
       </div>
 
@@ -306,7 +306,7 @@ function Stat({
   label, 
   value, 
   highlight = false, 
-  highlightColor = colors.blue 
+  highlightColor = colors.primary 
 }: { 
   label: string; 
   value: string | number; 
@@ -358,8 +358,8 @@ function DataReviewTab({
                     width: 20,
                     height: 20,
                     borderRadius: 4,
-                    border: `1px solid ${customer.verified ? colors.green : colors.border}`,
-                    background: customer.verified ? colors.green : 'transparent',
+                    border: `1px solid ${customer.verified ? colors.success : colors.border}`,
+                    background: customer.verified ? colors.success : 'transparent',
                     cursor: customer.status === 'Anomaly' && !customer.verified ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -380,7 +380,7 @@ function DataReviewTab({
                 {customer.cardDelta !== 0 && (
                   <span style={{ 
                     marginLeft: 8, 
-                    color: colors.amber,
+                    color: colors.warning,
                     fontSize: 12,
                     fontVariantNumeric: 'tabular-nums',
                   }}>
@@ -425,8 +425,8 @@ function InvoicingTab({
       <div style={{ display: 'flex', gap: 16 }}>
         <SummaryCard label="Total" value={totals.total} />
         <SummaryCard label="Draft" value={totals.draft} color={colors.muted} />
-        <SummaryCard label="Sent" value={totals.sent} color={colors.blue} />
-        <SummaryCard label="Paid" value={totals.paid} color={colors.green} />
+        <SummaryCard label="Sent" value={totals.sent} color={colors.primary} />
+        <SummaryCard label="Paid" value={totals.paid} color={colors.success} />
       </div>
 
       {/* Invoice Table */}
@@ -469,8 +469,8 @@ function InvoicingTab({
                       background: colors.bg,
                       border: `1px solid ${colors.border}`,
                       borderRadius: 4,
-                      color: customer.invoiceStatus === 'Paid' ? colors.green : 
-                             customer.invoiceStatus === 'Sent' ? colors.blue : colors.text,
+                      color: customer.invoiceStatus === 'Paid' ? colors.success : 
+                             customer.invoiceStatus === 'Sent' ? colors.primary : colors.text,
                       padding: '6px 10px',
                       fontSize: 13,
                       cursor: 'pointer',
@@ -560,7 +560,7 @@ function FinancialPlanTab({ customers }: { customers: Customer[] }) {
           <div style={{ 
             fontSize: 24, 
             fontWeight: 500, 
-            color: overallChangePercent >= 0 ? colors.green : colors.red,
+            color: overallChangePercent >= 0 ? colors.success : colors.destructive,
             fontVariantNumeric: 'tabular-nums',
           }}>
             {overallChangePercent >= 0 ? '+' : ''}{overallChangePercent.toFixed(1)}%
@@ -573,7 +573,7 @@ function FinancialPlanTab({ customers }: { customers: Customer[] }) {
           <div style={{ 
             fontSize: 24, 
             fontWeight: 500, 
-            color: overallDelta >= 0 ? colors.green : colors.red,
+            color: overallDelta >= 0 ? colors.success : colors.destructive,
             fontVariantNumeric: 'tabular-nums',
           }}>
             {overallDelta >= 0 ? '+' : ''}{overallDelta.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
@@ -613,7 +613,7 @@ function FinancialPlanTab({ customers }: { customers: Customer[] }) {
                 <Td align="right">
                   <span style={{ 
                     fontVariantNumeric: 'tabular-nums',
-                    color: customer.delta >= 0 ? colors.green : colors.red,
+                    color: customer.delta >= 0 ? colors.success : colors.destructive,
                     fontSize: 13,
                   }}>
                     {customer.delta >= 0 ? '+' : ''}{customer.delta.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
@@ -632,7 +632,7 @@ function FinancialPlanTab({ customers }: { customers: Customer[] }) {
               <Td align="right" style={{ 
                 fontWeight: 500, 
                 fontVariantNumeric: 'tabular-nums',
-                color: overallDelta >= 0 ? colors.green : colors.red,
+                color: overallDelta >= 0 ? colors.success : colors.destructive,
               }}>
                 {overallDelta >= 0 ? '+' : ''}{overallDelta.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
               </Td>
@@ -673,9 +673,9 @@ function SummaryCard({
 
 function StatusBadge({ status }: { status: CustomerStatus }) {
   const config = {
-    Verified: { color: colors.green, bg: `${colors.green}12` },
+    Verified: { color: colors.success, bg: 'rgba(22, 163, 74, 0.07)' },
     Pending: { color: colors.muted, bg: colors.surface2 },
-    Anomaly: { color: colors.amber, bg: `${colors.amber}12` },
+    Anomaly: { color: colors.warning, bg: 'rgba(217, 119, 6, 0.07)' },
   };
   
   const { color, bg } = config[status];

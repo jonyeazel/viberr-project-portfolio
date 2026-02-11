@@ -18,16 +18,16 @@ import {
 const REFERENCE_DATE = new Date('2026-02-11T12:00:00Z');
 
 const colors = {
-  bg: '#fafaf9',
-  surface: '#f5f5f4',
-  surface2: '#eeeeec',
-  border: '#e5e5e3',
-  text: '#191919',
-  muted: '#737373',
-  blue: '#2563eb',
-  green: '#16a34a',
-  amber: '#d97706',
-  red: '#dc2626',
+  bg: 'var(--background)',
+  surface: 'var(--surface)',
+  surface2: 'var(--surface-2)',
+  border: 'var(--border)',
+  text: 'var(--foreground)',
+  muted: 'var(--muted)',
+  primary: 'var(--primary)',
+  success: 'var(--success)',
+  warning: 'var(--warning)',
+  destructive: 'var(--destructive)',
 };
 
 type DayType = 'workday' | 'weekend' | 'vacation' | 'sick' | 'comp' | 'holiday';
@@ -204,11 +204,11 @@ const fullDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'F
 
 const getDayTypeColor = (type: DayType): string => {
   switch (type) {
-    case 'vacation': return colors.blue;
-    case 'sick': return colors.red;
-    case 'comp': return colors.amber;
+    case 'vacation': return colors.primary;
+    case 'sick': return colors.destructive;
+    case 'comp': return colors.warning;
     case 'weekend': return colors.muted;
-    default: return colors.green;
+    default: return colors.success;
   }
 };
 
@@ -225,9 +225,9 @@ const getDayTypeLabel = (type: DayType): string => {
 
 const getStatusColor = (status: 'on-track' | 'behind' | 'over'): string => {
   switch (status) {
-    case 'over': return colors.amber;
-    case 'behind': return colors.red;
-    default: return colors.green;
+    case 'over': return colors.warning;
+    case 'behind': return colors.destructive;
+    default: return colors.success;
   }
 };
 
@@ -303,13 +303,13 @@ export default function TimeTrackingPage() {
           </div>
           <div className="flex items-center gap-2">
             <span style={{ color: colors.muted }}>Overtime</span>
-            <span className="font-medium" style={{ color: overtimeHours > 0 ? colors.amber : colors.text }}>
+            <span className="font-medium" style={{ color: overtimeHours > 0 ? colors.warning : colors.text }}>
               {overtimeHours.toFixed(1)}h
             </span>
           </div>
           <div className="flex items-center gap-2">
             <span style={{ color: colors.muted }}>Pending</span>
-            <span className="font-medium" style={{ color: pendingImports > 0 ? colors.amber : colors.text }}>
+            <span className="font-medium" style={{ color: pendingImports > 0 ? colors.warning : colors.text }}>
               {pendingImports}
             </span>
           </div>
@@ -395,7 +395,7 @@ export default function TimeTrackingPage() {
                       <div
                         className="text-xl font-medium tabular-nums"
                         style={{
-                          color: weekBalance > 0 ? colors.amber : weekBalance < -4 ? colors.red : colors.green,
+                          color: weekBalance > 0 ? colors.warning : weekBalance < -4 ? colors.destructive : colors.success,
                         }}
                       >
                         {weekBalance >= 0 ? '+' : ''}{weekBalance.toFixed(1)}h
@@ -516,11 +516,11 @@ export default function TimeTrackingPage() {
                       <span className="font-medium tabular-nums">{monthlyTotals.workdays}</span>
                     </div>
                     <div className="text-right">
-                      <span style={{ color: colors.blue }}>Vacation </span>
+                      <span style={{ color: colors.primary }}>Vacation </span>
                       <span className="font-medium tabular-nums">{monthlyTotals.vacation}</span>
                     </div>
                     <div className="text-right">
-                      <span style={{ color: colors.red }}>Sick </span>
+                      <span style={{ color: colors.destructive }}>Sick </span>
                       <span className="font-medium tabular-nums">{monthlyTotals.sick}</span>
                     </div>
                   </div>
@@ -593,7 +593,7 @@ export default function TimeTrackingPage() {
                   </div>
                   <button
                     className="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-opacity hover:opacity-80"
-                    style={{ backgroundColor: colors.blue, color: '#fff' }}
+                    style={{ backgroundColor: colors.primary, color: 'var(--primary-foreground)' }}
                   >
                     <Upload size={16} />
                     Import
@@ -625,10 +625,10 @@ export default function TimeTrackingPage() {
                               style={{
                                 color:
                                   record.status === 'success'
-                                    ? colors.green
+                                    ? colors.success
                                     : record.status === 'partial'
-                                      ? colors.amber
-                                      : colors.red,
+                                      ? colors.warning
+                                      : colors.destructive,
                               }}
                             >
                               {record.status === 'success' && <Check size={14} />}

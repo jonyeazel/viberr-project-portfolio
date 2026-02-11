@@ -592,7 +592,7 @@ export default function TrafficTicketsPage() {
     { id: 'analytics', label: 'Analytics' },
   ];
 
-  const CHART_COLORS = ['#2563eb', '#16a34a', '#d97706', '#dc2626'];
+  const CHART_COLORS = ['var(--primary)', 'var(--success)', 'var(--warning)', 'var(--destructive)'];
 
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: '#fafaf9' }}>
@@ -629,7 +629,7 @@ export default function TrafficTicketsPage() {
             <div className="text-[11px] uppercase tracking-wider mb-1" style={{ color: '#737373', letterSpacing: '0.05em' }}>
               Auto-Processed
             </div>
-            <div className="text-[28px] font-medium tabular-nums" style={{ color: kpis.autoProcessedRate >= 90 ? '#16a34a' : '#d97706' }}>
+            <div className="text-[28px] font-medium tabular-nums" style={{ color: kpis.autoProcessedRate >= 90 ? 'var(--success)' : 'var(--warning)' }}>
               {kpis.autoProcessedRate.toFixed(0)}%
             </div>
           </div>
@@ -645,7 +645,7 @@ export default function TrafficTicketsPage() {
             <div className="text-[11px] uppercase tracking-wider mb-1" style={{ color: '#737373', letterSpacing: '0.05em' }}>
               Pending Review
             </div>
-            <div className="text-[28px] font-medium tabular-nums" style={{ color: kpis.pendingReview > 0 ? '#d97706' : '#191919' }}>
+            <div className="text-[28px] font-medium tabular-nums" style={{ color: kpis.pendingReview > 0 ? 'var(--warning)' : '#191919' }}>
               {kpis.pendingReview}
             </div>
           </div>
@@ -653,7 +653,7 @@ export default function TrafficTicketsPage() {
             <div className="text-[11px] uppercase tracking-wider mb-1" style={{ color: '#737373', letterSpacing: '0.05em' }}>
               Deadline Alerts
             </div>
-            <div className="text-[28px] font-medium tabular-nums" style={{ color: kpis.deadlineAlerts > 0 ? '#dc2626' : '#191919' }}>
+            <div className="text-[28px] font-medium tabular-nums" style={{ color: kpis.deadlineAlerts > 0 ? 'var(--destructive)' : '#191919' }}>
               {kpis.deadlineAlerts}
             </div>
           </div>
@@ -669,7 +669,7 @@ export default function TrafficTicketsPage() {
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-medium"
                   style={{
-                    backgroundColor: status === 'dispatched' ? '#16a34a' : '#eeeeec',
+                    backgroundColor: status === 'dispatched' ? 'var(--success)' : '#eeeeec',
                     color: status === 'dispatched' ? '#fff' : '#191919',
                   }}
                 >
@@ -690,11 +690,11 @@ export default function TrafficTicketsPage() {
               <div className="flex items-center gap-3">
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-medium"
-                  style={{ backgroundColor: '#dc2626', color: '#fff' }}
+                  style={{ backgroundColor: 'var(--destructive)', color: '#fff' }}
                 >
                   {pipelineCounts.exception}
                 </div>
-                <span className="text-[13px]" style={{ color: '#dc2626' }}>
+                <span className="text-[13px]" style={{ color: 'var(--destructive)' }}>
                   Exceptions
                 </span>
               </div>
@@ -820,7 +820,7 @@ export default function TrafficTicketsPage() {
                         }}
                         formatter={(value: number) => [value, 'Tickets']}
                       />
-                      <Bar dataKey="count" fill="#2563eb" radius={[2, 2, 0, 0]} />
+                      <Bar dataKey="count" fill="var(--primary)" radius={[2, 2, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -848,7 +848,7 @@ export default function TrafficTicketsPage() {
                         width={28}
                         tickFormatter={(v) => `${v}%`}
                       />
-                      <ReferenceLine y={95} stroke="#16a34a" strokeDasharray="4 4" strokeOpacity={0.5} />
+                      <ReferenceLine y={95} stroke="var(--success)" strokeDasharray="4 4" strokeOpacity={0.5} />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: '#fafaf9',
@@ -863,16 +863,16 @@ export default function TrafficTicketsPage() {
                       <Line
                         type="monotone"
                         dataKey="rate"
-                        stroke="#16a34a"
+                        stroke="var(--success)"
                         strokeWidth={2}
-                        dot={{ fill: '#16a34a', r: 3, strokeWidth: 0 }}
-                        activeDot={{ fill: '#16a34a', r: 5, strokeWidth: 0 }}
+                        dot={{ fill: 'var(--success)', r: 3, strokeWidth: 0 }}
+                        activeDot={{ fill: 'var(--success)', r: 5, strokeWidth: 0 }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
                 <div className="mt-2 flex items-center gap-2 text-[11px]" style={{ color: '#737373' }}>
-                  <div className="w-4 border-t border-dashed" style={{ borderColor: '#16a34a' }} />
+                  <div className="w-4 border-t border-dashed" style={{ borderColor: 'var(--success)' }} />
                   <span>95% Target</span>
                 </div>
               </div>
@@ -942,14 +942,14 @@ export default function TrafficTicketsPage() {
                               style={{
                                 backgroundColor: ticket.status === 'dispatched' ? 'rgba(22, 163, 74, 0.1)' :
                                   ticket.status === 'exception' ? 'rgba(220, 38, 38, 0.1)' : '#eeeeec',
-                                color: ticket.status === 'dispatched' ? '#16a34a' :
-                                  ticket.status === 'exception' ? '#dc2626' : '#737373',
+                                color: ticket.status === 'dispatched' ? 'var(--success)' :
+                                  ticket.status === 'exception' ? 'var(--destructive)' : '#737373',
                               }}
                             >
                               {statusLabels[ticket.status]}
                             </span>
                           </td>
-                          <td className="px-6 py-3 text-[13px] tabular-nums" style={{ color: isUrgent ? '#dc2626' : '#737373' }}>
+                          <td className="px-6 py-3 text-[13px] tabular-nums" style={{ color: isUrgent ? 'var(--destructive)' : '#737373' }}>
                             {formatDate(ticket.deadline)}
                             {isUrgent && (
                               <span className="ml-1 font-medium">({deadlineDays}d)</span>
@@ -959,7 +959,7 @@ export default function TrafficTicketsPage() {
                             {formatProcessingTime(ticket.processingTimeMs)}
                           </td>
                           {activeTab === 'exceptions' && (
-                            <td className="px-6 py-3 text-[13px]" style={{ color: '#d97706' }}>
+                            <td className="px-6 py-3 text-[13px]" style={{ color: 'var(--warning)' }}>
                               {ticket.exceptionReason ? exceptionLabels[ticket.exceptionReason] : '—'}
                             </td>
                           )}
@@ -1015,9 +1015,9 @@ export default function TrafficTicketsPage() {
                       className="mx-5 mt-5 p-4 rounded flex items-start gap-3"
                       style={{ backgroundColor: 'rgba(220, 38, 38, 0.05)', border: '1px solid rgba(220, 38, 38, 0.2)' }}
                     >
-                      <AlertCircle size={18} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" style={{ color: '#dc2626' }} />
+                      <AlertCircle size={18} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--destructive)' }} />
                       <div>
-                        <div className="text-[13px] font-medium" style={{ color: '#dc2626' }}>
+                        <div className="text-[13px] font-medium" style={{ color: 'var(--destructive)' }}>
                           {exceptionLabels[selectedTicket.exceptionReason]}
                         </div>
                         <div className="text-[13px] mt-1" style={{ color: '#737373' }}>
@@ -1052,7 +1052,7 @@ export default function TrafficTicketsPage() {
                         <span style={{ color: '#737373' }}>Deadline</span>
                         <span
                           className="tabular-nums"
-                          style={{ color: daysUntil(selectedTicket.deadline) <= 3 && selectedTicket.status !== 'dispatched' ? '#dc2626' : '#191919' }}
+                          style={{ color: daysUntil(selectedTicket.deadline) <= 3 && selectedTicket.status !== 'dispatched' ? 'var(--destructive)' : '#191919' }}
                         >
                           {formatDate(selectedTicket.deadline)}
                           {daysUntil(selectedTicket.deadline) <= 7 && selectedTicket.status !== 'dispatched' && (
@@ -1115,16 +1115,16 @@ export default function TrafficTicketsPage() {
                                 className="h-full rounded-full transition-all duration-150"
                                 style={{
                                   width: `${selectedTicket.renterConfidence}%`,
-                                  backgroundColor: selectedTicket.renterConfidence && selectedTicket.renterConfidence >= 85 ? '#16a34a' :
-                                    selectedTicket.renterConfidence && selectedTicket.renterConfidence >= 60 ? '#d97706' : '#dc2626',
+                                  backgroundColor: selectedTicket.renterConfidence && selectedTicket.renterConfidence >= 85 ? 'var(--success)' :
+                                    selectedTicket.renterConfidence && selectedTicket.renterConfidence >= 60 ? 'var(--warning)' : 'var(--destructive)',
                                 }}
                               />
                             </div>
                             <span
                               className="tabular-nums font-medium"
                               style={{
-                                color: selectedTicket.renterConfidence && selectedTicket.renterConfidence >= 85 ? '#16a34a' :
-                                  selectedTicket.renterConfidence && selectedTicket.renterConfidence >= 60 ? '#d97706' : '#dc2626',
+                                color: selectedTicket.renterConfidence && selectedTicket.renterConfidence >= 85 ? 'var(--success)' :
+                                  selectedTicket.renterConfidence && selectedTicket.renterConfidence >= 60 ? 'var(--warning)' : 'var(--destructive)',
                               }}
                             >
                               {selectedTicket.renterConfidence}%
@@ -1170,7 +1170,7 @@ export default function TrafficTicketsPage() {
                               <div
                                 className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
                                 style={{
-                                  backgroundColor: step.completed ? '#16a34a' : step.timestamp ? '#2563eb' : '#eeeeec',
+                                  backgroundColor: step.completed ? 'var(--success)' : step.timestamp ? 'var(--primary)' : '#eeeeec',
                                 }}
                               >
                                 {step.completed && <Check size={12} strokeWidth={2.5} style={{ color: '#fff' }} />}
@@ -1178,7 +1178,7 @@ export default function TrafficTicketsPage() {
                               {!isLast && (
                                 <div
                                   className="w-px flex-1 my-1"
-                                  style={{ backgroundColor: step.completed ? '#16a34a' : '#eeeeec', minHeight: '24px' }}
+                                  style={{ backgroundColor: step.completed ? 'var(--success)' : '#eeeeec', minHeight: '24px' }}
                                 />
                               )}
                             </div>
@@ -1209,7 +1209,7 @@ export default function TrafficTicketsPage() {
                       <button
                         onClick={() => resolveException(selectedTicket.id)}
                         className="w-full px-4 py-2.5 rounded text-[13px] font-medium transition-opacity duration-150 ease-out hover:opacity-90"
-                        style={{ backgroundColor: '#2563eb', color: '#fff' }}
+                        style={{ backgroundColor: 'var(--primary)', color: '#fff' }}
                       >
                         Resolve Exception
                       </button>
@@ -1233,7 +1233,7 @@ export default function TrafficTicketsPage() {
                       <button
                         onClick={() => confirmAndDispatch(selectedTicket.id)}
                         className="w-full px-4 py-2.5 rounded text-[13px] font-medium transition-opacity duration-150 ease-out hover:opacity-90"
-                        style={{ backgroundColor: '#16a34a', color: '#fff' }}
+                        style={{ backgroundColor: 'var(--success)', color: '#fff' }}
                       >
                         Confirm & Dispatch
                       </button>
@@ -1248,7 +1248,7 @@ export default function TrafficTicketsPage() {
                         <button
                           onClick={() => flagForReview(selectedTicket.id)}
                           className="flex-1 px-4 py-2.5 rounded text-[13px] transition-opacity duration-150 ease-out hover:opacity-90"
-                          style={{ backgroundColor: 'transparent', color: '#d97706', border: '1px solid #d97706' }}
+                          style={{ backgroundColor: 'transparent', color: 'var(--warning)', border: '1px solid var(--warning)' }}
                         >
                           Flag for Review
                         </button>

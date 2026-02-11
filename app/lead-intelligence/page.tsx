@@ -13,16 +13,16 @@ import {
 } from 'recharts';
 
 const colors = {
-  bg: '#fafaf9',
-  surface: '#f5f5f4',
-  surface2: '#eeeeec',
-  border: '#e5e5e3',
-  text: '#191919',
-  muted: '#737373',
-  blue: '#2563eb',
-  green: '#16a34a',
-  amber: '#d97706',
-  red: '#dc2626',
+  bg: 'var(--background)',
+  surface: 'var(--surface)',
+  surface2: 'var(--surface-2)',
+  border: 'var(--border)',
+  text: 'var(--foreground)',
+  muted: 'var(--muted)',
+  primary: 'var(--primary)',
+  success: 'var(--success)',
+  warning: 'var(--warning)',
+  destructive: 'var(--destructive)',
 };
 
 type SignalType = 'Funding' | 'Hiring' | 'Expansion' | 'Revenue';
@@ -263,17 +263,17 @@ Would you have 15 minutes this week for a brief call?`;
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 80) return colors.green;
-  if (score >= 60) return colors.amber;
-  return colors.red;
+  if (score >= 80) return colors.success;
+  if (score >= 60) return colors.warning;
+  return colors.destructive;
 }
 
 function getSignalColor(type: SignalType): string {
   switch (type) {
-    case 'Funding': return colors.green;
-    case 'Hiring': return colors.blue;
-    case 'Expansion': return colors.amber;
-    case 'Revenue': return '#8b5cf6';
+    case 'Funding': return colors.success;
+    case 'Hiring': return colors.primary;
+    case 'Expansion': return colors.warning;
+    case 'Revenue': return colors.muted;
   }
 }
 
@@ -676,7 +676,7 @@ export default function LeadIntelligencePage() {
                 <div style={{ color: colors.muted, marginBottom: 12 }}>{selected.contact.role}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <Mail size={14} style={{ color: colors.muted, flexShrink: 0 }} />
-                  <a href={`mailto:${selected.contact.email}`} style={{ color: colors.blue, textDecoration: 'none' }}>
+                  <a href={`mailto:${selected.contact.email}`} style={{ color: colors.primary, textDecoration: 'none' }}>
                     {selected.contact.email}
                   </a>
                 </div>

@@ -16,18 +16,18 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
-// Design system colors
+// Design system colors - using CSS variables for ShadCN compatibility
 const colors = {
-  bg: '#fafaf9',
-  surface: '#f5f5f4',
-  surface2: '#eeeeec',
-  border: '#e5e5e3',
-  text: '#191919',
-  muted: '#737373',
-  blue: '#2563eb',
-  green: '#16a34a',
-  amber: '#d97706',
-  red: '#dc2626',
+  bg: 'var(--background)',
+  surface: 'var(--secondary)',
+  surface2: 'var(--surface-2)',
+  border: 'var(--border)',
+  text: 'var(--foreground)',
+  muted: 'var(--muted)',
+  primary: 'var(--primary)',
+  success: 'var(--success)',
+  warning: 'var(--warning)',
+  destructive: 'var(--destructive)',
 };
 
 // Types
@@ -409,10 +409,10 @@ const FileIcon = ({ type }: { type: FileType }) => {
 
 const StatusBadge = ({ status }: { status: Status }) => {
   const statusColors: Record<Status, string> = {
-    Processed: colors.green,
-    Pending: colors.amber,
-    Failed: colors.red,
-    'In Review': colors.blue,
+    Processed: colors.success,
+    Pending: colors.warning,
+    Failed: colors.destructive,
+    'In Review': colors.primary,
   };
 
   return (
@@ -439,12 +439,12 @@ const PolicyBadge = ({ policy }: { policy: PolicyType }) => {
 const ActionBadge = ({ action }: { action: AuditEntry['action'] }) => {
   const actionColors: Record<AuditEntry['action'], string> = {
     Viewed: colors.muted,
-    Downloaded: colors.blue,
-    Processed: colors.green,
-    Shared: colors.amber,
-    Approved: colors.green,
-    Rejected: colors.red,
-    Modified: colors.amber,
+    Downloaded: colors.primary,
+    Processed: colors.success,
+    Shared: colors.warning,
+    Approved: colors.success,
+    Rejected: colors.destructive,
+    Modified: colors.warning,
   };
 
   return (
@@ -617,7 +617,7 @@ export default function ComplianceDashboard() {
           <div style={{ fontSize: 11, color: colors.muted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Files</div>
         </div>
         <div>
-          <div style={{ fontSize: 32, fontWeight: 500, lineHeight: 1, color: colors.green }}>{stats.processedCount}</div>
+          <div style={{ fontSize: 32, fontWeight: 500, lineHeight: 1, color: colors.success }}>{stats.processedCount}</div>
           <div style={{ fontSize: 11, color: colors.muted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Processed</div>
         </div>
         <div>
@@ -629,7 +629,7 @@ export default function ComplianceDashboard() {
           <div style={{ fontSize: 11, color: colors.muted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Redactions</div>
         </div>
         <div>
-          <div style={{ fontSize: 32, fontWeight: 500, lineHeight: 1, color: stats.pendingReview > 0 ? colors.amber : colors.text }}>{stats.pendingReview}</div>
+          <div style={{ fontSize: 32, fontWeight: 500, lineHeight: 1, color: stats.pendingReview > 0 ? colors.warning : colors.text }}>{stats.pendingReview}</div>
           <div style={{ fontSize: 11, color: colors.muted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pending Review</div>
         </div>
       </div>
@@ -794,7 +794,7 @@ export default function ComplianceDashboard() {
                         <span style={{ fontSize: 15, fontWeight: 500 }}>{policy.name}</span>
                         <span style={{
                           fontSize: 11,
-                          color: policy.status === 'Active' ? colors.green : colors.muted,
+                          color: policy.status === 'Active' ? colors.success : colors.muted,
                           fontWeight: 500,
                         }}>
                           {policy.status}
@@ -826,7 +826,7 @@ export default function ComplianceDashboard() {
                             <span style={{ fontSize: 13, fontWeight: 500 }}>{rule.name}</span>
                             <span style={{
                               fontSize: 11,
-                              color: rule.status === 'Active' ? colors.green : colors.muted,
+                              color: rule.status === 'Active' ? colors.success : colors.muted,
                             }}>
                               {rule.status}
                             </span>
@@ -1055,7 +1055,7 @@ export default function ComplianceDashboard() {
                       padding: 12,
                       backgroundColor: colors.surface2,
                       borderRadius: 4,
-                      color: colors.red,
+                      color: colors.destructive,
                     }}>
                       <AlertCircle size={16} />
                       <span style={{ fontSize: 13 }}>Processing failed. Please retry or contact support.</span>
@@ -1114,7 +1114,7 @@ export default function ComplianceDashboard() {
                           width: 8,
                           height: 8,
                           borderRadius: '50%',
-                          backgroundColor: i === selectedDocument.chainOfCustody.length - 1 ? colors.blue : colors.muted,
+                          backgroundColor: i === selectedDocument.chainOfCustody.length - 1 ? colors.primary : colors.muted,
                           marginTop: 5,
                           flexShrink: 0,
                           position: 'relative',

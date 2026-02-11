@@ -324,24 +324,24 @@ export default function CollectablesPage() {
   const getStatusStyle = (status: Status) => {
     switch (status) {
       case 'For Sale':
-        return { color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)' };
+        return { color: 'var(--success)', bg: 'rgba(22, 163, 74, 0.08)' };
       case 'Auction':
-        return { color: '#d97706', bg: 'rgba(217, 119, 6, 0.08)' };
+        return { color: 'var(--warning)', bg: 'rgba(217, 119, 6, 0.08)' };
       case 'Sold':
-        return { color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)' };
+        return { color: 'var(--destructive)', bg: 'rgba(220, 38, 38, 0.08)' };
     }
   };
 
   const getConditionStyle = (condition: Condition) => {
     switch (condition) {
       case 'Mint':
-        return { color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)' };
+        return { color: 'var(--success)', bg: 'rgba(22, 163, 74, 0.08)' };
       case 'Near Mint':
-        return { color: '#2563eb', bg: 'rgba(37, 99, 235, 0.08)' };
+        return { color: 'var(--primary)', bg: 'rgba(37, 99, 235, 0.08)' };
       case 'Excellent':
-        return { color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.08)' };
+        return { color: '#525252', bg: 'rgba(82, 82, 82, 0.08)' };
       case 'Good':
-        return { color: '#d97706', bg: 'rgba(217, 119, 6, 0.08)' };
+        return { color: 'var(--warning)', bg: 'rgba(217, 119, 6, 0.08)' };
       case 'Fair':
         return { color: '#737373', bg: 'rgba(115, 115, 115, 0.08)' };
     }
@@ -666,7 +666,7 @@ export default function CollectablesPage() {
                           justifyContent: 'center',
                         }}
                       >
-                        <Eye size={14} strokeWidth={1.5} style={{ color: '#2563eb' }} />
+                        <Eye size={14} strokeWidth={1.5} style={{ color: 'var(--primary)' }} />
                       </div>
                     )}
                   </div>
@@ -873,7 +873,7 @@ export default function CollectablesPage() {
                     <p style={{ fontSize: '15px', fontWeight: 600 }}>{formatPrice(item.price)}</p>
                   </div>
                   {item.watched && (
-                    <Eye size={16} strokeWidth={1.5} style={{ color: '#2563eb', flexShrink: 0 }} />
+                    <Eye size={16} strokeWidth={1.5} style={{ color: 'var(--primary)', flexShrink: 0 }} />
                   )}
                 </article>
               );
@@ -1128,7 +1128,7 @@ export default function CollectablesPage() {
                     padding: '12px 16px',
                     fontSize: '13px',
                     fontWeight: 500,
-                    color: '#2563eb',
+                    color: 'var(--primary)',
                     backgroundColor: 'rgba(37, 99, 235, 0.08)',
                     borderRadius: '6px',
                   }}
@@ -1213,7 +1213,7 @@ export default function CollectablesPage() {
                       width: '44px',
                       height: '44px',
                       backgroundColor: selectedItem.watched ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
-                      color: selectedItem.watched ? '#2563eb' : '#737373',
+                      color: selectedItem.watched ? 'var(--primary)' : '#737373',
                       border: `1px solid ${selectedItem.watched ? 'rgba(37, 99, 235, 0.2)' : '#e5e5e3'}`,
                       borderRadius: '6px',
                       cursor: 'pointer',
@@ -1236,7 +1236,7 @@ export default function CollectablesPage() {
                       }
                     }}
                   >
-                    {selectedItem.watched ? <Heart size={18} strokeWidth={1.5} fill="#2563eb" /> : <Heart size={18} strokeWidth={1.5} />}
+                    {selectedItem.watched ? <Heart size={18} strokeWidth={1.5} fill="var(--primary)" /> : <Heart size={18} strokeWidth={1.5} />}
                   </button>
                 </>
               )}

@@ -251,17 +251,17 @@ Sustainability Review Team`;
 // Score color helper
 function getScoreColor(score: number, max: number = 100): string {
   const pct = (score / max) * 100;
-  if (pct >= 70) return '#16a34a';
-  if (pct >= 40) return '#d97706';
-  return '#dc2626';
+  if (pct >= 70) return 'var(--success)';
+  if (pct >= 40) return 'var(--warning)';
+  return 'var(--destructive)';
 }
 
 function getStatusColor(status: Submission['status']): string {
   switch (status) {
-    case 'Approved': return '#16a34a';
-    case 'Rejected': return '#dc2626';
-    case 'Needs Info': return '#d97706';
-    default: return '#737373';
+    case 'Approved': return 'var(--success)';
+    case 'Rejected': return 'var(--destructive)';
+    case 'Needs Info': return 'var(--warning)';
+    default: return 'var(--muted)';
   }
 }
 
@@ -280,7 +280,7 @@ function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#e5e5e3"
+          stroke="var(--border)"
           strokeWidth={4}
         />
         <circle
@@ -312,16 +312,16 @@ function CriteriaBar({ label, score, evidence }: { label: string; score: number;
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <span className="text-[13px]" style={{ color: '#191919' }}>{label}</span>
+        <span className="text-[13px]" style={{ color: 'var(--foreground)' }}>{label}</span>
         <span className="text-[13px] font-medium" style={{ color }}>{score}/20</span>
       </div>
-      <div className="h-1.5 rounded-full" style={{ backgroundColor: '#e5e5e3' }}>
+      <div className="h-1.5 rounded-full" style={{ backgroundColor: 'var(--border)' }}>
         <div 
           className="h-full rounded-full transition-all duration-150 ease-out"
           style={{ width: `${pct}%`, backgroundColor: color }}
         />
       </div>
-      <p className="text-[11px] leading-relaxed" style={{ color: '#737373' }}>{evidence}</p>
+      <p className="text-[11px] leading-relaxed" style={{ color: 'var(--muted)' }}>{evidence}</p>
     </div>
   );
 }
@@ -344,9 +344,9 @@ function FilterSelect({
         onChange={e => onChange(e.target.value)}
         className="appearance-none text-[13px] pl-3 pr-7 py-1.5 rounded cursor-pointer"
         style={{ 
-          backgroundColor: '#f5f5f4', 
-          color: '#191919', 
-          border: '1px solid #e5e5e3' 
+          backgroundColor: 'var(--secondary)', 
+          color: 'var(--foreground)', 
+          border: '1px solid var(--border)' 
         }}
         aria-label={label}
       >
@@ -357,7 +357,7 @@ function FilterSelect({
       <ChevronDown 
         size={14} 
         className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" 
-        style={{ color: '#737373' }} 
+        style={{ color: 'var(--muted)' }} 
       />
     </div>
   );
@@ -412,35 +412,35 @@ export default function SustainabilityReviewPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col" style={{ backgroundColor: '#fafaf9', color: '#191919' }}>
+    <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
       {/* Header */}
       <header 
         className="flex-shrink-0 flex items-center gap-4 px-6 h-14 border-b"
-        style={{ borderColor: '#e5e5e3' }}
+        style={{ borderColor: 'var(--border)' }}
       >
         <Link 
           href="/" 
           className="flex items-center gap-2 text-[13px] transition-opacity duration-150 hover:opacity-60"
-          style={{ color: '#737373' }}
+          style={{ color: 'var(--muted)' }}
         >
           <ArrowLeft size={16} strokeWidth={1.5} />
           Back
         </Link>
-        <div className="h-4 w-px" style={{ backgroundColor: '#e5e5e3' }} />
+        <div className="h-4 w-px" style={{ backgroundColor: 'var(--border)' }} />
         <span className="text-[15px] font-semibold">Sustainability Review</span>
         <div className="flex-1" />
         <div className="flex items-center gap-6 text-[13px]">
           <div>
-            <span style={{ color: '#737373' }}>Pending </span>
-            <span className="font-medium" style={{ color: '#d97706' }}>{stats.pending}</span>
+            <span style={{ color: 'var(--muted)' }}>Pending </span>
+            <span className="font-medium" style={{ color: 'var(--warning)' }}>{stats.pending}</span>
           </div>
           <div>
-            <span style={{ color: '#737373' }}>Approved </span>
-            <span className="font-medium" style={{ color: '#16a34a' }}>{stats.approved}</span>
+            <span style={{ color: 'var(--muted)' }}>Approved </span>
+            <span className="font-medium" style={{ color: 'var(--success)' }}>{stats.approved}</span>
           </div>
           <div>
-            <span style={{ color: '#737373' }}>Rejected </span>
-            <span className="font-medium" style={{ color: '#dc2626' }}>{stats.rejected}</span>
+            <span style={{ color: 'var(--muted)' }}>Rejected </span>
+            <span className="font-medium" style={{ color: 'var(--destructive)' }}>{stats.rejected}</span>
           </div>
         </div>
       </header>
@@ -450,12 +450,12 @@ export default function SustainabilityReviewPage() {
         {/* Left panel - submission list */}
         <div 
           className="w-[480px] flex-shrink-0 flex flex-col border-r"
-          style={{ borderColor: '#e5e5e3' }}
+          style={{ borderColor: 'var(--border)' }}
         >
           {/* Filters */}
           <div 
             className="flex-shrink-0 flex items-center gap-2 px-4 py-3 border-b"
-            style={{ borderColor: '#e5e5e3' }}
+            style={{ borderColor: 'var(--border)' }}
           >
             <FilterSelect
               value={statusFilter}
@@ -483,7 +483,7 @@ export default function SustainabilityReviewPage() {
               ]}
             />
             <div className="flex-1" />
-            <span className="text-[13px]" style={{ color: '#737373' }}>
+            <span className="text-[13px]" style={{ color: 'var(--muted)' }}>
               {filteredSubmissions.length} submissions
             </span>
           </div>
@@ -496,14 +496,14 @@ export default function SustainabilityReviewPage() {
                 onClick={() => handleSelect(submission)}
                 className="w-full text-left px-4 py-3 border-b transition-colors duration-150"
                 style={{ 
-                  borderColor: '#e5e5e3',
-                  backgroundColor: selectedId === submission.id ? '#f5f5f4' : 'transparent'
+                  borderColor: 'var(--border)',
+                  backgroundColor: selectedId === submission.id ? 'var(--secondary)' : 'transparent'
                 }}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[15px] font-medium truncate" style={{ color: '#191919' }}>
+                      <span className="text-[15px] font-medium truncate" style={{ color: 'var(--foreground)' }}>
                         {submission.shopName}
                       </span>
                       <span 
@@ -516,10 +516,10 @@ export default function SustainabilityReviewPage() {
                         {submission.status}
                       </span>
                     </div>
-                    <div className="text-[13px] mt-0.5" style={{ color: '#737373' }}>
+                    <div className="text-[13px] mt-0.5" style={{ color: 'var(--muted)' }}>
                       {submission.category}
                     </div>
-                    <div className="flex items-center gap-2 mt-1 text-[11px]" style={{ color: '#737373' }}>
+                    <div className="flex items-center gap-2 mt-1 text-[11px]" style={{ color: 'var(--muted)' }}>
                       <span>{submission.submitterName}</span>
                       <span>·</span>
                       <span>
@@ -546,12 +546,12 @@ export default function SustainabilityReviewPage() {
         {selected ? (
           <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
             {/* Shop header */}
-            <div className="flex-shrink-0 px-8 py-6 border-b" style={{ borderColor: '#e5e5e3' }}>
+            <div className="flex-shrink-0 px-8 py-6 border-b" style={{ borderColor: 'var(--border)' }}>
               <div className="flex items-start gap-6">
                 <ScoreRing score={selected.totalScore} size={72} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
-                    <h2 className="text-[24px] font-semibold" style={{ color: '#191919' }}>
+                    <h2 className="text-[24px] font-semibold" style={{ color: 'var(--foreground)' }}>
                       {selected.shopName}
                     </h2>
                     <span 
@@ -569,12 +569,12 @@ export default function SustainabilityReviewPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-[13px] mt-1 transition-opacity duration-150 hover:opacity-60"
-                    style={{ color: '#2563eb' }}
+                    style={{ color: 'var(--primary)' }}
                   >
                     {selected.website.replace('https://', '')}
                     <ExternalLink size={12} strokeWidth={1.5} />
                   </a>
-                  <p className="text-[13px] leading-relaxed mt-3" style={{ color: '#737373' }}>
+                  <p className="text-[13px] leading-relaxed mt-3" style={{ color: 'var(--muted)' }}>
                     {selected.description}
                   </p>
                 </div>
@@ -582,16 +582,16 @@ export default function SustainabilityReviewPage() {
               
               <div className="flex items-center gap-8 mt-6 text-[13px]">
                 <div>
-                  <div style={{ color: '#737373' }}>Category</div>
-                  <div className="mt-0.5" style={{ color: '#191919' }}>{selected.category}</div>
+                  <div style={{ color: 'var(--muted)' }}>Category</div>
+                  <div className="mt-0.5" style={{ color: 'var(--foreground)' }}>{selected.category}</div>
                 </div>
                 <div>
-                  <div style={{ color: '#737373' }}>Submitted by</div>
-                  <div className="mt-0.5" style={{ color: '#191919' }}>{selected.submitterName}</div>
+                  <div style={{ color: 'var(--muted)' }}>Submitted by</div>
+                  <div className="mt-0.5" style={{ color: 'var(--foreground)' }}>{selected.submitterName}</div>
                 </div>
                 <div>
-                  <div style={{ color: '#737373' }}>Date</div>
-                  <div className="mt-0.5" style={{ color: '#191919' }}>
+                  <div style={{ color: 'var(--muted)' }}>Date</div>
+                  <div className="mt-0.5" style={{ color: 'var(--foreground)' }}>
                     {selected.submittedAt.toLocaleDateString('en-US', { 
                       year: 'numeric',
                       month: 'long', 
@@ -603,8 +603,8 @@ export default function SustainabilityReviewPage() {
             </div>
             
             {/* Scorecard */}
-            <div className="flex-shrink-0 px-8 py-6 border-b" style={{ borderColor: '#e5e5e3' }}>
-              <h3 className="text-[13px] font-medium mb-4" style={{ color: '#737373' }}>
+            <div className="flex-shrink-0 px-8 py-6 border-b" style={{ borderColor: 'var(--border)' }}>
+              <h3 className="text-[13px] font-medium mb-4" style={{ color: 'var(--muted)' }}>
                 Sustainability Scorecard
               </h3>
               <div className="space-y-4">
@@ -637,12 +637,12 @@ export default function SustainabilityReviewPage() {
             </div>
             
             {/* Action buttons */}
-            <div className="flex-shrink-0 px-8 py-4 border-b" style={{ borderColor: '#e5e5e3' }}>
+            <div className="flex-shrink-0 px-8 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleStatusChange('Approved')}
                   className="flex items-center gap-1.5 px-4 py-2 rounded text-[13px] font-medium transition-opacity duration-150 hover:opacity-80"
-                  style={{ backgroundColor: '#16a34a', color: '#ffffff' }}
+                  style={{ backgroundColor: 'var(--success)', color: 'var(--primary-foreground)' }}
                 >
                   <Check size={16} strokeWidth={1.5} />
                   Approve
@@ -650,7 +650,7 @@ export default function SustainabilityReviewPage() {
                 <button
                   onClick={() => handleStatusChange('Rejected')}
                   className="flex items-center gap-1.5 px-4 py-2 rounded text-[13px] font-medium transition-opacity duration-150 hover:opacity-80"
-                  style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
+                  style={{ backgroundColor: 'var(--destructive)', color: 'var(--primary-foreground)' }}
                 >
                   <X size={16} strokeWidth={1.5} />
                   Reject
@@ -658,7 +658,7 @@ export default function SustainabilityReviewPage() {
                 <button
                   onClick={() => handleStatusChange('Needs Info')}
                   className="flex items-center gap-1.5 px-4 py-2 rounded text-[13px] font-medium transition-opacity duration-150 hover:opacity-80"
-                  style={{ backgroundColor: '#f5f5f4', color: '#191919', border: '1px solid #e5e5e3' }}
+                  style={{ backgroundColor: 'var(--secondary)', color: 'var(--foreground)', border: '1px solid var(--border)' }}
                 >
                   <Mail size={16} strokeWidth={1.5} />
                   Request Info
@@ -668,7 +668,7 @@ export default function SustainabilityReviewPage() {
             
             {/* Email preview */}
             <div className="flex-1 flex flex-col min-h-[300px] px-8 py-6">
-              <h3 className="text-[13px] font-medium mb-3" style={{ color: '#737373' }}>
+              <h3 className="text-[13px] font-medium mb-3" style={{ color: 'var(--muted)' }}>
                 Response Email
               </h3>
               <textarea
@@ -676,15 +676,15 @@ export default function SustainabilityReviewPage() {
                 onChange={e => setEditedEmail(e.target.value)}
                 className="flex-1 p-4 rounded text-[13px] leading-relaxed resize-none focus:outline-none"
                 style={{ 
-                  backgroundColor: '#f5f5f4', 
-                  color: '#191919',
-                  border: '1px solid #e5e5e3'
+                  backgroundColor: 'var(--secondary)', 
+                  color: 'var(--foreground)',
+                  border: '1px solid var(--border)'
                 }}
               />
               <div className="flex justify-end mt-4">
                 <button
                   className="px-4 py-2 rounded text-[13px] font-medium transition-opacity duration-150 hover:opacity-80"
-                  style={{ backgroundColor: '#2563eb', color: '#ffffff' }}
+                  style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}
                 >
                   Send Response
                 </button>
@@ -694,9 +694,9 @@ export default function SustainabilityReviewPage() {
         ) : (
           <div 
             className="flex-1 flex items-center justify-center"
-            style={{ backgroundColor: '#f5f5f4' }}
+            style={{ backgroundColor: 'var(--secondary)' }}
           >
-            <p className="text-[15px]" style={{ color: '#737373' }}>
+            <p className="text-[15px]" style={{ color: 'var(--muted)' }}>
               Select a submission to review
             </p>
           </div>

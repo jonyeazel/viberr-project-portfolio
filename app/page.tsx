@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-const REPO_BASE = "https://github.com/jonyeazel/viberr-project-portfolio/blob/main/app";
+const REPO_BASE =
+  "https://github.com/jonyeazel/viberr-project-portfolio/blob/main/app";
 
 const projects = [
   {
@@ -21,7 +22,8 @@ const projects = [
     slug: "compliance",
     name: "Compliance Automation",
     type: "Platform",
-    description: "Policy-driven redaction and audit logging for sensitive data",
+    description:
+      "Policy-driven redaction and audit logging for sensitive data",
     estimate: 1350,
   },
   {
@@ -35,7 +37,8 @@ const projects = [
     slug: "donation-workflow",
     name: "Donation Workflow",
     type: "Workflow Automation",
-    description: "Automated receipt generation and accounting for donations",
+    description:
+      "Automated receipt generation and accounting for donations",
     estimate: 1050,
   },
   {
@@ -56,7 +59,8 @@ const projects = [
     slug: "mental-health",
     name: "Mental Health",
     type: "Platform",
-    description: "Crisis detection, resource provisioning, and wellness tracking",
+    description:
+      "Crisis detection, resource provisioning, and wellness tracking",
     estimate: 1450,
   },
   {
@@ -77,7 +81,8 @@ const projects = [
     slug: "sustainability-review",
     name: "Sustainability Review",
     type: "Workflow Automation",
-    description: "Automated shop evaluation against sustainability criteria",
+    description:
+      "Automated shop evaluation against sustainability criteria",
     estimate: 1150,
   },
   {
@@ -105,7 +110,7 @@ export default function Home() {
         {projects.map((project) => (
           <div
             key={project.slug}
-            className="border border-border rounded-lg p-6 flex flex-col gap-4 bg-background"
+            className="border border-border rounded-lg p-6 flex flex-col gap-4 bg-card"
           >
             <div className="flex items-center justify-between">
               <p className="text-[11px] text-muted tracking-[0.05em] uppercase">
@@ -127,11 +132,10 @@ export default function Home() {
             <div className="flex items-center gap-3 pt-2 border-t border-border">
               <Link
                 href={`/${project.slug}`}
-                className="text-[13px] font-medium text-foreground hover:opacity-70 transition-opacity duration-150"
+                className="text-[13px] font-medium text-primary hover:opacity-70 transition-opacity duration-150"
               >
                 View prototype
               </Link>
-              <span className="text-border">|</span>
               <a
                 href={`${REPO_BASE}/${project.slug}/page.tsx`}
                 target="_blank"

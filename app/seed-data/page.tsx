@@ -30,16 +30,16 @@ function seededRandom(seed: number): () => number {
 }
 
 const colors = {
-  bg: '#fafaf9',
-  surface: '#f5f5f4',
-  surface2: '#eeeeec',
-  border: '#e5e5e3',
-  text: '#191919',
-  muted: '#737373',
-  blue: '#2563eb',
-  green: '#16a34a',
-  amber: '#d97706',
-  red: '#dc2626',
+  bg: 'var(--background)',
+  surface: 'var(--surface)',
+  surface2: 'var(--surface-2)',
+  border: 'var(--border)',
+  text: 'var(--foreground)',
+  muted: 'var(--muted)',
+  primary: 'var(--primary)',
+  success: 'var(--success)',
+  warning: 'var(--warning)',
+  destructive: 'var(--destructive)',
 };
 
 const generateUsers = (count: number) => {
@@ -206,10 +206,10 @@ export default function SeedDataPage() {
     switch (status) {
       case 'Full':
       case 'Active':
-        return colors.green;
+        return colors.success;
       case 'Partial':
       case 'Trial':
-        return colors.amber;
+        return colors.warning;
       default:
         return colors.muted;
     }
@@ -217,8 +217,8 @@ export default function SeedDataPage() {
 
   const getDemandColor = (demand: string) => {
     switch (demand) {
-      case 'High': return colors.green;
-      case 'Medium': return colors.amber;
+      case 'High': return colors.success;
+      case 'Medium': return colors.warning;
       default: return colors.muted;
     }
   };
@@ -405,8 +405,8 @@ export default function SeedDataPage() {
                       <AreaChart data={timeSeriesData}>
                         <defs>
                           <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={colors.blue} stopOpacity={0.12} />
-                            <stop offset="100%" stopColor={colors.blue} stopOpacity={0} />
+                            <stop offset="0%" stopColor="#2563eb" stopOpacity={0.1} />
+                            <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke={colors.border} vertical={false} />
@@ -434,7 +434,7 @@ export default function SeedDataPage() {
                         <Area
                           type="monotone"
                           dataKey="volume"
-                          stroke={colors.blue}
+                          stroke="#2563eb"
                           strokeWidth={1.5}
                           fill="url(#volumeGradient)"
                         />
@@ -473,7 +473,7 @@ export default function SeedDataPage() {
                         />
                         <Bar dataKey="revenue" radius={[0, 2, 2, 0]}>
                           {revenueByStream.map((entry, index) => (
-                            <Cell key={index} fill={index < 3 ? colors.green : colors.muted} fillOpacity={index < 3 ? 1 : 0.5} />
+                            <Cell key={index} fill={index === 0 ? '#2563eb' : '#93c5fd'} fillOpacity={index < 3 ? 1 : 0.5} />
                           ))}
                         </Bar>
                       </BarChart>
@@ -508,10 +508,10 @@ export default function SeedDataPage() {
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
                   <span style={{ fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Data Quality</span>
-                  <span style={{ fontSize: 15, fontWeight: 500, color: selectedUser.dataQualityScore >= 90 ? colors.green : colors.amber }}>{selectedUser.dataQualityScore}%</span>
+                  <span style={{ fontSize: 15, fontWeight: 500, color: selectedUser.dataQualityScore >= 90 ? colors.success : colors.warning }}>{selectedUser.dataQualityScore}%</span>
                 </div>
                 <div style={{ height: 4, backgroundColor: colors.surface2, borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{ width: `${selectedUser.dataQualityScore}%`, height: '100%', backgroundColor: selectedUser.dataQualityScore >= 90 ? colors.green : colors.amber, borderRadius: 2 }} />
+                  <div style={{ width: `${selectedUser.dataQualityScore}%`, height: '100%', backgroundColor: selectedUser.dataQualityScore >= 90 ? colors.success : colors.warning, borderRadius: 2 }} />
                 </div>
               </div>
 
@@ -525,7 +525,7 @@ export default function SeedDataPage() {
                         style={{
                           padding: '4px 10px',
                           fontSize: 11,
-                          backgroundColor: stream.active ? colors.green : colors.surface2,
+                          backgroundColor: stream.active ? colors.success : colors.surface2,
                           color: stream.active ? '#fff' : colors.muted,
                           border: 'none',
                           borderRadius: 2,
@@ -549,7 +549,7 @@ export default function SeedDataPage() {
                         <span>{formatNumber(stream.points)}</span>
                       </div>
                       <div style={{ height: 3, backgroundColor: colors.surface2, borderRadius: 1, overflow: 'hidden' }}>
-                        <div style={{ width: `${(stream.points / selectedUser.dataPoints) * 100}%`, height: '100%', backgroundColor: colors.blue, borderRadius: 1 }} />
+                        <div style={{ width: `${(stream.points / selectedUser.dataPoints) * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 1 }} />
                       </div>
                     </div>
                   ))}
@@ -567,7 +567,7 @@ export default function SeedDataPage() {
                         contentStyle={{ backgroundColor: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 4, fontSize: 12 }}
                         formatter={(value: number) => [`$${value.toFixed(2)}`, '']}
                       />
-                      <Line type="monotone" dataKey="amount" stroke={colors.green} strokeWidth={1.5} dot={false} />
+                      <Line type="monotone" dataKey="amount" stroke="#2563eb" strokeWidth={1.5} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>

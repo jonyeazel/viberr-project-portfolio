@@ -440,7 +440,7 @@ export default function VoucherFulfillmentPage() {
                       className="w-full text-left p-3 rounded transition-all duration-150"
                       style={{
                         backgroundColor: isSelected ? '#f5f5f4' : '#ffffff',
-                        border: `1px solid ${isSelected ? '#2563eb' : '#e5e5e3'}`,
+                        border: `1px solid ${isSelected ? 'var(--primary)' : '#e5e5e3'}`,
                       }}
                     >
                       {/* Order ID and flag */}
@@ -454,7 +454,7 @@ export default function VoucherFulfillmentPage() {
                         {order.flagged && (
                           <div
                             className="w-1.5 h-1.5 rounded-full"
-                            style={{ backgroundColor: '#d97706' }}
+                            style={{ backgroundColor: 'var(--warning)' }}
                           />
                         )}
                       </div>
@@ -655,9 +655,9 @@ export default function VoucherFulfillmentPage() {
                             className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
                             style={{
                               backgroundColor: isCompleted
-                                ? '#16a34a'
+                                ? 'var(--success)'
                                 : isActive
-                                  ? '#2563eb'
+                                  ? 'var(--primary)'
                                   : '#e5e5e3',
                             }}
                           >
@@ -671,7 +671,7 @@ export default function VoucherFulfillmentPage() {
                             <div
                               className="w-px flex-1 min-h-[24px]"
                               style={{
-                                backgroundColor: isCompleted ? '#16a34a' : '#e5e5e3',
+                                backgroundColor: isCompleted ? 'var(--success)' : '#e5e5e3',
                               }}
                             />
                           )}
@@ -710,10 +710,10 @@ export default function VoucherFulfillmentPage() {
                     <AlertTriangle
                       size={16}
                       strokeWidth={1.5}
-                      style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }}
+                      style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }}
                     />
                     <div>
-                      <div className="text-[13px] font-medium" style={{ color: '#d97706' }}>
+                      <div className="text-[13px] font-medium" style={{ color: 'var(--warning)' }}>
                         Flagged for Review
                       </div>
                       <div className="text-[12px] mt-0.5" style={{ color: '#b45309' }}>
@@ -734,7 +734,7 @@ export default function VoucherFulfillmentPage() {
                 <button
                   onClick={() => advanceOrder(selectedOrder.id)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded text-[13px] font-medium transition-opacity duration-150 hover:opacity-90"
-                  style={{ backgroundColor: '#2563eb', color: '#ffffff' }}
+                  style={{ backgroundColor: 'var(--primary)', color: '#ffffff' }}
                 >
                   Advance to {STAGES[STAGE_INDEX[selectedOrder.currentStage] + 1]?.label}
                   <ChevronRight size={16} strokeWidth={1.5} />
@@ -745,8 +745,8 @@ export default function VoucherFulfillmentPage() {
                 className="w-full px-4 py-2.5 rounded text-[13px] transition-opacity duration-150 hover:opacity-80"
                 style={{
                   backgroundColor: selectedOrder.flagged ? 'transparent' : '#f5f5f4',
-                  color: selectedOrder.flagged ? '#d97706' : '#737373',
-                  border: selectedOrder.flagged ? '1px solid #d97706' : '1px solid transparent',
+                  color: selectedOrder.flagged ? 'var(--warning)' : '#737373',
+                  border: selectedOrder.flagged ? '1px solid var(--warning)' : '1px solid transparent',
                 }}
               >
                 {selectedOrder.flagged ? 'Remove Flag' : 'Flag for Review'}

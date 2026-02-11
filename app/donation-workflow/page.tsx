@@ -292,13 +292,13 @@ function formatCurrency(amount: number): string {
 // Components
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { color: string; bg: string }> = {
-    sent: { color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)' },
-    logged: { color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)' },
-    pending: { color: '#d97706', bg: 'rgba(217, 119, 6, 0.08)' },
-    failed: { color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)' },
+    sent: { color: 'var(--success)', bg: 'color-mix(in srgb, var(--success) 8%, transparent)' },
+    logged: { color: 'var(--success)', bg: 'color-mix(in srgb, var(--success) 8%, transparent)' },
+    pending: { color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 8%, transparent)' },
+    failed: { color: 'var(--destructive)', bg: 'color-mix(in srgb, var(--destructive) 8%, transparent)' },
   };
 
-  const { color, bg } = config[status] || { color: '#737373', bg: 'transparent' };
+  const { color, bg } = config[status] || { color: 'var(--muted)', bg: 'transparent' };
 
   return (
     <span
@@ -316,9 +316,9 @@ function WorkflowVisualization({ steps }: { steps: WorkflowStep[] }) {
       {steps.map((step, i) => {
         const isLast = i === steps.length - 1;
         const statusColors = {
-          completed: '#16a34a',
-          pending: '#d97706',
-          failed: '#dc2626',
+          completed: 'var(--success)',
+          pending: 'var(--warning)',
+          failed: 'var(--destructive)',
         };
         const color = statusColors[step.status];
 
@@ -334,7 +334,7 @@ function WorkflowVisualization({ steps }: { steps: WorkflowStep[] }) {
                 <div
                   className="w-px flex-1 min-h-[32px]"
                   style={{
-                    backgroundColor: steps[i + 1].status === 'completed' ? '#16a34a' : '#e5e5e3',
+                    backgroundColor: steps[i + 1].status === 'completed' ? 'var(--success)' : '#e5e5e3',
                   }}
                 />
               )}
@@ -371,10 +371,10 @@ function WorkflowVisualization({ steps }: { steps: WorkflowStep[] }) {
 
 function ActivityItem({ event }: { event: ActivityEvent }) {
   const typeColors: Record<string, string> = {
-    payment: '#2563eb',
-    receipt: '#16a34a',
-    accounting: '#737373',
-    error: '#dc2626',
+    payment: 'var(--primary)',
+    receipt: 'var(--success)',
+    accounting: 'var(--muted)',
+    error: 'var(--destructive)',
   };
 
   return (
@@ -482,7 +482,7 @@ export default function DonationWorkflowPage() {
             <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-1">
               Pending Actions
             </p>
-            <p className="text-[28px] font-semibold tracking-tight text-[#d97706]">
+            <p className="text-[28px] font-semibold tracking-tight text-warning">
               {stats.pending}
             </p>
           </div>
@@ -704,7 +704,7 @@ export default function DonationWorkflowPage() {
                       Manual Log
                     </button>
                   </div>
-                  <button className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 px-3 text-[13px] text-[#dc2626] bg-[#eeeeec] hover:bg-[#e5e5e3] rounded transition-colors duration-150">
+                  <button className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 px-3 text-[13px] text-destructive bg-[#eeeeec] hover:bg-[#e5e5e3] rounded transition-colors duration-150">
                     <Flag size={14} strokeWidth={1.5} />
                     Flag Issue
                   </button>
