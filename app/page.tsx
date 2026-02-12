@@ -483,7 +483,32 @@ export default function Home() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [openDrawer, setOpenDrawer] = useState<string | null>(null);
+  const [focusedIndex, setFocusedIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Track which card is closest to center
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const containerCenter = el.scrollLeft + el.offsetWidth / 2;
+      let closest = 0;
+      let minDist = Infinity;
+      for (let i = 0; i < el.children.length; i++) {
+        const child = el.children[i] as HTMLElement;
+        const childCenter = child.offsetLeft + child.offsetWidth / 2;
+        const dist = Math.abs(containerCenter - childCenter);
+        if (dist < minDist) {
+          minDist = dist;
+          closest = i;
+        }
+      }
+      setFocusedIndex(closest);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
 
   const updateStep = useCallback(
     (slug: string, stepIndex: number, update: Partial<StepState>) => {
@@ -553,6 +578,9 @@ export default function Home() {
           >
             <ChevronLeft size={14} strokeWidth={1.5} />
           </button>
+          <span className="text-[11px] tabular-nums text-muted w-10 text-center">
+            {focusedIndex + 1}/{projects.length}
+          </span>
           <button
             onClick={() => scrollBy(1)}
             className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/20 transition-all duration-150"
@@ -568,19 +596,26 @@ export default function Home() {
         className="flex-1 flex items-center gap-5 overflow-x-auto snap-x snap-mandatory py-6"
         style={{ scrollbarWidth: "none", scrollBehavior: "smooth", paddingLeft: "calc(50vw - 187px)", paddingRight: "calc(50vw - 187px)" }}
       >
-        {projects.map((project) => {
+        {projects.map((project, idx) => {
           const TypeIcon = typeConfig[project.type].icon;
           const progress = getProgress(project.slug);
           const isSubmitted = submitted[project.slug];
           const completedCount =
             state[project.slug]?.filter((s) => s.completed).length ?? 0;
           const isDrawerOpen = openDrawer === project.slug;
+          const isFocused = idx === focusedIndex;
 
           return (
             <div
               key={project.slug}
               className="flex-shrink-0 relative overflow-hidden rounded-[16px] border border-border bg-card snap-center"
-              style={{ width: 375, aspectRatio: "4/5" }}
+              style={{
+                width: 375,
+                aspectRatio: "4/5",
+                transform: isFocused ? "scale(1)" : "scale(0.94)",
+                opacity: isFocused ? 1 : 0.55,
+                transition: "transform 150ms ease-out, opacity 150ms ease-out",
+              }}
             >
               {/* Card face */}
               <div className="absolute inset-0 flex flex-col p-6">
@@ -611,7 +646,7 @@ export default function Home() {
 
                 {/* Deliverables */}
                 <ul className="mt-5 space-y-2">
-                  {project.deliverables.slice(0, 4).map((d, i) => (
+                  {project.deliverables.map((d, i) => (
                     <li
                       key={i}
                       className="flex items-start gap-2 text-[12px] leading-[1.4] text-foreground/70"
