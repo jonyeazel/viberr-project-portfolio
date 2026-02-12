@@ -511,7 +511,7 @@ export default function Home() {
   const scrollBy = useCallback((direction: number) => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollBy({ left: direction * 320, behavior: "smooth" });
+    el.scrollBy({ left: direction * 395, behavior: "smooth" });
   }, []);
 
   useEffect(() => {
@@ -565,8 +565,8 @@ export default function Home() {
       {/* Multi-card slideshow */}
       <div
         ref={scrollRef}
-        className="flex-1 flex items-center gap-5 overflow-x-auto px-8 py-6"
-        style={{ scrollbarWidth: "none", scrollBehavior: "smooth" }}
+        className="flex-1 flex items-center gap-5 overflow-x-auto snap-x snap-mandatory py-6"
+        style={{ scrollbarWidth: "none", scrollBehavior: "smooth", paddingLeft: "calc(50vw - 187px)", paddingRight: "calc(50vw - 187px)" }}
       >
         {projects.map((project) => {
           const TypeIcon = typeConfig[project.type].icon;
@@ -579,8 +579,8 @@ export default function Home() {
           return (
             <div
               key={project.slug}
-              className="flex-shrink-0 relative overflow-hidden rounded-[16px] border border-border bg-card"
-              style={{ width: 300, aspectRatio: "4/5" }}
+              className="flex-shrink-0 relative overflow-hidden rounded-[16px] border border-border bg-card snap-center"
+              style={{ width: 375, aspectRatio: "4/5" }}
             >
               {/* Card face */}
               <div className="absolute inset-0 flex flex-col p-6">
@@ -602,10 +602,10 @@ export default function Home() {
                 </div>
 
                 {/* Title + description */}
-                <h2 className="text-[20px] font-semibold text-foreground mt-5 leading-[1.2]">
+                <h2 className="text-[22px] font-semibold text-foreground mt-5 leading-[1.2]">
                   {project.name}
                 </h2>
-                <p className="text-[13px] text-muted leading-[1.5] mt-1.5">
+                <p className="text-[13px] text-muted leading-[1.5] mt-2">
                   {project.description}
                 </p>
 
