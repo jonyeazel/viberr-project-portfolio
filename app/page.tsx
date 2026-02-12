@@ -11,6 +11,7 @@ import {
   Circle,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
 
 type StepType = "upload" | "input" | "choice" | "confirm";
@@ -481,7 +482,7 @@ export default function Home() {
   const [state, setState] = useState<ProjectState>(initProjectState);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [openDrawer, setOpenDrawer] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const updateStep = useCallback(
@@ -507,49 +508,23 @@ export default function Home() {
     return steps?.every((s) => s.completed) ?? false;
   };
 
-  const scrollTo = useCallback((index: number) => {
+  const scrollBy = useCallback((direction: number) => {
     const el = scrollRef.current;
     if (!el) return;
-    const child = el.children[index] as HTMLElement;
-    if (child) {
-      child.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "center",
-      });
-    }
-    setCurrentIndex(index);
-  }, []);
-
-  const goNext = useCallback(() => {
-    scrollTo(Math.min(currentIndex + 1, projects.length - 1));
-  }, [currentIndex, scrollTo]);
-
-  const goPrev = useCallback(() => {
-    scrollTo(Math.max(currentIndex - 1, 0));
-  }, [currentIndex, scrollTo]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      const idx = Math.round(el.scrollLeft / el.offsetWidth);
-      setCurrentIndex(Math.max(0, Math.min(idx, projects.length - 1)));
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
+    el.scrollBy({ left: direction * 320, behavior: "smooth" });
   }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
-      if (e.key === "ArrowRight") goNext();
-      if (e.key === "ArrowLeft") goPrev();
+      if (e.key === "ArrowRight") scrollBy(1);
+      if (e.key === "ArrowLeft") scrollBy(-1);
+      if (e.key === "Escape") setOpenDrawer(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goNext, goPrev]);
+  }, [scrollBy]);
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
@@ -573,30 +548,25 @@ export default function Home() {
 
         <div className="flex items-center gap-1.5">
           <button
-            onClick={goPrev}
-            disabled={currentIndex === 0}
-            className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/20 disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-150"
+            onClick={() => scrollBy(-1)}
+            className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/20 transition-all duration-150"
           >
             <ChevronLeft size={14} strokeWidth={1.5} />
           </button>
-          <span className="text-[12px] tabular-nums text-muted w-10 text-center">
-            {currentIndex + 1} / {projects.length}
-          </span>
           <button
-            onClick={goNext}
-            disabled={currentIndex === projects.length - 1}
-            className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/20 disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-150"
+            onClick={() => scrollBy(1)}
+            className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/20 transition-all duration-150"
           >
             <ChevronRight size={14} strokeWidth={1.5} />
           </button>
         </div>
       </header>
 
-      {/* Slideshow */}
+      {/* Multi-card slideshow */}
       <div
         ref={scrollRef}
-        className="flex-1 flex overflow-x-auto snap-x snap-mandatory scroll-smooth"
-        style={{ scrollbarWidth: "none" }}
+        className="flex-1 flex items-center gap-5 overflow-x-auto px-8 py-6"
+        style={{ scrollbarWidth: "none", scrollBehavior: "smooth" }}
       >
         {projects.map((project) => {
           const TypeIcon = typeConfig[project.type].icon;
@@ -604,100 +574,70 @@ export default function Home() {
           const isSubmitted = submitted[project.slug];
           const completedCount =
             state[project.slug]?.filter((s) => s.completed).length ?? 0;
+          const isDrawerOpen = openDrawer === project.slug;
 
           return (
             <div
               key={project.slug}
-              className="snap-center flex-shrink-0 w-full flex items-stretch justify-center px-8 py-6"
+              className="flex-shrink-0 relative overflow-hidden rounded-[16px] border border-border bg-card"
+              style={{ width: 300, aspectRatio: "4/5" }}
             >
-              <div className="border border-border rounded-[16px] bg-card w-full max-w-[960px] flex overflow-hidden">
-                {/* Left panel */}
-                <div className="flex-1 flex flex-col p-8 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-surface-2 flex items-center justify-center flex-shrink-0">
-                      <TypeIcon
-                        size={12}
-                        strokeWidth={1.5}
-                        className="text-muted"
-                      />
-                    </div>
-                    <span className="text-[11px] text-muted tracking-[0.05em] uppercase">
-                      {project.type}
-                    </span>
-                    <span className="text-[11px] text-muted/40 tabular-nums ml-auto">
-                      {project.code}
-                    </span>
+              {/* Card face */}
+              <div className="absolute inset-0 flex flex-col p-6">
+                {/* Type badge + code */}
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-surface-2 flex items-center justify-center flex-shrink-0">
+                    <TypeIcon
+                      size={10}
+                      strokeWidth={1.5}
+                      className="text-muted"
+                    />
                   </div>
-
-                  <h2 className="text-[28px] font-semibold text-foreground mt-6 leading-[1.15]">
-                    {project.name}
-                  </h2>
-
-                  <p className="text-[15px] text-muted leading-[1.6] mt-2 max-w-[380px]">
-                    {project.description}
-                  </p>
-
-                  {/* Deliverables */}
-                  <div className="mt-8">
-                    <span className="text-[11px] text-muted/60 tracking-[0.05em] uppercase">
-                      Deliverables
-                    </span>
-                    <ul className="mt-3 space-y-2.5">
-                      {project.deliverables.map((d, i) => (
-                        <li
-                          key={i}
-                          className="flex items-start gap-2.5 text-[13px] leading-[1.4] text-foreground/80"
-                        >
-                          <span className="w-1 h-1 rounded-full bg-foreground/25 mt-[7px] flex-shrink-0" />
-                          {d}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="flex-1" />
-
-                  <div className="border-t border-border pt-5 mt-6">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[32px] font-semibold tabular-nums text-foreground leading-none">
-                        ${(project.estimate / 2).toLocaleString()}
-                      </span>
-                      <span className="text-[13px] text-muted">
-                        / ${project.estimate.toLocaleString()} total
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 mt-5">
-                      <Link
-                        href={`/${project.slug}`}
-                        className="flex-1 h-10 flex items-center justify-center rounded-md bg-foreground text-background text-[13px] font-medium hover:opacity-85 transition-opacity duration-150"
-                      >
-                        View project
-                      </Link>
-                      <a
-                        href={`${REPO_BASE}/${project.slug}/page.tsx`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center w-10 h-10 rounded-md border border-border text-muted hover:text-foreground hover:border-foreground/20 transition-colors duration-150"
-                      >
-                        <Github size={16} strokeWidth={1.5} />
-                      </a>
-                    </div>
-                  </div>
+                  <span className="text-[11px] text-muted tracking-[0.05em] uppercase">
+                    {project.type}
+                  </span>
+                  <span className="text-[11px] text-muted/40 tabular-nums ml-auto">
+                    {project.code}
+                  </span>
                 </div>
 
-                {/* Right panel */}
-                <div className="w-[340px] flex-shrink-0 border-l border-border flex flex-col" style={{ backgroundColor: "#f5f5f4" }}>
-                  <div className="px-6 pt-6 pb-4 flex-shrink-0">
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-[11px] text-muted tracking-[0.05em] uppercase">
-                        To go live
-                      </span>
-                      <span className="text-[11px] tabular-nums text-muted">
-                        {completedCount}/{project.steps.length}
-                      </span>
-                    </div>
-                    <div className="h-1 rounded-full bg-[#e5e5e3] overflow-hidden">
+                {/* Title + description */}
+                <h2 className="text-[20px] font-semibold text-foreground mt-5 leading-[1.2]">
+                  {project.name}
+                </h2>
+                <p className="text-[13px] text-muted leading-[1.5] mt-1.5">
+                  {project.description}
+                </p>
+
+                {/* Deliverables */}
+                <ul className="mt-5 space-y-2">
+                  {project.deliverables.slice(0, 4).map((d, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start gap-2 text-[12px] leading-[1.4] text-foreground/70"
+                    >
+                      <span className="w-1 h-1 rounded-full bg-foreground/20 mt-[6px] flex-shrink-0" />
+                      {d}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="flex-1" />
+
+                {/* Price + progress */}
+                <div className="border-t border-border pt-4 mt-4">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[24px] font-semibold tabular-nums text-foreground leading-none">
+                      ${(project.estimate / 2).toLocaleString()}
+                    </span>
+                    <span className="text-[11px] text-muted">
+                      / ${project.estimate.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="flex-1 h-1 rounded-full bg-surface-2 overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-150 ease-out"
                         style={{
@@ -707,200 +647,279 @@ export default function Home() {
                         }}
                       />
                     </div>
+                    <span className="text-[10px] tabular-nums text-muted">
+                      {completedCount}/{project.steps.length}
+                    </span>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto px-6 pb-6">
-                    <div className="space-y-4">
-                      {project.steps.map((step, i) => {
-                        const stepState = state[project.slug]?.[i];
-                        const done = stepState?.completed;
-
-                        return (
-                          <div key={i} className="flex gap-2.5">
-                            <div className="flex-shrink-0 mt-0.5">
-                              {done ? (
-                                <div className="w-[18px] h-[18px] rounded-full bg-[#16a34a] flex items-center justify-center">
-                                  <Check
-                                    size={10}
-                                    strokeWidth={2.5}
-                                    className="text-white"
-                                  />
-                                </div>
-                              ) : (
-                                <Circle
-                                  size={18}
-                                  strokeWidth={1.5}
-                                  className="text-[#d4d4d2]"
-                                />
-                              )}
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <span
-                                className={`text-[13px] leading-[1.4] block ${
-                                  done
-                                    ? "text-muted line-through"
-                                    : "text-foreground"
-                                }`}
-                              >
-                                {step.label}
-                              </span>
-
-                              {step.type === "upload" && !done && (
-                                <label className="mt-1.5 flex items-center gap-2 px-3 py-2.5 rounded-md border border-dashed border-[#d4d4d2] hover:border-foreground/30 cursor-pointer transition-colors duration-150 bg-white/60">
-                                  <Upload
-                                    size={14}
-                                    strokeWidth={1.5}
-                                    className="text-muted flex-shrink-0"
-                                  />
-                                  <span className="text-[11px] text-muted truncate">
-                                    {step.placeholder}
-                                  </span>
-                                  <input
-                                    type="file"
-                                    accept={step.accept}
-                                    className="hidden"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        updateStep(project.slug, i, {
-                                          fileName: file.name,
-                                        });
-                                      }
-                                    }}
-                                  />
-                                </label>
-                              )}
-                              {step.type === "upload" &&
-                                done &&
-                                stepState?.fileName && (
-                                  <span className="text-[11px] text-muted mt-0.5 block truncate">
-                                    {stepState.fileName}
-                                  </span>
-                                )}
-
-                              {step.type === "input" && !done && (
-                                <input
-                                  type="text"
-                                  placeholder={step.placeholder}
-                                  className="mt-1.5 w-full h-8 px-3 rounded-md border border-[#d4d4d2] bg-white/60 text-[12px] text-foreground placeholder:text-muted/50 focus:outline-none focus:border-foreground/30 transition-colors duration-150"
-                                  onKeyDown={(e) => {
-                                    if (
-                                      e.key === "Enter" &&
-                                      e.currentTarget.value.trim()
-                                    ) {
-                                      updateStep(project.slug, i, {
-                                        value: e.currentTarget.value.trim(),
-                                      });
-                                    }
-                                  }}
-                                  onBlur={(e) => {
-                                    if (e.currentTarget.value.trim()) {
-                                      updateStep(project.slug, i, {
-                                        value: e.currentTarget.value.trim(),
-                                      });
-                                    }
-                                  }}
-                                />
-                              )}
-                              {step.type === "input" &&
-                                done &&
-                                stepState?.value && (
-                                  <span className="text-[11px] text-muted mt-0.5 block truncate">
-                                    {stepState.value}
-                                  </span>
-                                )}
-
-                              {step.type === "choice" &&
-                                !done &&
-                                step.options && (
-                                  <div className="mt-1.5 flex flex-wrap gap-1">
-                                    {step.options.map((option) => (
-                                      <button
-                                        key={option}
-                                        onClick={() =>
-                                          updateStep(project.slug, i, {
-                                            choice: option,
-                                          })
-                                        }
-                                        className="h-7 px-2.5 rounded-md border border-[#d4d4d2] bg-white/60 text-[11px] text-foreground hover:bg-white transition-colors duration-150"
-                                      >
-                                        {option}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              {step.type === "choice" &&
-                                done &&
-                                stepState?.choice && (
-                                  <span className="text-[11px] text-muted mt-0.5 block">
-                                    {stepState.choice}
-                                  </span>
-                                )}
-
-                              {step.type === "confirm" && !done && (
-                                <button
-                                  onClick={() =>
-                                    updateStep(project.slug, i, {})
-                                  }
-                                  className="mt-1.5 h-7 px-2.5 rounded-md border border-[#d4d4d2] bg-white/60 text-[11px] text-foreground hover:bg-white transition-colors duration-150"
-                                >
-                                  Done
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="mt-4 pt-4 border-t border-[#e5e5e3]">
-                      <textarea
-                        placeholder="Anything else we should know?"
-                        rows={2}
-                        value={notes[project.slug] || ""}
-                        onChange={(e) =>
-                          setNotes((prev) => ({
-                            ...prev,
-                            [project.slug]: e.target.value,
-                          }))
-                        }
-                        className="w-full px-3 py-2 rounded-md border border-[#d4d4d2] bg-white/60 text-[12px] text-foreground placeholder:text-muted/50 focus:outline-none focus:border-foreground/30 transition-colors duration-150 resize-none"
-                      />
-                    </div>
-
+                  {/* Action row */}
+                  <div className="flex items-center gap-2 mt-3">
                     {isSubmitted ? (
-                      <div className="mt-3 flex items-center gap-2 justify-center py-2.5">
-                        <Check
-                          size={14}
-                          strokeWidth={2}
-                          className="text-[#16a34a]"
-                        />
-                        <span className="text-[13px] text-[#16a34a] font-medium">
-                          Submitted
-                        </span>
+                      <div className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-md bg-[#16a34a]/10">
+                        <Check size={12} strokeWidth={2} className="text-[#16a34a]" />
+                        <span className="text-[12px] text-[#16a34a] font-medium">Submitted</span>
                       </div>
                     ) : (
                       <button
-                        onClick={() => {
-                          setSubmitted((prev) => ({
-                            ...prev,
-                            [project.slug]: true,
-                          }));
-                        }}
-                        disabled={!allDone(project.slug)}
-                        className={`mt-3 w-full h-9 rounded-md text-[13px] font-medium transition-opacity duration-150 ${
-                          allDone(project.slug)
-                            ? "bg-foreground text-background hover:opacity-85"
-                            : "bg-[#e5e5e3] text-muted cursor-not-allowed"
-                        }`}
+                        onClick={() => setOpenDrawer(project.slug)}
+                        className="flex-1 h-9 flex items-center justify-center rounded-md bg-foreground text-background text-[12px] font-medium hover:opacity-85 transition-opacity duration-150"
                       >
-                        {allDone(project.slug)
-                          ? "Submit everything"
-                          : `${project.steps.length - completedCount} remaining`}
+                        Go live
                       </button>
                     )}
+                    <Link
+                      href={`/${project.slug}`}
+                      className="h-9 px-3 flex items-center justify-center rounded-md border border-border text-[12px] text-muted hover:text-foreground hover:border-foreground/20 transition-colors duration-150"
+                    >
+                      View
+                    </Link>
+                    <a
+                      href={`${REPO_BASE}/${project.slug}/page.tsx`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center w-9 h-9 rounded-md border border-border text-muted hover:text-foreground hover:border-foreground/20 transition-colors duration-150"
+                    >
+                      <Github size={14} strokeWidth={1.5} />
+                    </a>
                   </div>
+                </div>
+              </div>
+
+              {/* Inset drawer */}
+              <div
+                className="absolute rounded-[13px] bg-card flex flex-col"
+                style={{
+                  inset: 3,
+                  transform: isDrawerOpen ? "translateY(0)" : "translateY(105%)",
+                  transition: "transform 150ms ease-out",
+                  boxShadow: isDrawerOpen ? "0 -4px 24px rgba(0,0,0,0.08)" : "none",
+                  pointerEvents: isDrawerOpen ? "auto" : "none",
+                }}
+              >
+                {/* Drawer header */}
+                <div className="px-5 pt-4 pb-3 flex items-center justify-between flex-shrink-0">
+                  <div>
+                    <span className="text-[11px] text-muted tracking-[0.05em] uppercase">
+                      To go live
+                    </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="w-24 h-1 rounded-full bg-surface-2 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-150 ease-out"
+                          style={{
+                            width: `${progress}%`,
+                            backgroundColor:
+                              progress === 100 ? "#16a34a" : "#2563eb",
+                          }}
+                        />
+                      </div>
+                      <span className="text-[10px] tabular-nums text-muted">
+                        {completedCount}/{project.steps.length}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setOpenDrawer(null)}
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-muted hover:text-foreground transition-colors duration-150"
+                  >
+                    <X size={14} strokeWidth={1.5} />
+                  </button>
+                </div>
+
+                {/* Drawer content */}
+                <div className="flex-1 overflow-y-auto px-5 pb-5">
+                  <div className="space-y-3.5">
+                    {project.steps.map((step, i) => {
+                      const stepState = state[project.slug]?.[i];
+                      const done = stepState?.completed;
+
+                      return (
+                        <div key={i} className="flex gap-2.5">
+                          <div className="flex-shrink-0 mt-0.5">
+                            {done ? (
+                              <div className="w-[18px] h-[18px] rounded-full bg-[#16a34a] flex items-center justify-center">
+                                <Check
+                                  size={10}
+                                  strokeWidth={2.5}
+                                  className="text-white"
+                                />
+                              </div>
+                            ) : (
+                              <Circle
+                                size={18}
+                                strokeWidth={1.5}
+                                className="text-[#d4d4d2]"
+                              />
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <span
+                              className={`text-[13px] leading-[1.4] block ${
+                                done
+                                  ? "text-muted line-through"
+                                  : "text-foreground"
+                              }`}
+                            >
+                              {step.label}
+                            </span>
+
+                            {step.type === "upload" && !done && (
+                              <label className="mt-1.5 flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-[#d4d4d2] hover:border-foreground/30 cursor-pointer transition-colors duration-150 bg-surface/30">
+                                <Upload
+                                  size={12}
+                                  strokeWidth={1.5}
+                                  className="text-muted flex-shrink-0"
+                                />
+                                <span className="text-[10px] text-muted truncate">
+                                  {step.placeholder}
+                                </span>
+                                <input
+                                  type="file"
+                                  accept={step.accept}
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      updateStep(project.slug, i, {
+                                        fileName: file.name,
+                                      });
+                                    }
+                                  }}
+                                />
+                              </label>
+                            )}
+                            {step.type === "upload" &&
+                              done &&
+                              stepState?.fileName && (
+                                <span className="text-[10px] text-muted mt-0.5 block truncate">
+                                  {stepState.fileName}
+                                </span>
+                              )}
+
+                            {step.type === "input" && !done && (
+                              <input
+                                type="text"
+                                placeholder={step.placeholder}
+                                className="mt-1.5 w-full h-7 px-2.5 rounded-md border border-[#d4d4d2] bg-surface/30 text-[11px] text-foreground placeholder:text-muted/50 focus:outline-none focus:border-foreground/30 transition-colors duration-150"
+                                onKeyDown={(e) => {
+                                  if (
+                                    e.key === "Enter" &&
+                                    e.currentTarget.value.trim()
+                                  ) {
+                                    updateStep(project.slug, i, {
+                                      value: e.currentTarget.value.trim(),
+                                    });
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  if (e.currentTarget.value.trim()) {
+                                    updateStep(project.slug, i, {
+                                      value: e.currentTarget.value.trim(),
+                                    });
+                                  }
+                                }}
+                              />
+                            )}
+                            {step.type === "input" &&
+                              done &&
+                              stepState?.value && (
+                                <span className="text-[10px] text-muted mt-0.5 block truncate">
+                                  {stepState.value}
+                                </span>
+                              )}
+
+                            {step.type === "choice" &&
+                              !done &&
+                              step.options && (
+                                <div className="mt-1.5 flex flex-wrap gap-1">
+                                  {step.options.map((option) => (
+                                    <button
+                                      key={option}
+                                      onClick={() =>
+                                        updateStep(project.slug, i, {
+                                          choice: option,
+                                        })
+                                      }
+                                      className="h-6 px-2 rounded-md border border-[#d4d4d2] bg-surface/30 text-[10px] text-foreground hover:bg-surface transition-colors duration-150"
+                                    >
+                                      {option}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            {step.type === "choice" &&
+                              done &&
+                              stepState?.choice && (
+                                <span className="text-[10px] text-muted mt-0.5 block">
+                                  {stepState.choice}
+                                </span>
+                              )}
+
+                            {step.type === "confirm" && !done && (
+                              <button
+                                onClick={() =>
+                                  updateStep(project.slug, i, {})
+                                }
+                                className="mt-1.5 h-6 px-2 rounded-md border border-[#d4d4d2] bg-surface/30 text-[10px] text-foreground hover:bg-surface transition-colors duration-150"
+                              >
+                                Done
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Notes */}
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <textarea
+                      placeholder="Anything else we should know?"
+                      rows={2}
+                      value={notes[project.slug] || ""}
+                      onChange={(e) =>
+                        setNotes((prev) => ({
+                          ...prev,
+                          [project.slug]: e.target.value,
+                        }))
+                      }
+                      className="w-full px-2.5 py-2 rounded-md border border-[#d4d4d2] bg-surface/30 text-[11px] text-foreground placeholder:text-muted/50 focus:outline-none focus:border-foreground/30 transition-colors duration-150 resize-none"
+                    />
+                  </div>
+
+                  {/* Submit */}
+                  {isSubmitted ? (
+                    <div className="mt-2.5 flex items-center gap-1.5 justify-center py-2">
+                      <Check
+                        size={12}
+                        strokeWidth={2}
+                        className="text-[#16a34a]"
+                      />
+                      <span className="text-[12px] text-[#16a34a] font-medium">
+                        Submitted
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setSubmitted((prev) => ({
+                          ...prev,
+                          [project.slug]: true,
+                        }));
+                      }}
+                      disabled={!allDone(project.slug)}
+                      className={`mt-2.5 w-full h-8 rounded-md text-[12px] font-medium transition-opacity duration-150 ${
+                        allDone(project.slug)
+                          ? "bg-foreground text-background hover:opacity-85"
+                          : "bg-surface-2 text-muted cursor-not-allowed"
+                      }`}
+                    >
+                      {allDone(project.slug)
+                        ? "Submit everything"
+                        : `${project.steps.length - completedCount} remaining`}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
