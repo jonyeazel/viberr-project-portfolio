@@ -586,8 +586,10 @@ export default function Home() {
         setOpenDrawer(null);
         return;
       }
-      if (e.key === "ArrowRight") scrollBy(1);
-      if (e.key === "ArrowLeft") scrollBy(-1);
+      if (!previewSlug) {
+        if (e.key === "ArrowRight") scrollBy(1);
+        if (e.key === "ArrowLeft") scrollBy(-1);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -622,6 +624,7 @@ export default function Home() {
           scrollBehavior: "smooth",
           paddingLeft: "calc(50vw - 190px)",
           paddingRight: "calc(50vw - 190px)",
+          ...(previewSlug ? { overflow: "hidden", touchAction: "none" } : {}),
         }}
       >
         {projects.map((project, idx) => {
@@ -634,13 +637,14 @@ export default function Home() {
           const isFocused = idx === focusedIndex;
           const isPreviewing = previewSlug === project.slug;
 
-          // Iframe scaling: render at full width, scale to fit card
+          // Iframe scaling constants
           const CARD_W = 380;
           const DESKTOP_W = 1280;
-          const MOBILE_W = 375;
-          const MOBILE_H = 812;
-          const dScale = CARD_W / DESKTOP_W;
-          const mScale = CARD_W / MOBILE_W;
+          const DESKTOP_H = 2000;
+          const MOBILE_W = 640;
+          const MOBILE_H = 1200;
+          const dScale = CARD_W / DESKTOP_W; // ~0.297
+          const mScale = CARD_W / MOBILE_W; // ~0.594
 
           return (
             <div
@@ -777,37 +781,70 @@ export default function Home() {
                 }}
               >
                 {/* Iframe viewport */}
-                <div className="flex-1 relative overflow-hidden">
+                <div className="flex-1 relative overflow-hidden rounded-t-[16px]">
                   {isPreviewing && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        overflow: "hidden",
-                      }}
-                    >
+                    <>
+                      {/* Desktop iframe */}
                       <div
                         style={{
                           position: "absolute",
-                          top: 0,
-                          left: previewDevice === "mobile" ? (CARD_W - MOBILE_W * mScale) / 2 : 0,
-                          width: previewDevice === "desktop" ? DESKTOP_W : MOBILE_W,
-                          height: previewDevice === "desktop" ? 2000 : MOBILE_H,
-                          transform: `scale(${previewDevice === "desktop" ? dScale : mScale})`,
-                          transformOrigin: "top left",
+                          inset: 0,
+                          overflow: "hidden",
+                          opacity: previewDevice === "desktop" ? 1 : 0,
+                          pointerEvents: previewDevice === "desktop" ? "auto" : "none",
+                          transition: "opacity 150ms ease-out",
                         }}
                       >
-                        <iframe
-                          src={`/${project.slug}`}
-                          className="w-full h-full border-none"
-                          style={{ background: "#fff" }}
-                          title={project.name}
-                        />
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            width: DESKTOP_W,
+                            height: DESKTOP_H,
+                            transform: `scale(${dScale})`,
+                            transformOrigin: "top left",
+                          }}
+                        >
+                          <iframe
+                            src={`/${project.slug}`}
+                            className="w-full h-full border-none"
+                            style={{ background: "#fff" }}
+                            title={`${project.name} — desktop`}
+                          />
+                        </div>
                       </div>
-                    </div>
+                      {/* Mobile iframe */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          overflow: "hidden",
+                          opacity: previewDevice === "mobile" ? 1 : 0,
+                          pointerEvents: previewDevice === "mobile" ? "auto" : "none",
+                          transition: "opacity 150ms ease-out",
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            width: MOBILE_W,
+                            height: MOBILE_H,
+                            transform: `scale(${mScale})`,
+                            transformOrigin: "top left",
+                          }}
+                        >
+                          <iframe
+                            src={`/${project.slug}`}
+                            className="w-full h-full border-none"
+                            style={{ background: "#fff" }}
+                            title={`${project.name} — mobile`}
+                          />
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
 
