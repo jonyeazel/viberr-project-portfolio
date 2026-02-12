@@ -559,11 +559,20 @@ export default function Home() {
   const [previewSlug, setPreviewSlug] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<PreviewMode>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [windowH, setWindowH] = useState(800);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // Measure viewport height
+  useEffect(() => {
+    const update = () => setWindowH(window.innerHeight);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   // Track which card is closest to center
   useEffect(() => {
@@ -756,6 +765,14 @@ export default function Home() {
 
   const focusedProject = projects[focusedIndex];
 
+  // Max card height that fits the viewport (header ~56px, bottom bar ~90px, padding 40px)
+  const maxCardH = Math.max(400, windowH - 186);
+  const mobileH = Math.min(MOBILE_FRAME_H, maxCardH);
+  const desktopH = Math.min(DESKTOP_FRAME_H, maxCardH);
+
+  const SPRING = "cubic-bezier(0.32, 0.72, 0, 1)";
+  const T = `width 300ms ${SPRING}, height 300ms ${SPRING}, border-radius 300ms ${SPRING}, transform 150ms ease-out, opacity 150ms ease-out`;
+
   // Calculate card dimensions based on preview mode for the active card
   const getCardStyle = (
     isPreviewing: boolean,
@@ -764,12 +781,11 @@ export default function Home() {
     if (isPreviewing && previewMode === "mobile") {
       return {
         width: MOBILE_FRAME_W,
-        height: MOBILE_FRAME_H,
+        height: mobileH,
         borderRadius: 36,
         transform: "scale(1)",
         opacity: 1,
-        transition:
-          "width 300ms cubic-bezier(0.32, 0.72, 0, 1), height 300ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 300ms cubic-bezier(0.32, 0.72, 0, 1), transform 150ms ease-out, opacity 150ms ease-out",
+        transition: T,
         border: "1px solid #e7e7e5",
         boxShadow:
           "0 0 0 1px rgba(99,91,255,0.06), 0 20px 60px rgba(0,0,0,0.12)",
@@ -778,12 +794,11 @@ export default function Home() {
     if (isPreviewing && previewMode === "desktop") {
       return {
         width: DESKTOP_FRAME_W,
-        height: DESKTOP_FRAME_H,
+        height: desktopH,
         borderRadius: 12,
         transform: "scale(1)",
         opacity: 1,
-        transition:
-          "width 300ms cubic-bezier(0.32, 0.72, 0, 1), height 300ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 300ms cubic-bezier(0.32, 0.72, 0, 1), transform 150ms ease-out, opacity 150ms ease-out",
+        transition: T,
         border: "1px solid #e7e7e5",
         boxShadow:
           "0 0 0 1px rgba(99,91,255,0.06), 0 20px 60px rgba(0,0,0,0.12)",
@@ -796,8 +811,7 @@ export default function Home() {
       borderRadius: 16,
       transform: isFocused ? "scale(1)" : "scale(0.95)",
       opacity: isFocused ? 1 : 0.4,
-      transition:
-        "width 300ms cubic-bezier(0.32, 0.72, 0, 1), height 300ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 300ms cubic-bezier(0.32, 0.72, 0, 1), transform 150ms ease-out, opacity 150ms ease-out",
+      transition: T,
       border: isFocused ? "1px solid #e7e7e5" : "1px solid #eeeeec",
       boxShadow: isFocused
         ? "0 0 0 1px rgba(99,91,255,0.06), 0 8px 40px rgba(0,0,0,0.06)"
@@ -1080,11 +1094,11 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Preview footer */}
+                {/* Preview toolbar */}
                 <div
-                  className="flex items-center justify-between px-3 flex-shrink-0"
+                  className="flex items-center justify-center gap-1 px-3 flex-shrink-0"
                   style={{
-                    height: 44,
+                    height: 40,
                     borderTop: "1px solid #e7e7e5",
                     background: "#fff",
                   }}
@@ -1094,16 +1108,17 @@ export default function Home() {
                       setPreviewSlug(null);
                       setPreviewMode(null);
                     }}
-                    className="flex items-center gap-1.5 text-[11px] text-muted hover:text-foreground transition-colors duration-150"
+                    className="w-7 h-7 rounded-[6px] flex items-center justify-center text-muted/50 hover:text-foreground hover:bg-surface transition-all duration-150"
                   >
-                    <ArrowLeft size={12} strokeWidth={1.5} />
-                    Back
+                    <X size={13} strokeWidth={1.5} />
                   </button>
+
+                  <div className="w-px h-4 bg-border mx-1" />
 
                   <div className="flex items-center gap-0.5 bg-surface rounded-[6px] p-0.5">
                     <button
                       onClick={() => setPreviewMode("mobile")}
-                      className={`w-7 h-6 rounded-[5px] flex items-center justify-center transition-colors duration-150 ${
+                      className={`w-7 h-6 rounded-[5px] flex items-center justify-center transition-all duration-150 ${
                         previewMode === "mobile"
                           ? "bg-card text-foreground shadow-sm"
                           : "text-muted/40 hover:text-muted"
@@ -1113,7 +1128,7 @@ export default function Home() {
                     </button>
                     <button
                       onClick={() => setPreviewMode("desktop")}
-                      className={`w-7 h-6 rounded-[5px] flex items-center justify-center transition-colors duration-150 ${
+                      className={`w-7 h-6 rounded-[5px] flex items-center justify-center transition-all duration-150 ${
                         previewMode === "desktop"
                           ? "bg-card text-foreground shadow-sm"
                           : "text-muted/40 hover:text-muted"
@@ -1123,9 +1138,11 @@ export default function Home() {
                     </button>
                   </div>
 
+                  <div className="w-px h-4 bg-border mx-1" />
+
                   <button
                     onClick={() => setPreviewMode("fullscreen")}
-                    className="flex items-center gap-1.5 text-[11px] text-muted/40 hover:text-muted transition-colors duration-150"
+                    className="w-7 h-7 rounded-[6px] flex items-center justify-center text-muted/40 hover:text-muted hover:bg-surface transition-all duration-150"
                   >
                     <Maximize2 size={12} strokeWidth={1.5} />
                   </button>
@@ -1442,131 +1459,166 @@ export default function Home() {
         })}
       </div>
 
-      {/* Bottom — AI chat interface */}
-      <div className="flex-shrink-0 px-8 pb-6 pt-4">
-        <div className="max-w-[680px] mx-auto">
-          {/* Chat messages */}
-          {chatMessages.length > 0 && (
-            <div
-              ref={chatScrollRef}
-              className="mb-3 max-h-40 overflow-y-auto rounded-[12px] bg-card border border-border p-4 space-y-3"
-              style={{ scrollbarWidth: "none" }}
-            >
-              {chatMessages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`text-[13px] leading-[1.6] ${
-                    msg.from === "user"
-                      ? "text-foreground font-medium"
-                      : "text-muted/80"
+      {/* Bottom — unified command bar */}
+      <div className="flex-shrink-0 px-6 pb-5 pt-3">
+        <div className="max-w-[720px] mx-auto">
+          <div className="rounded-[16px] border border-border bg-card overflow-hidden">
+            {/* Chat messages — flows upward from input */}
+            {(chatMessages.length > 0 || chatLoading) && (
+              <div
+                ref={chatScrollRef}
+                className="max-h-[200px] overflow-y-auto px-5 pt-4 pb-3 space-y-3"
+                style={{ scrollbarWidth: "none" }}
+              >
+                {chatMessages.map((msg, i) => (
+                  <div key={i} className="flex gap-3">
+                    <div
+                      className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
+                      style={{
+                        background:
+                          msg.from === "user" ? "#635bff" : "#f5f5f4",
+                      }}
+                    >
+                      {msg.from === "user" ? (
+                        <span className="text-[9px] font-semibold text-white">
+                          Y
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-semibold text-muted">
+                          V
+                        </span>
+                      )}
+                    </div>
+                    <div
+                      className={`flex-1 text-[13px] leading-[1.6] min-w-0 ${
+                        msg.from === "user"
+                          ? "text-foreground"
+                          : "text-foreground/70"
+                      }`}
+                    >
+                      {msg.from === "user"
+                        ? msg.text
+                        : msg.text.split("\n").map((line, li) => (
+                            <span key={li}>
+                              {renderMarkdown(line)}
+                              {li < msg.text.split("\n").length - 1 && <br />}
+                            </span>
+                          ))}
+                    </div>
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div className="flex gap-3">
+                    <div
+                      className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+                      style={{ background: "#f5f5f4" }}
+                    >
+                      <span className="text-[9px] font-semibold text-muted">
+                        V
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 pt-1.5">
+                      <div
+                        className="w-1 h-1 rounded-full bg-muted/40"
+                        style={{
+                          animation: "pulse 1s ease-in-out infinite",
+                        }}
+                      />
+                      <div
+                        className="w-1 h-1 rounded-full bg-muted/40"
+                        style={{
+                          animation: "pulse 1s ease-in-out 0.15s infinite",
+                        }}
+                      />
+                      <div
+                        className="w-1 h-1 rounded-full bg-muted/40"
+                        style={{
+                          animation: "pulse 1s ease-in-out 0.3s infinite",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Divider between messages and input */}
+            {(chatMessages.length > 0 || chatLoading) && (
+              <div className="mx-5 border-t border-border" />
+            )}
+
+            {/* Input row — nav + textarea + actions */}
+            <div className="flex items-end gap-2 px-3 py-2.5">
+              {/* Nav cluster */}
+              <div className="flex items-center flex-shrink-0 self-center">
+                <button
+                  onClick={() => scrollBy(-1)}
+                  className="w-7 h-7 rounded-[6px] flex items-center justify-center text-muted/40 hover:text-foreground hover:bg-surface transition-all duration-150"
+                >
+                  <ChevronLeft size={14} strokeWidth={1.5} />
+                </button>
+                <span className="text-[10px] tabular-nums text-muted/40 w-8 text-center select-none">
+                  {focusedIndex + 1}/{projects.length}
+                </span>
+                <button
+                  onClick={() => scrollBy(1)}
+                  className="w-7 h-7 rounded-[6px] flex items-center justify-center text-muted/40 hover:text-foreground hover:bg-surface transition-all duration-150"
+                >
+                  <ChevronRight size={14} strokeWidth={1.5} />
+                </button>
+              </div>
+
+              {/* Divider */}
+              <div className="w-px h-5 bg-border flex-shrink-0 self-center" />
+
+              {/* Textarea */}
+              <div className="flex-1 flex items-end gap-2 min-w-0 py-0.5">
+                <textarea
+                  ref={chatInputRef}
+                  value={chatValue}
+                  onChange={(e) => {
+                    setChatValue(e.target.value);
+                    e.target.style.height = "auto";
+                    e.target.style.height =
+                      Math.min(e.target.scrollHeight, 120) + "px";
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendChat();
+                    }
+                  }}
+                  placeholder={`Ask about ${focusedProject?.name ?? "this project"}...`}
+                  rows={1}
+                  className="flex-1 text-[13px] text-foreground placeholder:text-muted/30 bg-transparent focus:outline-none resize-none leading-[1.5] min-w-0"
+                  style={{ minHeight: 22, maxHeight: 120 }}
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-1 flex-shrink-0 self-center">
+                <button
+                  onClick={toggleRecording}
+                  className={`w-7 h-7 rounded-[6px] flex items-center justify-center transition-all duration-150 ${
+                    isRecording
+                      ? "bg-destructive text-white"
+                      : "text-muted/30 hover:text-muted hover:bg-surface"
                   }`}
                 >
-                  {msg.from === "user" ? (
-                    msg.text
+                  {isRecording ? (
+                    <Square size={10} strokeWidth={2} />
                   ) : (
-                    msg.text.split("\n").map((line, li) => (
-                      <span key={li}>
-                        {renderMarkdown(line)}
-                        {li < msg.text.split("\n").length - 1 && <br />}
-                      </span>
-                    ))
+                    <Mic size={14} strokeWidth={1.5} />
                   )}
-                </div>
-              ))}
-              {chatLoading && (
-                <div className="flex items-center gap-1.5">
-                  <div
-                    className="w-1.5 h-1.5 rounded-full bg-muted/30"
-                    style={{
-                      animation: "pulse 1s ease-in-out infinite",
-                    }}
-                  />
-                  <div
-                    className="w-1.5 h-1.5 rounded-full bg-muted/30"
-                    style={{
-                      animation: "pulse 1s ease-in-out 0.15s infinite",
-                    }}
-                  />
-                  <div
-                    className="w-1.5 h-1.5 rounded-full bg-muted/30"
-                    style={{
-                      animation: "pulse 1s ease-in-out 0.3s infinite",
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Nav + chat input row */}
-          <div className="flex items-end gap-3">
-            {/* Nav arrows */}
-            <div className="flex items-center gap-1.5 flex-shrink-0 pb-1">
-              <button
-                onClick={() => scrollBy(-1)}
-                className="w-8 h-8 rounded-[8px] border border-border flex items-center justify-center text-muted/50 hover:text-foreground hover:border-foreground/20 transition-all duration-150"
-              >
-                <ChevronLeft size={14} strokeWidth={1.5} />
-              </button>
-              <span className="text-[11px] tabular-nums text-muted/50 w-10 text-center">
-                {focusedIndex + 1}/{projects.length}
-              </span>
-              <button
-                onClick={() => scrollBy(1)}
-                className="w-8 h-8 rounded-[8px] border border-border flex items-center justify-center text-muted/50 hover:text-foreground hover:border-foreground/20 transition-all duration-150"
-              >
-                <ChevronRight size={14} strokeWidth={1.5} />
-              </button>
-            </div>
-
-            {/* Chat textarea */}
-            <div className="flex-1 flex items-end rounded-[12px] border border-border bg-card px-4 py-3 gap-3 min-h-[52px]">
-              <textarea
-                ref={chatInputRef}
-                value={chatValue}
-                onChange={(e) => {
-                  setChatValue(e.target.value);
-                  // Auto-resize
-                  e.target.style.height = "auto";
-                  e.target.style.height =
-                    Math.min(e.target.scrollHeight, 120) + "px";
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    sendChat();
-                  }
-                }}
-                placeholder={`Ask anything about ${focusedProject?.name ?? "this project"}...`}
-                rows={1}
-                className="flex-1 text-[13px] text-foreground placeholder:text-muted/30 bg-transparent focus:outline-none resize-none leading-[1.5]"
-                style={{ minHeight: 20, maxHeight: 120 }}
-              />
-
-              {/* Voice button */}
-              <button
-                onClick={toggleRecording}
-                className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 ${
-                  isRecording
-                    ? "bg-destructive text-white"
-                    : "text-muted/30 hover:text-muted"
-                }`}
-              >
-                {isRecording ? (
-                  <Square size={12} strokeWidth={2} />
-                ) : (
-                  <Mic size={14} strokeWidth={1.5} />
-                )}
-              </button>
-
-              {/* Send button */}
-              <button
-                onClick={() => sendChat()}
-                disabled={!chatValue.trim() || chatLoading}
-                className="flex-shrink-0 w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white disabled:opacity-20 hover:brightness-110 transition-all duration-150"
-              >
-                <SendHorizontal size={13} strokeWidth={2} />
-              </button>
+                </button>
+                <button
+                  onClick={() => sendChat()}
+                  disabled={!chatValue.trim() || chatLoading}
+                  className="w-7 h-7 rounded-[6px] bg-primary flex items-center justify-center text-white disabled:opacity-15 hover:brightness-110 transition-all duration-150"
+                >
+                  <SendHorizontal size={13} strokeWidth={2} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
