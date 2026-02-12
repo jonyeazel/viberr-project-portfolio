@@ -704,25 +704,25 @@ export default function Home() {
 
                   {/* Action row */}
                   <div className="flex items-center gap-2 mt-3">
+                    <Link
+                      href={`/${project.slug}`}
+                      className="flex-1 h-9 flex items-center justify-center rounded-[8px] bg-primary text-white text-[12px] font-medium hover:brightness-110 transition-all duration-150"
+                    >
+                      View project
+                    </Link>
                     {isSubmitted ? (
-                      <div className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-[8px] bg-[#00d4aa]/10">
+                      <div className="h-9 px-3.5 flex items-center justify-center gap-1.5 rounded-[8px] bg-[#00d4aa]/10">
                         <Check size={12} strokeWidth={2} className="text-[#00d4aa]" />
                         <span className="text-[12px] text-[#00d4aa] font-medium">Submitted</span>
                       </div>
                     ) : (
                       <button
                         onClick={() => setOpenDrawer(project.slug)}
-                        className="flex-1 h-9 flex items-center justify-center rounded-[8px] bg-primary text-white text-[12px] font-medium hover:brightness-110 transition-all duration-150"
+                        className="h-9 px-3.5 flex items-center justify-center rounded-[8px] border border-border text-[12px] text-muted hover:text-foreground hover:border-foreground/20 transition-colors duration-150"
                       >
-                        Start
+                        Next steps
                       </button>
                     )}
-                    <Link
-                      href={`/${project.slug}`}
-                      className="h-9 px-3.5 flex items-center justify-center rounded-[8px] border border-border text-[12px] text-muted hover:text-foreground hover:border-foreground/20 transition-colors duration-150"
-                    >
-                      View
-                    </Link>
                     <a
                       href={`${REPO_BASE}/${project.slug}/page.tsx`}
                       target="_blank"
