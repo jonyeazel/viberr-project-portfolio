@@ -15,6 +15,7 @@ import {
   SendHorizontal,
   Monitor,
   Smartphone,
+  ArrowLeft,
 } from "lucide-react";
 
 type StepType = "upload" | "input" | "choice" | "confirm";
@@ -490,8 +491,8 @@ export default function Home() {
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [chatValue, setChatValue] = useState("");
   const [chatMessages, setChatMessages] = useState<Array<{ from: "user" | "system"; text: string }>>([]);
-  const [expandedProject, setExpandedProject] = useState<string | null>(null);
-  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [previewSlug, setPreviewSlug] = useState<string | null>(null);
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("mobile");
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
@@ -577,20 +578,20 @@ export default function Home() {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === "Escape") {
-        if (expandedProject) {
-          setExpandedProject(null);
+        if (previewSlug) {
+          setPreviewSlug(null);
+          setPreviewDevice("mobile");
           return;
         }
         setOpenDrawer(null);
         return;
       }
-      if (expandedProject) return;
       if (e.key === "ArrowRight") scrollBy(1);
       if (e.key === "ArrowLeft") scrollBy(-1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [scrollBy, expandedProject]);
+  }, [scrollBy, previewSlug]);
 
   const focusedProject = projects[focusedIndex];
 
@@ -631,13 +632,22 @@ export default function Home() {
             state[project.slug]?.filter((s) => s.completed).length ?? 0;
           const isDrawerOpen = openDrawer === project.slug;
           const isFocused = idx === focusedIndex;
+          const isPreviewing = previewSlug === project.slug;
+
+          // Iframe scaling: render at full width, scale to fit card
+          const CARD_W = 380;
+          const DESKTOP_W = 1280;
+          const MOBILE_W = 375;
+          const MOBILE_H = 812;
+          const dScale = CARD_W / DESKTOP_W;
+          const mScale = CARD_W / MOBILE_W;
 
           return (
             <div
               key={project.slug}
               className="flex-shrink-0 relative overflow-hidden rounded-[16px] bg-card snap-center"
               style={{
-                width: 380,
+                width: CARD_W,
                 aspectRatio: "3/4",
                 transform: isFocused ? "scale(1)" : "scale(0.95)",
                 opacity: isFocused ? 1 : 0.4,
@@ -646,8 +656,15 @@ export default function Home() {
                 boxShadow: isFocused ? "0 0 0 1px rgba(99,91,255,0.06), 0 8px 40px rgba(0,0,0,0.06)" : "none",
               }}
             >
-              {/* Card face */}
-              <div className="absolute inset-0 flex flex-col p-6">
+              {/* Card face — static content */}
+              <div
+                className="absolute inset-0 flex flex-col p-6"
+                style={{
+                  opacity: isPreviewing ? 0 : 1,
+                  pointerEvents: isPreviewing ? "none" : "auto",
+                  transition: "opacity 150ms ease-out",
+                }}
+              >
                 {/* Type badge + code */}
                 <div className="flex items-center gap-2">
                   <TypeIcon
@@ -717,7 +734,10 @@ export default function Home() {
                   {/* Action row */}
                   <div className="flex items-center gap-2 mt-3">
                     <button
-                      onClick={() => setExpandedProject(project.slug)}
+                      onClick={() => {
+                        setPreviewSlug(project.slug);
+                        setPreviewDevice("mobile");
+                      }}
                       className="flex-1 h-9 flex items-center justify-center rounded-[8px] bg-primary text-white text-[12px] font-medium hover:brightness-110 transition-all duration-150"
                     >
                       View project
@@ -744,6 +764,104 @@ export default function Home() {
                       <Github size={14} strokeWidth={1.5} />
                     </a>
                   </div>
+                </div>
+              </div>
+
+              {/* Live preview — inline iframe */}
+              <div
+                className="absolute inset-0 flex flex-col"
+                style={{
+                  opacity: isPreviewing ? 1 : 0,
+                  pointerEvents: isPreviewing ? "auto" : "none",
+                  transition: "opacity 150ms ease-out",
+                }}
+              >
+                {/* Iframe viewport */}
+                <div className="flex-1 relative overflow-hidden">
+                  {isPreviewing && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: previewDevice === "mobile" ? (CARD_W - MOBILE_W * mScale) / 2 : 0,
+                          width: previewDevice === "desktop" ? DESKTOP_W : MOBILE_W,
+                          height: previewDevice === "desktop" ? 2000 : MOBILE_H,
+                          transform: `scale(${previewDevice === "desktop" ? dScale : mScale})`,
+                          transformOrigin: "top left",
+                        }}
+                      >
+                        <iframe
+                          src={`/${project.slug}`}
+                          className="w-full h-full border-none"
+                          style={{ background: "#fff" }}
+                          title={project.name}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Preview footer */}
+                <div
+                  className="flex items-center justify-between px-3 flex-shrink-0"
+                  style={{
+                    height: 44,
+                    borderTop: "1px solid #e7e7e5",
+                    background: "#fff",
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      setPreviewSlug(null);
+                      setPreviewDevice("mobile");
+                    }}
+                    className="flex items-center gap-1.5 text-[11px] text-muted hover:text-foreground transition-colors duration-150"
+                  >
+                    <ArrowLeft size={12} strokeWidth={1.5} />
+                    Back
+                  </button>
+
+                  <div className="flex items-center gap-0.5 bg-surface rounded-[6px] p-0.5">
+                    <button
+                      onClick={() => setPreviewDevice("desktop")}
+                      className={`w-7 h-6 rounded-[5px] flex items-center justify-center transition-colors duration-150 ${
+                        previewDevice === "desktop"
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted/40 hover:text-muted"
+                      }`}
+                    >
+                      <Monitor size={12} strokeWidth={1.5} />
+                    </button>
+                    <button
+                      onClick={() => setPreviewDevice("mobile")}
+                      className={`w-7 h-6 rounded-[5px] flex items-center justify-center transition-colors duration-150 ${
+                        previewDevice === "mobile"
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted/40 hover:text-muted"
+                      }`}
+                    >
+                      <Smartphone size={12} strokeWidth={1.5} />
+                    </button>
+                  </div>
+
+                  <a
+                    href={`/${project.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-muted/40 hover:text-muted transition-colors duration-150"
+                  >
+                    Open
+                  </a>
                 </div>
               </div>
 
@@ -1096,105 +1214,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Preview overlay */}
-      {expandedProject && (() => {
-        const ep = projects.find(p => p.slug === expandedProject);
-        return (
-          <div
-            className="fixed inset-0 z-50 flex flex-col"
-            style={{ backgroundColor: "#f0f0ee" }}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-3 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setExpandedProject(null)}
-                  className="w-8 h-8 rounded-[8px] flex items-center justify-center text-foreground/40 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150"
-                >
-                  <X size={16} strokeWidth={1.5} />
-                </button>
-                <span className="text-[13px] text-foreground/70 font-medium">
-                  {ep?.name}
-                </span>
-              </div>
-              <a
-                href={`/${expandedProject}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[12px] text-foreground/30 hover:text-foreground/60 transition-colors duration-150"
-              >
-                Open in new tab
-              </a>
-            </div>
 
-            {/* Content */}
-            <div className="flex-1 flex items-center justify-center min-h-0 px-6">
-              {previewDevice === "desktop" && (
-                <div
-                  className="relative bg-card rounded-[8px] overflow-hidden"
-                  style={{
-                    width: "100%",
-                    maxWidth: 1400,
-                    height: "100%",
-                    maxHeight: "calc(100vh - 120px)",
-                    boxShadow: "0 0 0 1px rgba(0,0,0,0.06), 0 8px 40px rgba(0,0,0,0.08)",
-                  }}
-                >
-                  <iframe
-                    src={`/${expandedProject}`}
-                    className="w-full h-full"
-                    title={`${ep?.name} — Desktop`}
-                  />
-                </div>
-              )}
-
-              {previewDevice === "mobile" && (
-                <div
-                  className="relative bg-card rounded-[32px] overflow-hidden"
-                  style={{
-                    width: 375,
-                    height: "60vh",
-                    boxShadow: "0 0 0 1px rgba(0,0,0,0.08), 0 16px 48px rgba(0,0,0,0.10)",
-                  }}
-                >
-                  <iframe
-                    src={`/${expandedProject}`}
-                    className="w-full"
-                    style={{ width: 375, height: 670 }}
-                    title={`${ep?.name} — Mobile`}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Footer with toggle */}
-            <div className="flex items-center justify-center py-4 flex-shrink-0">
-              <div className="flex items-center gap-1 bg-foreground/5 rounded-[8px] p-1">
-                <button
-                  onClick={() => setPreviewDevice("desktop")}
-                  className={`w-8 h-7 rounded-[6px] flex items-center justify-center transition-colors duration-150 ${
-                    previewDevice === "desktop"
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-foreground/30 hover:text-foreground/60"
-                  }`}
-                >
-                  <Monitor size={14} strokeWidth={1.5} />
-                </button>
-                <button
-                  onClick={() => setPreviewDevice("mobile")}
-                  className={`w-8 h-7 rounded-[6px] flex items-center justify-center transition-colors duration-150 ${
-                    previewDevice === "mobile"
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-foreground/30 hover:text-foreground/60"
-                  }`}
-                >
-                  <Smartphone size={14} strokeWidth={1.5} />
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }
