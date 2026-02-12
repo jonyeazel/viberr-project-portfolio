@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import Link from "next/link";
+
 import {
   Github,
   Workflow,
@@ -13,6 +13,8 @@ import {
   ChevronRight,
   X,
   SendHorizontal,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
 
 type StepType = "upload" | "input" | "choice" | "confirm";
@@ -488,6 +490,8 @@ export default function Home() {
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [chatValue, setChatValue] = useState("");
   const [chatMessages, setChatMessages] = useState<Array<{ from: "user" | "system"; text: string }>>([]);
+  const [expandedProject, setExpandedProject] = useState<string | null>(null);
+  const [previewDevice, setPreviewDevice] = useState<"both" | "desktop" | "mobile">("both");
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
@@ -572,13 +576,21 @@ export default function Home() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "Escape") {
+        if (expandedProject) {
+          setExpandedProject(null);
+          return;
+        }
+        setOpenDrawer(null);
+        return;
+      }
+      if (expandedProject) return;
       if (e.key === "ArrowRight") scrollBy(1);
       if (e.key === "ArrowLeft") scrollBy(-1);
-      if (e.key === "Escape") setOpenDrawer(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [scrollBy]);
+  }, [scrollBy, expandedProject]);
 
   const focusedProject = projects[focusedIndex];
 
@@ -704,12 +716,12 @@ export default function Home() {
 
                   {/* Action row */}
                   <div className="flex items-center gap-2 mt-3">
-                    <Link
-                      href={`/${project.slug}`}
+                    <button
+                      onClick={() => setExpandedProject(project.slug)}
                       className="flex-1 h-9 flex items-center justify-center rounded-[8px] bg-primary text-white text-[12px] font-medium hover:brightness-110 transition-all duration-150"
                     >
                       View project
-                    </Link>
+                    </button>
                     {isSubmitted ? (
                       <div className="h-9 px-3.5 flex items-center justify-center gap-1.5 rounded-[8px] bg-[#00d4aa]/10">
                         <Check size={12} strokeWidth={2} className="text-[#00d4aa]" />
@@ -1083,6 +1095,164 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Preview overlay */}
+      {expandedProject && (() => {
+        const ep = projects.find(p => p.slug === expandedProject);
+        return (
+          <div
+            className="fixed inset-0 z-50 flex flex-col"
+            style={{ backgroundColor: "rgba(25, 25, 25, 0.96)" }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 flex-shrink-0">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setExpandedProject(null)}
+                  className="w-8 h-8 rounded-[8px] flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors duration-150"
+                >
+                  <X size={16} strokeWidth={1.5} />
+                </button>
+                <span className="text-[14px] text-white/90 font-medium">
+                  {ep?.name}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1 bg-white/5 rounded-[8px] p-1">
+                <button
+                  onClick={() => setPreviewDevice("both")}
+                  className={`px-3 h-7 rounded-[6px] text-[11px] font-medium transition-colors duration-150 ${
+                    previewDevice === "both"
+                      ? "bg-white/15 text-white"
+                      : "text-white/40 hover:text-white/70"
+                  }`}
+                >
+                  Both
+                </button>
+                <button
+                  onClick={() => setPreviewDevice("desktop")}
+                  className={`w-7 h-7 rounded-[6px] flex items-center justify-center transition-colors duration-150 ${
+                    previewDevice === "desktop"
+                      ? "bg-white/15 text-white"
+                      : "text-white/40 hover:text-white/70"
+                  }`}
+                >
+                  <Monitor size={14} strokeWidth={1.5} />
+                </button>
+                <button
+                  onClick={() => setPreviewDevice("mobile")}
+                  className={`w-7 h-7 rounded-[6px] flex items-center justify-center transition-colors duration-150 ${
+                    previewDevice === "mobile"
+                      ? "bg-white/15 text-white"
+                      : "text-white/40 hover:text-white/70"
+                  }`}
+                >
+                  <Smartphone size={14} strokeWidth={1.5} />
+                </button>
+              </div>
+
+              <a
+                href={`/${expandedProject}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[12px] text-white/40 hover:text-white/70 transition-colors duration-150"
+              >
+                Open in new tab
+              </a>
+            </div>
+
+            {/* Iframe area */}
+            <div className="flex-1 flex items-center justify-center gap-6 px-6 pb-6 min-h-0">
+              {/* Desktop iframe */}
+              {(previewDevice === "both" || previewDevice === "desktop") && (
+                <div
+                  className="relative bg-[#191919] rounded-[8px] overflow-hidden flex-shrink-0"
+                  style={{
+                    width: previewDevice === "both" ? "calc(100% - 220px)" : "100%",
+                    maxWidth: previewDevice === "both" ? 1100 : 1400,
+                    height: "100%",
+                    boxShadow: "0 0 0 1px rgba(255,255,255,0.06), 0 25px 50px rgba(0,0,0,0.4)",
+                  }}
+                >
+                  <div className="h-8 bg-[#2a2a2a] flex items-center px-3 gap-2 flex-shrink-0">
+                    <div className="flex gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
+                    </div>
+                    <div className="flex-1 flex justify-center">
+                      <div className="h-5 px-3 rounded-[4px] bg-[#1a1a1a] flex items-center">
+                        <span className="text-[10px] text-white/25 font-mono">
+                          viberr.dev/{expandedProject}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <iframe
+                    src={`/${expandedProject}`}
+                    className="w-full bg-white"
+                    style={{ height: "calc(100% - 32px)" }}
+                    title={`${ep?.name} — Desktop`}
+                  />
+                </div>
+              )}
+
+              {/* Mobile iframe */}
+              {(previewDevice === "both" || previewDevice === "mobile") && (
+                <div
+                  className="relative flex-shrink-0"
+                  style={{
+                    width: previewDevice === "mobile" ? 375 : 195,
+                    height: previewDevice === "mobile" ? "100%" : "auto",
+                    maxHeight: previewDevice === "mobile" ? "calc(100vh - 120px)" : 420,
+                  }}
+                >
+                  <div
+                    className="relative bg-[#1a1a1a] overflow-hidden"
+                    style={{
+                      width: "100%",
+                      height: previewDevice === "mobile" ? "100%" : 420,
+                      padding: previewDevice === "mobile" ? 12 : 8,
+                      borderRadius: previewDevice === "mobile" ? 40 : 24,
+                      boxShadow: "0 0 0 1px rgba(255,255,255,0.08), 0 25px 50px rgba(0,0,0,0.4)",
+                    }}
+                  >
+                    {/* Notch */}
+                    <div
+                      className="absolute top-0 left-1/2 -translate-x-1/2 bg-[#1a1a1a] z-10"
+                      style={{
+                        width: previewDevice === "mobile" ? 120 : 80,
+                        height: previewDevice === "mobile" ? 28 : 18,
+                        borderBottomLeftRadius: 12,
+                        borderBottomRightRadius: 12,
+                      }}
+                    />
+                    {/* Screen */}
+                    <div
+                      className="relative w-full h-full bg-white overflow-hidden"
+                      style={{
+                        borderRadius: previewDevice === "mobile" ? 28 : 16,
+                      }}
+                    >
+                      <iframe
+                        src={`/${expandedProject}`}
+                        className="absolute inset-0"
+                        style={{
+                          width: previewDevice === "both" ? "192.3%" : "100%",
+                          height: previewDevice === "both" ? "192.3%" : "100%",
+                          transform: previewDevice === "both" ? "scale(0.52)" : "scale(1)",
+                          transformOrigin: "top left",
+                        }}
+                        title={`${ep?.name} — Mobile`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
