@@ -273,7 +273,8 @@ export default function BillingWorkflowPage() {
       <div style={{ 
         padding: '16px 24px',
         display: 'flex',
-        gap: 48,
+        flexWrap: 'wrap',
+        gap: '12px 48px',
         borderBottom: `1px solid ${colors.border}`,
         flexShrink: 0,
       }}>
@@ -333,8 +334,8 @@ function DataReviewTab({
   onToggleVerified: (id: string) => void;
 }) {
   return (
-    <div style={{ background: colors.surface, borderRadius: 8, border: `1px solid ${colors.border}` }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <div style={{ background: colors.surface, borderRadius: 8, border: `1px solid ${colors.border}`, overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
         <thead>
           <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
             <Th style={{ width: 48 }} />
@@ -422,7 +423,7 @@ function InvoicingTab({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Summary Cards */}
-      <div style={{ display: 'flex', gap: 16 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
         <SummaryCard label="Total" value={totals.total} />
         <SummaryCard label="Draft" value={totals.draft} color={colors.muted} />
         <SummaryCard label="Sent" value={totals.sent} color={colors.primary} />
@@ -430,8 +431,8 @@ function InvoicingTab({
       </div>
 
       {/* Invoice Table */}
-      <div style={{ background: colors.surface, borderRadius: 8, border: `1px solid ${colors.border}` }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div style={{ background: colors.surface, borderRadius: 8, border: `1px solid ${colors.border}`, overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
               <Th>Customer</Th>
@@ -535,7 +536,8 @@ function FinancialPlanTab({ customers }: { customers: Customer[] }) {
         border: `1px solid ${colors.border}`,
         padding: 24,
         display: 'flex',
-        gap: 64,
+        flexWrap: 'wrap',
+        gap: '24px 48px',
       }}>
         <div>
           <div style={{ fontSize: 11, color: colors.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -582,8 +584,8 @@ function FinancialPlanTab({ customers }: { customers: Customer[] }) {
       </div>
 
       {/* Ledger Table */}
-      <div style={{ background: colors.surface, borderRadius: 8, border: `1px solid ${colors.border}` }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div style={{ background: colors.surface, borderRadius: 8, border: `1px solid ${colors.border}`, overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
               <Th>Customer</Th>
@@ -659,7 +661,8 @@ function SummaryCard({
       borderRadius: 8, 
       border: `1px solid ${colors.border}`,
       padding: 16,
-      flex: 1,
+      flex: '1 1 140px',
+      minWidth: 140,
     }}>
       <div style={{ fontSize: 11, color: colors.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         {label}

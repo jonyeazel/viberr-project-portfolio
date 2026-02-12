@@ -610,7 +610,8 @@ export default function ComplianceDashboard() {
         padding: '24px',
         borderBottom: `1px solid ${colors.border}`,
         display: 'flex',
-        gap: 48,
+        flexWrap: 'wrap',
+        gap: '16px 48px',
       }}>
         <div>
           <div style={{ fontSize: 32, fontWeight: 500, lineHeight: 1 }}>{stats.totalFiles}</div>
@@ -667,7 +668,7 @@ export default function ComplianceDashboard() {
       </div>
 
       {/* Main content */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
         {/* Content area */}
         <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
           {activeTab === 'documents' && (
@@ -677,7 +678,8 @@ export default function ComplianceDashboard() {
                 padding: '12px 24px',
                 borderBottom: `1px solid ${colors.border}`,
                 display: 'flex',
-                gap: 12,
+                flexWrap: 'wrap',
+                gap: '8px 12px',
                 alignItems: 'center',
               }}>
                 <select value={filterPolicy} onChange={e => setFilterPolicy(e.target.value as PolicyType | 'all')} style={selectStyle}>
@@ -862,7 +864,8 @@ export default function ComplianceDashboard() {
                 padding: '12px 24px',
                 borderBottom: `1px solid ${colors.border}`,
                 display: 'flex',
-                gap: 12,
+                flexWrap: 'wrap',
+                gap: '8px 12px',
                 alignItems: 'center',
               }}>
                 <select value={auditFilterAction} onChange={e => setAuditFilterAction(e.target.value as AuditEntry['action'] | 'all')} style={selectStyle}>
@@ -926,13 +929,18 @@ export default function ComplianceDashboard() {
         {/* Document detail panel */}
         {selectedDocument && activeTab === 'documents' && (
           <div style={{
-            width: 420,
+            width: 'min(420px, 100%)',
             borderLeft: `1px solid ${colors.border}`,
             backgroundColor: colors.surface,
             overflow: 'auto',
             flexShrink: 0,
             display: 'flex',
             flexDirection: 'column',
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            zIndex: 10,
           }}>
             {/* Panel header */}
             <div style={{
@@ -943,7 +951,23 @@ export default function ComplianceDashboard() {
               justifyContent: 'space-between',
               flexShrink: 0,
             }}>
-              <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <button
+                  onClick={() => setSelectedDocument(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: colors.muted,
+                    cursor: 'pointer',
+                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    marginRight: 4,
+                  }}
+                  title="Back to list"
+                >
+                  <ArrowLeft size={16} />
+                </button>
                 <button
                   onClick={() => setShowJsonOverlay(false)}
                   style={{

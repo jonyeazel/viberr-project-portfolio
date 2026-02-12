@@ -295,7 +295,7 @@ export default function OutboundEmailPage() {
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-80 border-r border-[#e5e5e3] flex flex-col shrink-0 bg-[#fafaf9]">
+        <aside className={`w-full md:w-80 border-r border-[#e5e5e3] flex flex-col shrink-0 bg-[#fafaf9] ${selectedId ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-3 border-b border-[#e5e5e3]">
             <div className="relative">
               <Search size={16} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#737373]" />
@@ -348,12 +348,19 @@ export default function OutboundEmailPage() {
           </div>
         </aside>
 
-        <main className="flex-1 flex flex-col overflow-hidden bg-[#fafaf9]">
+        <main className={`flex-1 flex flex-col overflow-hidden bg-[#fafaf9] ${selectedId ? 'flex' : 'hidden md:flex'}`}>
           {selectedContact ? (
             <>
-              <div className="px-6 py-4 border-b border-[#e5e5e3] shrink-0">
+              <div className="px-4 md:px-6 py-4 border-b border-[#e5e5e3] shrink-0">
                 <div className="flex items-start justify-between">
                   <div>
+                    <button
+                      onClick={() => setSelectedId(null)}
+                      className="md:hidden flex items-center gap-1.5 text-[13px] text-[#737373] hover:text-[#191919] mb-2 transition-colors duration-150"
+                    >
+                      <ArrowLeft size={14} strokeWidth={1.5} />
+                      All contacts
+                    </button>
                     <h1 className="text-[18px] font-medium">{selectedContact.name}</h1>
                     <div className="text-[13px] text-[#737373] mt-1">
                       {selectedContact.role} at {selectedContact.company}

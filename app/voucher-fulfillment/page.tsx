@@ -365,7 +365,7 @@ export default function VoucherFulfillmentPage() {
         </div>
 
         {/* Stats inline */}
-        <div className="flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-8">
           <div className="flex items-center gap-2">
             <span className="text-[13px]" style={{ color: '#737373' }}>
               Today
@@ -404,7 +404,7 @@ export default function VoucherFulfillmentPage() {
       {/* Main content */}
       <div className="flex-1 flex min-h-0">
         {/* Pipeline columns */}
-        <div className="flex-1 flex overflow-x-auto">
+        <div className={`flex-1 flex overflow-x-auto ${selectedOrder ? 'hidden md:flex' : 'flex'}`}>
           {STAGES.map((stage) => (
             <div
               key={stage.key}
@@ -494,7 +494,7 @@ export default function VoucherFulfillmentPage() {
         {/* Detail panel */}
         {selectedOrder && (
           <div
-            className="w-[420px] flex-shrink-0 border-l flex flex-col overflow-hidden"
+            className="w-full md:w-[420px] flex-shrink-0 md:border-l flex flex-col overflow-hidden"
             style={{ borderColor: '#e5e5e3', backgroundColor: '#ffffff' }}
           >
             {/* Panel header */}
@@ -502,17 +502,26 @@ export default function VoucherFulfillmentPage() {
               className="flex-shrink-0 px-5 py-4 border-b flex items-center justify-between"
               style={{ borderColor: '#e5e5e3' }}
             >
-              <div>
-                <div className="text-[15px] font-medium" style={{ color: '#191919' }}>
-                  {selectedOrder.id}
-                </div>
-                <div className="text-[12px] mt-0.5" style={{ color: '#737373' }}>
-                  {formatDate(selectedOrder.createdAt)} at {formatTime(selectedOrder.createdAt)}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSelectedOrderId(null)}
+                  className="md:hidden p-1.5 -ml-1.5 rounded transition-colors duration-150 hover:bg-[#f5f5f4]"
+                  style={{ color: '#737373' }}
+                >
+                  <ArrowLeft size={18} strokeWidth={1.5} />
+                </button>
+                <div>
+                  <div className="text-[15px] font-medium" style={{ color: '#191919' }}>
+                    {selectedOrder.id}
+                  </div>
+                  <div className="text-[12px] mt-0.5" style={{ color: '#737373' }}>
+                    {formatDate(selectedOrder.createdAt)} at {formatTime(selectedOrder.createdAt)}
+                  </div>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedOrderId(null)}
-                className="p-1.5 rounded transition-colors duration-150 hover:bg-[#f5f5f4]"
+                className="hidden md:block p-1.5 rounded transition-colors duration-150 hover:bg-[#f5f5f4]"
                 style={{ color: '#737373' }}
               >
                 <X size={18} strokeWidth={1.5} />

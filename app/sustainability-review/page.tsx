@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ExternalLink, Check, X, Mail, ChevronDown } from 'lucide-react';
 
@@ -371,6 +371,15 @@ export default function SustainabilityReviewPage() {
   const [editedEmail, setEditedEmail] = useState(() => 
     initialSubmissions[0] ? generateEmail(initialSubmissions[0]) : ''
   );
+  const [isMobile, setIsMobile] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   const selected = useMemo(
     () => submissions.find(s => s.id === selectedId) || null,
@@ -398,6 +407,11 @@ export default function SustainabilityReviewPage() {
   const handleSelect = (submission: Submission) => {
     setSelectedId(submission.id);
     setEditedEmail(generateEmail(submission));
+    if (isMobile) setShowDetail(true);
+  };
+
+  const handleBackToList = () => {
+    setShowDetail(false);
   };
   
   const handleStatusChange = (newStatus: 'Approved' | 'Rejected' | 'Needs Info') => {
@@ -449,8 +463,8 @@ export default function SustainabilityReviewPage() {
       <div className="flex-1 flex min-h-0">
         {/* Left panel - submission list */}
         <div 
-          className="w-[480px] flex-shrink-0 flex flex-col border-r"
-          style={{ borderColor: 'var(--border)' }}
+          className="w-full md:w-[480px] flex-shrink-0 flex flex-col border-r"
+          style={{ borderColor: 'var(--border)', display: isMobile && showDetail ? 'none' : 'flex' }}
         >
           {/* Filters */}
           <div 
@@ -543,11 +557,21 @@ export default function SustainabilityReviewPage() {
         </div>
         
         {/* Right panel - detail view */}
-        {selected ? (
-          <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {selected && (!isMobile || showDetail) ? (
+          <div className="flex-1 flex flex-col min-w-0 overflow-y-auto" style={{ display: isMobile && !showDetail ? 'none' : 'flex' }}>
             {/* Shop header */}
             <div className="flex-shrink-0 px-8 py-6 border-b" style={{ borderColor: 'var(--border)' }}>
-              <div className="flex items-start gap-6">
+              {isMobile && (
+                <button
+                  onClick={handleBackToList}
+                  className="flex items-center gap-2 text-[13px] mb-4 transition-opacity duration-150 hover:opacity-60"
+                  style={{ color: 'var(--muted)' }}
+                >
+                  <ArrowLeft size={16} strokeWidth={1.5} />
+                  Back to list
+                </button>
+              )}
+              <div className="flex items-start gap-6 flex-wrap">
                 <ScoreRing score={selected.totalScore} size={72} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
@@ -580,7 +604,7 @@ export default function SustainabilityReviewPage() {
                 </div>
               </div>
               
-              <div className="flex items-center gap-8 mt-6 text-[13px]">
+              <div className="flex items-center flex-wrap gap-x-8 gap-y-3 mt-6 text-[13px]">
                 <div>
                   <div style={{ color: 'var(--muted)' }}>Category</div>
                   <div className="mt-0.5" style={{ color: 'var(--foreground)' }}>{selected.category}</div>
@@ -691,7 +715,7 @@ export default function SustainabilityReviewPage() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : !isMobile ? (
           <div 
             className="flex-1 flex items-center justify-center"
             style={{ backgroundColor: 'var(--secondary)' }}
@@ -700,7 +724,7 @@ export default function SustainabilityReviewPage() {
               Select a submission to review
             </p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

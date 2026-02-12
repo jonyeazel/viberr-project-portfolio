@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ChevronDown, ChevronUp, X, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, ChevronLeft, X, Mail, Phone } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -361,8 +361,8 @@ export default function LeadIntelligencePage() {
       </header>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', gap: 32, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
+        <div style={{ flex: 1, flexDirection: 'column', overflow: 'hidden' }} className={`${selected ? 'hidden md:flex' : 'flex'}`}>
+          <div style={{ padding: '16px 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Location</span>
               <div style={{ display: 'flex', gap: 4 }}>
@@ -460,7 +460,8 @@ export default function LeadIntelligencePage() {
           </div>
 
           <div style={{ flex: 1, overflow: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 800 }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
                   {[
@@ -556,6 +557,7 @@ export default function LeadIntelligencePage() {
               </tbody>
             </table>
           </div>
+          </div>
 
           <div style={{ padding: '16px 24px', borderTop: `1px solid ${colors.border}`, background: colors.surface, flexShrink: 0 }}>
             <div style={{ fontSize: 12, color: colors.muted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>This Week&apos;s Top Leads</div>
@@ -589,14 +591,23 @@ export default function LeadIntelligencePage() {
         </div>
 
         {selected && (
-          <div style={{ width: 400, borderLeft: `1px solid ${colors.border}`, background: colors.surface, overflow: 'auto', flexShrink: 0 }}>
+          <div style={{ width: 'min(400px, 100%)', borderLeft: `1px solid ${colors.border}`, background: colors.surface, overflow: 'auto', flexShrink: 0 }}>
             <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
+                <button
+                  onClick={() => setSelected(null)}
+                  className="md:hidden"
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'transparent', border: 'none', color: colors.muted, cursor: 'pointer', padding: 0, marginBottom: 8, fontSize: 13 }}
+                >
+                  <ChevronLeft size={16} />
+                  Back to list
+                </button>
                 <h2 style={{ fontSize: 18, fontWeight: 500, margin: 0, marginBottom: 4 }}>{selected.name}</h2>
                 <div style={{ fontSize: 13, color: colors.muted }}>{selected.industry} · {selected.location}</div>
               </div>
               <button
                 onClick={() => setSelected(null)}
+                className="hidden md:block"
                 style={{ background: 'transparent', border: 'none', color: colors.muted, cursor: 'pointer', padding: 4, marginLeft: 8, flexShrink: 0 }}
               >
                 <X size={18} />

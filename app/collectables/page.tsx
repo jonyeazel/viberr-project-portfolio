@@ -369,11 +369,12 @@ export default function CollectablesPage() {
       <header
         style={{
           borderBottom: '1px solid #e5e5e3',
-          padding: '12px 24px',
+          padding: '12px 16px',
           display: 'flex',
           alignItems: 'center',
-          gap: '16px',
+          gap: '12px',
           flexShrink: 0,
+          flexWrap: 'wrap',
         }}
       >
         <Link
@@ -423,7 +424,7 @@ export default function CollectablesPage() {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+        <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', flexWrap: 'wrap' }}>
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value as Category | 'All')}
@@ -600,7 +601,7 @@ export default function CollectablesPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(260px, 100%), 1fr))',
               gap: '16px',
             }}
           >
@@ -899,8 +900,7 @@ export default function CollectablesPage() {
               top: 0,
               right: 0,
               bottom: 0,
-              width: '480px',
-              maxWidth: '100vw',
+              width: 'min(480px, 100%)',
               backgroundColor: '#fafaf9',
               borderLeft: '1px solid #e5e5e3',
               zIndex: 100,
@@ -919,6 +919,25 @@ export default function CollectablesPage() {
                 flexShrink: 0,
               }}
             >
+              <button
+                onClick={() => setSelectedItem(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#737373',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  marginRight: '12px',
+                  transition: 'color 150ms ease-out',
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#191919')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '#737373')}
+              >
+                <ArrowLeft size={20} strokeWidth={1.5} />
+              </button>
               <div style={{ flex: 1, minWidth: 0, paddingRight: '16px' }}>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
                   <span

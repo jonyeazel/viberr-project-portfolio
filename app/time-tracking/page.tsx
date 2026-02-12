@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Upload, Check, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Upload, Check, AlertCircle, ChevronLeft } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -235,10 +235,10 @@ export default function TimeTrackingPage() {
   const employees = useMemo(() => generateEmployees(), []);
   const importHistory = useMemo(() => generateImportHistory(), []);
 
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState(employees[0].id);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'imports'>('weekly');
 
-  const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId)!;
+  const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId) || employees[0];
   const weekData = getCurrentWeekData(selectedEmployee);
 
   const totalWeekHours = employees.reduce((sum, emp) => {
@@ -292,7 +292,7 @@ export default function TimeTrackingPage() {
           </Link>
           <span className="text-base font-medium">Time Tracking</span>
         </div>
-        <div className="flex items-center gap-8 text-sm">
+        <div className="flex items-center gap-4 md:gap-8 text-sm flex-wrap">
           <div className="flex items-center gap-2">
             <span style={{ color: colors.muted }}>Employees</span>
             <span className="font-medium">{employees.length}</span>
@@ -318,7 +318,7 @@ export default function TimeTrackingPage() {
 
       <div className="flex flex-1 overflow-hidden">
         <aside
-          className="w-56 flex-shrink-0 overflow-y-auto"
+          className={`w-full md:w-56 flex-shrink-0 overflow-y-auto ${selectedEmployeeId !== null ? 'hidden md:block' : 'block'}`}
           style={{ borderRight: `1px solid ${colors.border}`, backgroundColor: colors.surface }}
         >
           <div className="p-3">
@@ -353,7 +353,7 @@ export default function TimeTrackingPage() {
           </div>
         </aside>
 
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className={`flex-1 flex flex-col overflow-hidden ${selectedEmployeeId !== null ? 'block' : 'hidden md:block'}`}>
           <div className="flex gap-6 px-6 pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${colors.border}` }}>
             {[
               { id: 'weekly', label: 'Weekly Overview' },
@@ -379,6 +379,14 @@ export default function TimeTrackingPage() {
               <div className="space-y-4">
                 <div className="flex items-start justify-between">
                   <div>
+                    <button
+                      onClick={() => setSelectedEmployeeId(null)}
+                      className="md:hidden flex items-center gap-1 text-sm mb-2 transition-opacity hover:opacity-70"
+                      style={{ color: colors.muted }}
+                    >
+                      <ChevronLeft size={16} />
+                      Back to list
+                    </button>
                     <div className="text-lg font-medium">{selectedEmployee.name}</div>
                     <div className="text-sm" style={{ color: colors.muted }}>{selectedEmployee.role}</div>
                   </div>
@@ -501,6 +509,14 @@ export default function TimeTrackingPage() {
               <div className="space-y-4">
                 <div className="flex items-start justify-between">
                   <div>
+                    <button
+                      onClick={() => setSelectedEmployeeId(null)}
+                      className="md:hidden flex items-center gap-1 text-sm mb-2 transition-opacity hover:opacity-70"
+                      style={{ color: colors.muted }}
+                    >
+                      <ChevronLeft size={16} />
+                      Back to list
+                    </button>
                     <div className="text-lg font-medium">{selectedEmployee.name}</div>
                     <div className="text-sm" style={{ color: colors.muted }}>
                       {REFERENCE_DATE.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
@@ -581,6 +597,14 @@ export default function TimeTrackingPage() {
 
             {activeTab === 'imports' && (
               <div className="space-y-4">
+                <button
+                  onClick={() => setSelectedEmployeeId(null)}
+                  className="md:hidden flex items-center gap-1 text-sm mb-2 transition-opacity hover:opacity-70"
+                  style={{ color: colors.muted }}
+                >
+                  <ChevronLeft size={16} />
+                  Back to list
+                </button>
                 <div
                   className="p-4 rounded flex items-center justify-between"
                   style={{ backgroundColor: colors.surface, border: `1px solid ${colors.border}` }}

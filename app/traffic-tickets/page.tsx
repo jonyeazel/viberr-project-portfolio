@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, X, Check, AlertCircle, ChevronRight, Clock, User, Car, FileText } from 'lucide-react';
 import {
@@ -391,8 +391,26 @@ export default function TrafficTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('incoming');
+  const [isMobile, setIsMobile] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const selectedTicket = tickets.find(t => t.id === selectedTicketId);
+  
+  const handleSelectTicket = (ticketId: string) => {
+    setSelectedTicketId(ticketId);
+    if (isMobile) setShowDetail(true);
+  };
+
+  const handleBackToList = () => {
+    setShowDetail(false);
+  };
 
   // Calculate KPIs
   const kpis = useMemo(() => {
@@ -616,7 +634,7 @@ export default function TrafficTicketsPage() {
 
       {/* KPI Bar */}
       <div className="flex-shrink-0 px-6 py-5 border-b" style={{ borderColor: '#e5e5e3', backgroundColor: '#f5f5f4' }}>
-        <div className="flex gap-12">
+        <div className="flex flex-wrap gap-x-12 gap-y-4">
           <div>
             <div className="text-[11px] uppercase tracking-wider mb-1" style={{ color: '#737373', letterSpacing: '0.05em' }}>
               Tickets Today
@@ -661,8 +679,8 @@ export default function TrafficTicketsPage() {
       </div>
 
       {/* Pipeline Visualization */}
-      <div className="flex-shrink-0 px-6 py-4 border-b" style={{ borderColor: '#e5e5e3' }}>
-        <div className="flex items-center">
+      <div className="flex-shrink-0 px-6 py-4 border-b overflow-x-auto" style={{ borderColor: '#e5e5e3' }}>
+        <div className="flex items-center" style={{ minWidth: 'max-content' }}>
           {(['ingested', 'parsed', 'matched', 'dispatched'] as const).map((status, index) => (
             <div key={status} className="flex items-center">
               <div className="flex items-center gap-3">
@@ -737,7 +755,7 @@ export default function TrafficTicketsPage() {
       <div className="flex-1 flex min-h-0">
         {activeTab === 'analytics' ? (
           <div className="flex-1 p-6 overflow-auto">
-            <div className="grid grid-cols-3 gap-6 max-w-[1200px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-[1200px]">
               {/* Violation Types Pie Chart */}
               <div className="p-5" style={{ backgroundColor: '#f5f5f4', borderRadius: '4px' }}>
                 <div className="text-[11px] uppercase tracking-wider mb-4" style={{ color: '#737373', letterSpacing: '0.05em' }}>
@@ -880,10 +898,10 @@ export default function TrafficTicketsPage() {
           </div>
         ) : (
           <>
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0" style={{ display: isMobile && showDetail ? 'none' : 'flex' }}>
               {/* Table */}
               <div className="flex-1 overflow-auto">
-                <table className="w-full">
+                <table className="w-full" style={{ minWidth: 900 }}>
                   <thead className="sticky top-0" style={{ backgroundColor: '#fafaf9' }}>
                     <tr className="border-b" style={{ borderColor: '#e5e5e3' }}>
                       <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: '#737373', letterSpacing: '0.05em' }}>ID</th>
@@ -908,7 +926,7 @@ export default function TrafficTicketsPage() {
                       return (
                         <tr
                           key={ticket.id}
-                          onClick={() => setSelectedTicketId(ticket.id)}
+                          onClick={() => handleSelectTicket(ticket.id)}
                           className="border-b cursor-pointer transition-colors duration-150 ease-out"
                           style={{
                             borderColor: '#e5e5e3',
@@ -983,28 +1001,41 @@ export default function TrafficTicketsPage() {
             </div>
 
             {/* Detail panel */}
-            {selectedTicket && (
+            {selectedTicket && (!isMobile || showDetail) && (
               <div
-                className="w-[420px] flex-shrink-0 border-l flex flex-col"
-                style={{ borderColor: '#e5e5e3', backgroundColor: '#fafaf9' }}
+                className="w-full md:w-[420px] flex-shrink-0 border-l flex flex-col"
+                style={{ borderColor: '#e5e5e3', backgroundColor: '#fafaf9', minWidth: isMobile ? '100%' : 'auto' }}
               >
                 {/* Panel header */}
                 <div className="flex-shrink-0 px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: '#e5e5e3', backgroundColor: '#f5f5f4' }}>
-                  <div>
-                    <div className="text-[15px] font-medium" style={{ color: '#191919' }}>
-                      {selectedTicket.id}
-                    </div>
-                    <div className="text-[13px] mt-0.5" style={{ color: '#737373' }}>
-                      {violationLabels[selectedTicket.violationType]} in {selectedTicket.location}
+                  <div className="flex items-center gap-3">
+                    {isMobile && (
+                      <button
+                        onClick={handleBackToList}
+                        className="p-1.5 rounded transition-opacity duration-150 ease-out hover:opacity-70"
+                        style={{ color: '#737373' }}
+                      >
+                        <ArrowLeft size={18} strokeWidth={1.5} />
+                      </button>
+                    )}
+                    <div>
+                      <div className="text-[15px] font-medium" style={{ color: '#191919' }}>
+                        {selectedTicket.id}
+                      </div>
+                      <div className="text-[13px] mt-0.5" style={{ color: '#737373' }}>
+                        {violationLabels[selectedTicket.violationType]} in {selectedTicket.location}
+                      </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setSelectedTicketId(null)}
-                    className="p-1.5 rounded transition-opacity duration-150 ease-out hover:opacity-70"
-                    style={{ color: '#737373' }}
-                  >
-                    <X size={18} strokeWidth={1.5} />
-                  </button>
+                  {!isMobile && (
+                    <button
+                      onClick={() => setSelectedTicketId(null)}
+                      className="p-1.5 rounded transition-opacity duration-150 ease-out hover:opacity-70"
+                      style={{ color: '#737373' }}
+                    >
+                      <X size={18} strokeWidth={1.5} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Panel content */}

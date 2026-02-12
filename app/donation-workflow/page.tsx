@@ -459,7 +459,7 @@ export default function DonationWorkflowPage() {
 
       {/* Stats Row */}
       <div className="flex-shrink-0 border-b border-[#e5e5e3] px-6 py-5 bg-[#f5f5f4]">
-        <div className="flex gap-16">
+        <div className="flex flex-wrap gap-x-8 gap-y-4 md:gap-16">
           <div>
             <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-1">
               Total Donations
@@ -492,7 +492,7 @@ export default function DonationWorkflowPage() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Donations Table */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className={`flex-1 flex flex-col overflow-hidden ${selectedDonation ? 'hidden md:flex' : 'flex'}`}>
           {/* Filter Bar */}
           <div className="flex-shrink-0 px-6 py-3 border-b border-[#e5e5e3] flex items-center gap-6">
             {/* Receipt Filter */}
@@ -576,8 +576,8 @@ export default function DonationWorkflowPage() {
           </div>
 
           {/* Table Header */}
-          <div className="flex-shrink-0 px-6 py-2.5 border-b border-[#e5e5e3] bg-[#f5f5f4]">
-            <div className="grid grid-cols-[90px_1fr_1.2fr_100px_80px_80px_90px] gap-4 text-[11px] text-[#737373] uppercase tracking-wider">
+          <div className="flex-shrink-0 px-6 py-2.5 border-b border-[#e5e5e3] bg-[#f5f5f4] overflow-x-auto">
+            <div className="grid grid-cols-[90px_1fr_1.2fr_100px_80px_80px_90px] gap-4 text-[11px] text-[#737373] uppercase tracking-wider min-w-[700px]">
               <button
                 onClick={() => handleSort('date')}
                 className="text-left hover:text-[#191919] transition-colors duration-150 flex items-center gap-1"
@@ -605,7 +605,7 @@ export default function DonationWorkflowPage() {
           </div>
 
           {/* Table Body */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overflow-x-auto">
             {filteredDonations.map((donation) => (
               <button
                 key={donation.id}
@@ -616,7 +616,7 @@ export default function DonationWorkflowPage() {
                     : 'hover:bg-[#f5f5f4]'
                 }`}
               >
-                <div className="grid grid-cols-[90px_1fr_1.2fr_100px_80px_80px_90px] gap-4 text-[13px] items-center">
+                <div className="grid grid-cols-[90px_1fr_1.2fr_100px_80px_80px_90px] gap-4 text-[13px] items-center min-w-[700px]">
                   <span className="text-[#737373]">{formatDate(donation.date)}</span>
                   <span className="truncate font-medium">{donation.donorName}</span>
                   <span className="truncate text-[#737373]">{donation.email}</span>
@@ -631,15 +631,23 @@ export default function DonationWorkflowPage() {
         </div>
 
         {/* Right Panel */}
-        <div className="w-[380px] flex-shrink-0 border-l border-[#e5e5e3] flex flex-col overflow-hidden bg-[#f5f5f4]">
+        <div className={`w-full md:w-[380px] flex-shrink-0 md:border-l border-[#e5e5e3] flex flex-col overflow-hidden bg-[#f5f5f4] ${selectedDonation ? 'flex' : 'hidden md:flex'}`}>
           {selectedDonation ? (
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Panel Header */}
               <div className="flex-shrink-0 px-4 py-3 border-b border-[#e5e5e3] flex items-center justify-between bg-[#fafaf9]">
-                <span className="text-[13px] font-medium">{selectedDonation.id}</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedDonation(null)}
+                    className="md:hidden p-1 -ml-1 text-[#737373] hover:text-[#191919] transition-colors duration-150"
+                  >
+                    <ArrowLeft size={18} strokeWidth={1.5} />
+                  </button>
+                  <span className="text-[13px] font-medium">{selectedDonation.id}</span>
+                </div>
                 <button
                   onClick={() => setSelectedDonation(null)}
-                  className="text-[#737373] hover:text-[#191919] transition-colors duration-150 p-1"
+                  className="hidden md:block text-[#737373] hover:text-[#191919] transition-colors duration-150 p-1"
                 >
                   <X size={16} strokeWidth={1.5} />
                 </button>

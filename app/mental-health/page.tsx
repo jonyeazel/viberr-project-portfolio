@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import {
   ArrowLeft,
+  ChevronLeft,
   Shield,
   TrendingUp,
   TrendingDown,
@@ -558,14 +559,15 @@ function getEventColor(type: EventType): string {
 }
 
 export default function MentalHealthDashboard() {
-  const [selectedPatientIndex, setSelectedPatientIndex] = useState(0);
+  const [selectedPatientIndex, setSelectedPatientIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'patterns' | 'resources' | 'timeline'>('overview');
 
-  const selectedPatient = patients[selectedPatientIndex];
-  const moodData = generateMoodData(selectedPatientIndex, selectedPatient);
-  const patterns = generatePatterns(selectedPatientIndex, selectedPatient);
-  const resources = generateResources(selectedPatientIndex, selectedPatient);
-  const timeline = generateTimeline(selectedPatientIndex, selectedPatient);
+  const effectiveIndex = selectedPatientIndex !== null ? selectedPatientIndex : 0;
+  const selectedPatient = patients[effectiveIndex];
+  const moodData = generateMoodData(effectiveIndex, selectedPatient);
+  const patterns = generatePatterns(effectiveIndex, selectedPatient);
+  const resources = generateResources(effectiveIndex, selectedPatient);
+  const timeline = generateTimeline(effectiveIndex, selectedPatient);
 
   const criticalCount = patients.filter((p) => p.risk === 'Critical').length;
   const highCount = patients.filter((p) => p.risk === 'High').length;
@@ -641,8 +643,10 @@ export default function MentalHealthDashboard() {
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <div
+          className={`${selectedPatientIndex !== null ? 'hidden md:block' : 'block'}`}
           style={{
-            width: 260,
+            width: '100%',
+            maxWidth: 260,
             backgroundColor: colors.surface,
             borderRight: `1px solid ${colors.border}`,
             overflowY: 'auto',
@@ -662,9 +666,9 @@ export default function MentalHealthDashboard() {
               style={{
                 width: '100%',
                 padding: '12px 16px',
-                backgroundColor: selectedPatientIndex === index ? colors.surface2 : 'transparent',
+                backgroundColor: effectiveIndex === index ? colors.surface2 : 'transparent',
                 border: 'none',
-                borderLeft: selectedPatientIndex === index ? `2px solid ${colors.blue}` : '2px solid transparent',
+                borderLeft: effectiveIndex === index ? `2px solid ${colors.blue}` : '2px solid transparent',
                 cursor: 'pointer',
                 textAlign: 'left',
               }}
@@ -694,7 +698,7 @@ export default function MentalHealthDashboard() {
           ))}
         </div>
 
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className={`${selectedPatientIndex !== null ? 'flex' : 'hidden md:flex'}`} style={{ flex: 1, flexDirection: 'column', overflow: 'hidden' }}>
           <div
             style={{
               padding: '16px 32px',
@@ -706,6 +710,14 @@ export default function MentalHealthDashboard() {
             }}
           >
             <div>
+              <button
+                onClick={() => setSelectedPatientIndex(null)}
+                className="md:hidden"
+                style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'transparent', border: 'none', color: colors.muted, cursor: 'pointer', padding: 0, marginBottom: 8, fontSize: 13 }}
+              >
+                <ChevronLeft size={16} />
+                Back to patients
+              </button>
               <div style={{ fontSize: 20, fontWeight: 500, marginBottom: 2 }}>
                 {selectedPatient.initials}
                 <span style={{ color: colors.muted, fontWeight: 400, marginLeft: 8 }}>{selectedPatient.id}</span>
@@ -802,7 +814,7 @@ export default function MentalHealthDashboard() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 16 }}>
                   <div
                     style={{
                       backgroundColor: colors.surface,
@@ -858,7 +870,7 @@ export default function MentalHealthDashboard() {
             )}
 
             {activeTab === 'patterns' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
                 {patterns.map((pattern) => (
                   <div
                     key={pattern.name}
@@ -914,7 +926,7 @@ export default function MentalHealthDashboard() {
             )}
 
             {activeTab === 'resources' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
                 {resources.map((resource, i) => (
                   <div
                     key={i}

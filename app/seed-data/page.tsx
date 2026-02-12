@@ -242,7 +242,7 @@ export default function SeedDataPage() {
         <span style={{ fontSize: 15, fontWeight: 500 }}>Ownet Platform</span>
       </header>
 
-      <div style={{ padding: '20px 24px', borderBottom: `1px solid ${colors.border}`, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 32, flexShrink: 0 }}>
+      <div style={{ padding: '20px 24px', borderBottom: `1px solid ${colors.border}`, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '16px 32px', flexShrink: 0 }}>
         {[
           { label: 'Active Users', value: stats.activeUsers.toLocaleString() },
           { label: 'Data Points Collected', value: formatNumber(stats.totalDataPoints) },
@@ -326,8 +326,8 @@ export default function SeedDataPage() {
             )}
 
             {activeTab === 'streams' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: 16, padding: '10px 16px', fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: `1px solid ${colors.border}` }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1, overflowX: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: 16, padding: '10px 16px', fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: `1px solid ${colors.border}`, minWidth: 600 }}>
                   <span>Stream</span>
                   <span>Data Points</span>
                   <span>Active Users</span>
@@ -345,6 +345,7 @@ export default function SeedDataPage() {
                       alignItems: 'center',
                       borderBottom: `1px solid ${colors.border}`,
                       fontSize: 13,
+                      minWidth: 600,
                     }}
                   >
                     <div>
@@ -481,7 +482,7 @@ export default function SeedDataPage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
                   {[
                     { label: 'Total Records Delivered', value: formatNumber(buyers.reduce((sum, b) => sum + b.recordsConsumed, 0)) },
                     { label: 'Avg Price per Record', value: '$0.0024' },
@@ -500,7 +501,7 @@ export default function SeedDataPage() {
         </div>
 
         {selectedUser && activeTab === 'users' && (
-          <div style={{ width: 340, borderLeft: `1px solid ${colors.border}`, overflow: 'auto', backgroundColor: colors.surface, flexShrink: 0 }}>
+          <div className="hidden md:block" style={{ width: 'min(340px, 100%)', borderLeft: `1px solid ${colors.border}`, overflow: 'auto', backgroundColor: colors.surface, flexShrink: 0 }}>
             <div style={{ padding: 24 }}>
               <div style={{ fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>User</div>
               <div style={{ fontSize: 18, fontWeight: 500, marginBottom: 24 }}>{selectedUser.id}</div>
