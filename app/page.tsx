@@ -1,233 +1,911 @@
+"use client";
+
+import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Github } from "lucide-react";
+import {
+  Github,
+  Workflow,
+  Layers,
+  Upload,
+  Check,
+  Circle,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+
+type StepType = "upload" | "input" | "choice" | "confirm";
+
+interface Step {
+  label: string;
+  type: StepType;
+  placeholder?: string;
+  accept?: string;
+  options?: string[];
+}
 
 const REPO_BASE =
   "https://github.com/jonyeazel/viberr-project-portfolio/blob/main/app";
 
-const projects = [
+const projects: Array<{
+  slug: string;
+  name: string;
+  type: "Workflow" | "Platform";
+  code: string;
+  description: string;
+  estimate: number;
+  deliverables: string[];
+  steps: Step[];
+}> = [
   {
     slug: "outbound-email",
     name: "Outbound Email Automation",
-    type: "Workflow Automation",
+    type: "Workflow",
+    code: "VBR-1847",
     description: "AI-assisted email drafts from CRM context with human review",
     estimate: 1200,
+    deliverables: [
+      "CRM integration with real-time contact sync",
+      "AI draft generation with tone matching",
+      "Human-in-the-loop approval queue",
+      "Sending domain verification flow",
+      "Per-campaign analytics dashboard",
+    ],
     steps: [
-      "Provide CRM access (HubSpot, Salesforce, or Pipedrive)",
-      "Verify your sending domain for outbound emails",
-      "List team members who will review and approve drafts",
+      {
+        label: "CRM credentials",
+        type: "upload",
+        accept: ".json,.csv,.txt",
+        placeholder: "Drop your CRM export or API key file",
+      },
+      {
+        label: "Sending domain",
+        type: "input",
+        placeholder: "e.g. mail.yourcompany.com",
+      },
+      {
+        label: "Team members who review drafts",
+        type: "input",
+        placeholder: "Names and emails, separated by commas",
+      },
+      {
+        label: "CRM platform",
+        type: "choice",
+        options: ["HubSpot", "Salesforce", "Pipedrive", "Other"],
+      },
     ],
   },
   {
     slug: "collectables",
     name: "Collectables Marketplace",
     type: "Platform",
+    code: "VBR-2103",
     description: "Track, buy, sell, and trade collectible assets",
     estimate: 1400,
+    deliverables: [
+      "Buyer and seller storefronts",
+      "Stripe-powered checkout and payouts",
+      "Photo gallery with zoom and condition grading",
+      "Real-time bidding engine",
+      "Listing management with fee tracking",
+    ],
     steps: [
-      "Create a Stripe account for payment processing",
-      "Provide initial product catalog with photos",
-      "Decide on commission structure and listing fees",
+      {
+        label: "Stripe account",
+        type: "confirm",
+      },
+      {
+        label: "Product catalog with photos",
+        type: "upload",
+        accept: ".csv,.xlsx,.zip",
+        placeholder: "Drop your catalog spreadsheet or photo archive",
+      },
+      {
+        label: "Commission structure",
+        type: "choice",
+        options: ["5%", "10%", "15%", "Custom"],
+      },
+      {
+        label: "Listing fee per item",
+        type: "input",
+        placeholder: "e.g. $2.00",
+      },
     ],
   },
   {
     slug: "compliance",
     name: "Compliance Automation",
     type: "Platform",
+    code: "VBR-1962",
     description:
       "Policy-driven redaction and audit logging for sensitive data",
     estimate: 1350,
+    deliverables: [
+      "Automated PII detection and redaction",
+      "Configurable policy rule engine",
+      "Full audit trail with tamper-proof logging",
+      "Role-based access control",
+      "Compliance report generation",
+    ],
     steps: [
-      "Document your redaction rules and data policies",
-      "Provide sample sensitive documents for testing",
-      "List authorized team members and their access levels",
+      {
+        label: "Redaction rules document",
+        type: "upload",
+        accept: ".pdf,.docx,.txt",
+        placeholder: "Drop your data policy or redaction rules",
+      },
+      {
+        label: "Sample sensitive documents",
+        type: "upload",
+        accept: ".pdf,.docx,.txt,.zip",
+        placeholder: "Drop sample docs for testing",
+      },
+      {
+        label: "Authorized team members and access levels",
+        type: "input",
+        placeholder: "Names, emails, and roles",
+      },
     ],
   },
   {
     slug: "voucher-fulfillment",
     name: "Voucher Fulfillment",
-    type: "Workflow Automation",
+    type: "Workflow",
+    code: "VBR-2241",
     description: "Digital voucher generation, invoicing, and delivery",
     estimate: 1100,
+    deliverables: [
+      "Branded voucher template system",
+      "Automated invoice generation",
+      "Email and SMS delivery pipeline",
+      "Redemption tracking dashboard",
+      "Stripe-powered payment collection",
+    ],
     steps: [
-      "Create a Stripe account for invoicing",
-      "Provide brand assets (logo, colors, fonts)",
-      "Supply voucher template designs or approve defaults",
+      {
+        label: "Stripe account",
+        type: "confirm",
+      },
+      {
+        label: "Brand assets",
+        type: "upload",
+        accept: ".zip,.png,.svg,.ai",
+        placeholder: "Drop logo, color specs, font files",
+      },
+      {
+        label: "Voucher template preference",
+        type: "choice",
+        options: ["Use our defaults", "Upload custom design"],
+      },
     ],
   },
   {
     slug: "donation-workflow",
     name: "Donation Workflow",
-    type: "Workflow Automation",
+    type: "Workflow",
+    code: "VBR-1789",
     description:
       "Automated receipt generation and accounting for donations",
     estimate: 1050,
+    deliverables: [
+      "One-time and recurring donation forms",
+      "Automated IRS-compliant tax receipts",
+      "Accounting software sync",
+      "Donor management dashboard",
+      "Campaign-level reporting",
+    ],
     steps: [
-      "Create a Stripe account for donation processing",
-      "Provide organization details for tax receipts (EIN, address)",
-      "Share accounting software credentials (QuickBooks, Xero)",
+      {
+        label: "Stripe account",
+        type: "confirm",
+      },
+      {
+        label: "Organization details for tax receipts",
+        type: "input",
+        placeholder: "EIN, legal name, address",
+      },
+      {
+        label: "Accounting software credentials",
+        type: "upload",
+        accept: ".json,.txt,.csv",
+        placeholder: "Drop QuickBooks or Xero export / API key",
+      },
+      {
+        label: "Accounting platform",
+        type: "choice",
+        options: ["QuickBooks", "Xero", "FreshBooks", "Other"],
+      },
     ],
   },
   {
     slug: "time-tracking",
     name: "Time Tracking & HR",
     type: "Platform",
+    code: "VBR-2087",
     description: "Employee hours import, CSV workflows, biometric tracking",
     estimate: 1250,
+    deliverables: [
+      "Employee self-service time entry",
+      "CSV import/export workflows",
+      "Biometric device integration",
+      "Overtime calculation engine",
+      "Manager approval queue",
+    ],
     steps: [
-      "Export current employee roster as CSV",
-      "Define pay period schedule and overtime rules",
-      "Provide biometric device model and connection details",
+      {
+        label: "Employee roster",
+        type: "upload",
+        accept: ".csv,.xlsx",
+        placeholder: "Drop your current employee list as CSV",
+      },
+      {
+        label: "Pay period and overtime rules",
+        type: "input",
+        placeholder: "e.g. Bi-weekly, OT after 40hrs at 1.5x",
+      },
+      {
+        label: "Biometric device details",
+        type: "input",
+        placeholder: "Device model and connection type",
+      },
     ],
   },
   {
     slug: "lead-intelligence",
     name: "Lead Intelligence",
     type: "Platform",
+    code: "VBR-2156",
     description: "Automated lead scoring and growth signal detection",
     estimate: 1300,
+    deliverables: [
+      "Multi-source data enrichment pipeline",
+      "Configurable lead scoring model",
+      "Growth signal detection and alerts",
+      "CRM two-way sync",
+      "Lead prioritization dashboard",
+    ],
     steps: [
-      "Provide data enrichment API keys (Clearbit, Apollo, etc.)",
-      "Define your lead scoring criteria and thresholds",
-      "Share CRM connection details for two-way sync",
+      {
+        label: "Data enrichment API keys",
+        type: "upload",
+        accept: ".json,.txt,.env",
+        placeholder: "Drop Clearbit, Apollo, or similar API key file",
+      },
+      {
+        label: "Lead scoring criteria",
+        type: "input",
+        placeholder: "Describe your ideal lead and scoring thresholds",
+      },
+      {
+        label: "CRM connection details",
+        type: "input",
+        placeholder: "CRM name, API endpoint, credentials",
+      },
     ],
   },
   {
     slug: "mental-health",
     name: "Mental Health",
     type: "Platform",
+    code: "VBR-1934",
     description:
       "Crisis detection, resource provisioning, and wellness tracking",
     estimate: 1450,
+    deliverables: [
+      "Crisis keyword detection engine",
+      "Local resource directory with search",
+      "Wellness check-in tracking",
+      "Care team notification system",
+      "Privacy-first data architecture",
+    ],
     steps: [
-      "Compile local crisis resource directory and hotline numbers",
-      "Review and approve the platform privacy policy",
-      "List care team members and their notification preferences",
+      {
+        label: "Crisis resource directory",
+        type: "upload",
+        accept: ".csv,.xlsx,.pdf",
+        placeholder: "Drop local hotline numbers and resource list",
+      },
+      {
+        label: "Privacy policy review",
+        type: "confirm",
+      },
+      {
+        label: "Care team members and notification preferences",
+        type: "input",
+        placeholder: "Names, emails, and how they want to be notified",
+      },
     ],
   },
   {
     slug: "billing-workflow",
     name: "Billing Workflow",
-    type: "Workflow Automation",
+    type: "Workflow",
+    code: "VBR-2018",
     description: "Monthly invoicing and financial plan automation",
     estimate: 950,
+    deliverables: [
+      "Recurring invoice generation",
+      "Stripe billing integration",
+      "Late payment reminders",
+      "Client billing portal",
+      "Revenue reporting dashboard",
+    ],
     steps: [
-      "Create a Stripe account for recurring billing",
-      "Provide invoice branding (logo, payment terms, late fees)",
-      "Export existing client list with billing details",
+      {
+        label: "Stripe account",
+        type: "confirm",
+      },
+      {
+        label: "Invoice branding",
+        type: "upload",
+        accept: ".zip,.png,.svg,.pdf",
+        placeholder: "Drop logo, payment terms doc, late fee schedule",
+      },
+      {
+        label: "Existing client list",
+        type: "upload",
+        accept: ".csv,.xlsx",
+        placeholder: "Drop client list with billing details",
+      },
     ],
   },
   {
     slug: "seed-data",
     name: "Seed Data Extraction",
     type: "Platform",
+    code: "VBR-2198",
     description: "User-owned behavioral data economy platform",
     estimate: 1350,
+    deliverables: [
+      "User data ownership dashboard",
+      "Behavioral data taxonomy builder",
+      "Multi-format export engine",
+      "Data marketplace storefront",
+      "Privacy-compliant consent flow",
+    ],
     steps: [
-      "Define your data taxonomy and categories",
-      "Decide on export formats (CSV, JSON, API)",
-      "Provide an initial seed dataset for onboarding",
+      {
+        label: "Data taxonomy",
+        type: "input",
+        placeholder: "Describe your data categories and structure",
+      },
+      {
+        label: "Preferred export format",
+        type: "choice",
+        options: ["CSV", "JSON", "API", "All of the above"],
+      },
+      {
+        label: "Initial seed dataset",
+        type: "upload",
+        accept: ".csv,.json,.zip",
+        placeholder: "Drop a sample dataset for onboarding",
+      },
     ],
   },
   {
     slug: "sustainability-review",
     name: "Sustainability Review",
-    type: "Workflow Automation",
+    type: "Workflow",
+    code: "VBR-1876",
     description:
       "Automated shop evaluation against sustainability criteria",
     estimate: 1150,
+    deliverables: [
+      "Weighted scoring evaluation engine",
+      "Reviewer assignment and routing",
+      "Automated review scheduling",
+      "Sustainability report generation",
+      "Shop notification pipeline",
+    ],
     steps: [
-      "Set evaluation criteria and scoring weights",
-      "List reviewer team email addresses",
-      "Decide on notification preferences and review cadence",
+      {
+        label: "Evaluation criteria and scoring weights",
+        type: "upload",
+        accept: ".csv,.xlsx,.pdf,.docx",
+        placeholder: "Drop your criteria document or spreadsheet",
+      },
+      {
+        label: "Reviewer team emails",
+        type: "input",
+        placeholder: "Emails separated by commas",
+      },
+      {
+        label: "Review cadence",
+        type: "choice",
+        options: ["Weekly", "Bi-weekly", "Monthly", "Quarterly"],
+      },
     ],
   },
   {
     slug: "traffic-tickets",
     name: "Traffic Ticket Processing",
     type: "Platform",
+    code: "VBR-2267",
     description: "Automated ticket triage, assignment, and dispatch",
     estimate: 1400,
+    deliverables: [
+      "Ticket ingestion from municipality feeds",
+      "Automated vehicle-to-driver matching",
+      "Driver notification and dispatch",
+      "Payment tracking and resolution",
+      "Fleet compliance dashboard",
+    ],
     steps: [
-      "Export vehicle fleet registry (plates, models, assignments)",
-      "Provide driver contact database",
-      "Share municipality ticket feed API credentials",
+      {
+        label: "Vehicle fleet registry",
+        type: "upload",
+        accept: ".csv,.xlsx",
+        placeholder: "Drop fleet list (plates, models, assignments)",
+      },
+      {
+        label: "Driver contact database",
+        type: "upload",
+        accept: ".csv,.xlsx",
+        placeholder: "Drop driver names, phones, emails",
+      },
+      {
+        label: "Municipality ticket feed API credentials",
+        type: "upload",
+        accept: ".json,.txt,.env",
+        placeholder: "Drop API key or credentials file",
+      },
     ],
   },
 ];
 
+const typeConfig = {
+  Workflow: { icon: Workflow, label: "Workflow" },
+  Platform: { icon: Layers, label: "Platform" },
+} as const;
+
+type StepState = {
+  completed: boolean;
+  value?: string;
+  fileName?: string;
+  choice?: string;
+};
+
+type ProjectState = Record<string, StepState[]>;
+
+function initProjectState(): ProjectState {
+  const state: ProjectState = {};
+  for (const p of projects) {
+    state[p.slug] = p.steps.map(() => ({ completed: false }));
+  }
+  return state;
+}
+
+const TOTAL_VALUE = projects.reduce((sum, p) => sum + p.estimate, 0);
+const TOTAL_PAYOUT = Math.round(TOTAL_VALUE / 2);
+
 export default function Home() {
+  const [state, setState] = useState<ProjectState>(initProjectState);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const updateStep = useCallback(
+    (slug: string, stepIndex: number, update: Partial<StepState>) => {
+      setState((prev) => {
+        const steps = [...prev[slug]];
+        steps[stepIndex] = { ...steps[stepIndex], ...update, completed: true };
+        return { ...prev, [slug]: steps };
+      });
+    },
+    []
+  );
+
+  const getProgress = (slug: string) => {
+    const steps = state[slug];
+    if (!steps) return 0;
+    const done = steps.filter((s) => s.completed).length;
+    return Math.round((done / steps.length) * 100);
+  };
+
+  const allDone = (slug: string) => {
+    const steps = state[slug];
+    return steps?.every((s) => s.completed) ?? false;
+  };
+
+  const scrollTo = useCallback((index: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const child = el.children[index] as HTMLElement;
+    if (child) {
+      child.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+    setCurrentIndex(index);
+  }, []);
+
+  const goNext = useCallback(() => {
+    scrollTo(Math.min(currentIndex + 1, projects.length - 1));
+  }, [currentIndex, scrollTo]);
+
+  const goPrev = useCallback(() => {
+    scrollTo(Math.max(currentIndex - 1, 0));
+  }, [currentIndex, scrollTo]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const idx = Math.round(el.scrollLeft / el.offsetWidth);
+      setCurrentIndex(Math.max(0, Math.min(idx, projects.length - 1)));
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "ArrowRight") goNext();
+      if (e.key === "ArrowLeft") goPrev();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [goNext, goPrev]);
+
   return (
-    <div className="min-h-screen px-6 py-16 max-w-[1200px] mx-auto">
-      <header className="mb-16">
-        <p className="text-[13px] text-muted tracking-[0.05em] uppercase mb-3">
-          Viberr Engineering
-        </p>
-        <h1 className="text-[32px] font-semibold tracking-tight text-foreground">
-          Project Portfolio
-        </h1>
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
+      {/* Header */}
+      <header className="flex items-center justify-between px-8 py-4 flex-shrink-0 border-b border-border">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
+              <span className="text-[12px] font-semibold text-background">V</span>
+            </div>
+            <span className="text-[15px] font-semibold tracking-tight text-foreground">
+              Viberr
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-[12px] text-muted">
+            <span>{projects.length} projects</span>
+            <span className="text-border">|</span>
+            <span className="tabular-nums">${TOTAL_PAYOUT.toLocaleString()} portfolio</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={goPrev}
+            disabled={currentIndex === 0}
+            className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/20 disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-150"
+          >
+            <ChevronLeft size={14} strokeWidth={1.5} />
+          </button>
+          <span className="text-[12px] tabular-nums text-muted w-10 text-center">
+            {currentIndex + 1} / {projects.length}
+          </span>
+          <button
+            onClick={goNext}
+            disabled={currentIndex === projects.length - 1}
+            className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/20 disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-150"
+          >
+            <ChevronRight size={14} strokeWidth={1.5} />
+          </button>
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {projects.map((project) => (
-          <div
-            key={project.slug}
-            className="border border-border hover:border-foreground/15 rounded-lg p-6 flex flex-col bg-card transition-colors duration-150"
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] text-muted tracking-[0.05em] uppercase">
-                {project.type}
-              </p>
-              <div className="text-right tabular-nums">
-                <p className="text-[15px] font-semibold text-foreground">
-                  ${project.estimate.toLocaleString()}
-                </p>
-                <p className="text-[11px] text-muted">
-                  You earn ${(project.estimate / 2).toLocaleString()}
-                </p>
+      {/* Slideshow */}
+      <div
+        ref={scrollRef}
+        className="flex-1 flex overflow-x-auto snap-x snap-mandatory scroll-smooth"
+        style={{ scrollbarWidth: "none" }}
+      >
+        {projects.map((project) => {
+          const TypeIcon = typeConfig[project.type].icon;
+          const progress = getProgress(project.slug);
+          const isSubmitted = submitted[project.slug];
+          const completedCount =
+            state[project.slug]?.filter((s) => s.completed).length ?? 0;
+
+          return (
+            <div
+              key={project.slug}
+              className="snap-center flex-shrink-0 w-full flex items-stretch justify-center px-8 py-6"
+            >
+              <div className="border border-border rounded-[16px] bg-card w-full max-w-[960px] flex overflow-hidden">
+                {/* Left panel */}
+                <div className="flex-1 flex flex-col p-8 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-surface-2 flex items-center justify-center flex-shrink-0">
+                      <TypeIcon
+                        size={12}
+                        strokeWidth={1.5}
+                        className="text-muted"
+                      />
+                    </div>
+                    <span className="text-[11px] text-muted tracking-[0.05em] uppercase">
+                      {project.type}
+                    </span>
+                    <span className="text-[11px] text-muted/40 tabular-nums ml-auto">
+                      {project.code}
+                    </span>
+                  </div>
+
+                  <h2 className="text-[28px] font-semibold text-foreground mt-6 leading-[1.15]">
+                    {project.name}
+                  </h2>
+
+                  <p className="text-[15px] text-muted leading-[1.6] mt-2 max-w-[380px]">
+                    {project.description}
+                  </p>
+
+                  {/* Deliverables */}
+                  <div className="mt-8">
+                    <span className="text-[11px] text-muted/60 tracking-[0.05em] uppercase">
+                      Deliverables
+                    </span>
+                    <ul className="mt-3 space-y-2.5">
+                      {project.deliverables.map((d, i) => (
+                        <li
+                          key={i}
+                          className="flex items-start gap-2.5 text-[13px] leading-[1.4] text-foreground/80"
+                        >
+                          <span className="w-1 h-1 rounded-full bg-foreground/25 mt-[7px] flex-shrink-0" />
+                          {d}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="flex-1" />
+
+                  <div className="border-t border-border pt-5 mt-6">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[32px] font-semibold tabular-nums text-foreground leading-none">
+                        ${(project.estimate / 2).toLocaleString()}
+                      </span>
+                      <span className="text-[13px] text-muted">
+                        / ${project.estimate.toLocaleString()} total
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-5">
+                      <Link
+                        href={`/${project.slug}`}
+                        className="flex-1 h-10 flex items-center justify-center rounded-md bg-foreground text-background text-[13px] font-medium hover:opacity-85 transition-opacity duration-150"
+                      >
+                        View project
+                      </Link>
+                      <a
+                        href={`${REPO_BASE}/${project.slug}/page.tsx`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center w-10 h-10 rounded-md border border-border text-muted hover:text-foreground hover:border-foreground/20 transition-colors duration-150"
+                      >
+                        <Github size={16} strokeWidth={1.5} />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right panel */}
+                <div className="w-[340px] flex-shrink-0 border-l border-border flex flex-col" style={{ backgroundColor: "#f5f5f4" }}>
+                  <div className="px-6 pt-6 pb-4 flex-shrink-0">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <span className="text-[11px] text-muted tracking-[0.05em] uppercase">
+                        To go live
+                      </span>
+                      <span className="text-[11px] tabular-nums text-muted">
+                        {completedCount}/{project.steps.length}
+                      </span>
+                    </div>
+                    <div className="h-1 rounded-full bg-[#e5e5e3] overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-150 ease-out"
+                        style={{
+                          width: `${progress}%`,
+                          backgroundColor:
+                            progress === 100 ? "#16a34a" : "#2563eb",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto px-6 pb-6">
+                    <div className="space-y-4">
+                      {project.steps.map((step, i) => {
+                        const stepState = state[project.slug]?.[i];
+                        const done = stepState?.completed;
+
+                        return (
+                          <div key={i} className="flex gap-2.5">
+                            <div className="flex-shrink-0 mt-0.5">
+                              {done ? (
+                                <div className="w-[18px] h-[18px] rounded-full bg-[#16a34a] flex items-center justify-center">
+                                  <Check
+                                    size={10}
+                                    strokeWidth={2.5}
+                                    className="text-white"
+                                  />
+                                </div>
+                              ) : (
+                                <Circle
+                                  size={18}
+                                  strokeWidth={1.5}
+                                  className="text-[#d4d4d2]"
+                                />
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <span
+                                className={`text-[13px] leading-[1.4] block ${
+                                  done
+                                    ? "text-muted line-through"
+                                    : "text-foreground"
+                                }`}
+                              >
+                                {step.label}
+                              </span>
+
+                              {step.type === "upload" && !done && (
+                                <label className="mt-1.5 flex items-center gap-2 px-3 py-2.5 rounded-md border border-dashed border-[#d4d4d2] hover:border-foreground/30 cursor-pointer transition-colors duration-150 bg-white/60">
+                                  <Upload
+                                    size={14}
+                                    strokeWidth={1.5}
+                                    className="text-muted flex-shrink-0"
+                                  />
+                                  <span className="text-[11px] text-muted truncate">
+                                    {step.placeholder}
+                                  </span>
+                                  <input
+                                    type="file"
+                                    accept={step.accept}
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        updateStep(project.slug, i, {
+                                          fileName: file.name,
+                                        });
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              )}
+                              {step.type === "upload" &&
+                                done &&
+                                stepState?.fileName && (
+                                  <span className="text-[11px] text-muted mt-0.5 block truncate">
+                                    {stepState.fileName}
+                                  </span>
+                                )}
+
+                              {step.type === "input" && !done && (
+                                <input
+                                  type="text"
+                                  placeholder={step.placeholder}
+                                  className="mt-1.5 w-full h-8 px-3 rounded-md border border-[#d4d4d2] bg-white/60 text-[12px] text-foreground placeholder:text-muted/50 focus:outline-none focus:border-foreground/30 transition-colors duration-150"
+                                  onKeyDown={(e) => {
+                                    if (
+                                      e.key === "Enter" &&
+                                      e.currentTarget.value.trim()
+                                    ) {
+                                      updateStep(project.slug, i, {
+                                        value: e.currentTarget.value.trim(),
+                                      });
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    if (e.currentTarget.value.trim()) {
+                                      updateStep(project.slug, i, {
+                                        value: e.currentTarget.value.trim(),
+                                      });
+                                    }
+                                  }}
+                                />
+                              )}
+                              {step.type === "input" &&
+                                done &&
+                                stepState?.value && (
+                                  <span className="text-[11px] text-muted mt-0.5 block truncate">
+                                    {stepState.value}
+                                  </span>
+                                )}
+
+                              {step.type === "choice" &&
+                                !done &&
+                                step.options && (
+                                  <div className="mt-1.5 flex flex-wrap gap-1">
+                                    {step.options.map((option) => (
+                                      <button
+                                        key={option}
+                                        onClick={() =>
+                                          updateStep(project.slug, i, {
+                                            choice: option,
+                                          })
+                                        }
+                                        className="h-7 px-2.5 rounded-md border border-[#d4d4d2] bg-white/60 text-[11px] text-foreground hover:bg-white transition-colors duration-150"
+                                      >
+                                        {option}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              {step.type === "choice" &&
+                                done &&
+                                stepState?.choice && (
+                                  <span className="text-[11px] text-muted mt-0.5 block">
+                                    {stepState.choice}
+                                  </span>
+                                )}
+
+                              {step.type === "confirm" && !done && (
+                                <button
+                                  onClick={() =>
+                                    updateStep(project.slug, i, {})
+                                  }
+                                  className="mt-1.5 h-7 px-2.5 rounded-md border border-[#d4d4d2] bg-white/60 text-[11px] text-foreground hover:bg-white transition-colors duration-150"
+                                >
+                                  Done
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-[#e5e5e3]">
+                      <textarea
+                        placeholder="Anything else we should know?"
+                        rows={2}
+                        value={notes[project.slug] || ""}
+                        onChange={(e) =>
+                          setNotes((prev) => ({
+                            ...prev,
+                            [project.slug]: e.target.value,
+                          }))
+                        }
+                        className="w-full px-3 py-2 rounded-md border border-[#d4d4d2] bg-white/60 text-[12px] text-foreground placeholder:text-muted/50 focus:outline-none focus:border-foreground/30 transition-colors duration-150 resize-none"
+                      />
+                    </div>
+
+                    {isSubmitted ? (
+                      <div className="mt-3 flex items-center gap-2 justify-center py-2.5">
+                        <Check
+                          size={14}
+                          strokeWidth={2}
+                          className="text-[#16a34a]"
+                        />
+                        <span className="text-[13px] text-[#16a34a] font-medium">
+                          Submitted
+                        </span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setSubmitted((prev) => ({
+                            ...prev,
+                            [project.slug]: true,
+                          }));
+                        }}
+                        disabled={!allDone(project.slug)}
+                        className={`mt-3 w-full h-9 rounded-md text-[13px] font-medium transition-opacity duration-150 ${
+                          allDone(project.slug)
+                            ? "bg-foreground text-background hover:opacity-85"
+                            : "bg-[#e5e5e3] text-muted cursor-not-allowed"
+                        }`}
+                      >
+                        {allDone(project.slug)
+                          ? "Submit everything"
+                          : `${project.steps.length - completedCount} remaining`}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-
-            <h2 className="text-[18px] font-semibold text-foreground mt-4">
-              {project.name}
-            </h2>
-
-            <p className="text-[13px] text-muted leading-[1.6] mt-2">
-              {project.description}
-            </p>
-
-            <div className="flex-1 mt-4">
-              <p className="text-[11px] text-muted tracking-[0.05em] uppercase mb-2">
-                To go live
-              </p>
-              <ol className="space-y-1">
-                {project.steps.map((step, i) => (
-                  <li key={i} className="flex gap-2 text-[13px] leading-[1.5]">
-                    <span className="text-muted/60 flex-shrink-0 tabular-nums">{i + 1}.</span>
-                    <span className="text-foreground">{step}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-
-            <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
-              <Link
-                href={`/${project.slug}`}
-                className="text-[13px] font-medium text-primary hover:opacity-70 transition-opacity duration-150"
-              >
-                View prototype
-              </Link>
-              <a
-                href={`${REPO_BASE}/${project.slug}/page.tsx`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-[13px] text-muted hover:text-foreground transition-colors duration-150"
-              >
-                <Github size={14} strokeWidth={1.5} />
-                GitHub
-              </a>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
