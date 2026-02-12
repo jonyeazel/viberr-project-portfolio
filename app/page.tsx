@@ -630,8 +630,8 @@ export default function Home() {
                 transform: isFocused ? "scale(1)" : "scale(0.95)",
                 opacity: isFocused ? 1 : 0.4,
                 transition: "transform 150ms ease-out, opacity 150ms ease-out",
-                border: isFocused ? "1px solid #2a2a2a" : "1px solid #1a1a1a",
-                boxShadow: isFocused ? "0 0 0 1px rgba(99,91,255,0.06), 0 8px 40px rgba(0,0,0,0.4)" : "none",
+                border: isFocused ? "1px solid #e7e7e5" : "1px solid #eeeeec",
+                boxShadow: isFocused ? "0 0 0 1px rgba(99,91,255,0.06), 0 8px 40px rgba(0,0,0,0.06)" : "none",
               }}
             >
               {/* Card face */}
@@ -675,7 +675,7 @@ export default function Home() {
                 <div className="flex-1" />
 
                 {/* Price + progress */}
-                <div className="border-t border-[#1e1e1e] pt-4 mt-4">
+                <div className="border-t border-border pt-4 mt-4">
                   <div className="flex items-baseline gap-1.5">
                     <span className="text-[22px] font-medium tabular-nums text-foreground leading-none tracking-[-0.02em]">
                       ${(project.estimate / 2).toLocaleString()}
@@ -687,7 +687,7 @@ export default function Home() {
 
                   {/* Progress bar */}
                   <div className="mt-3 flex items-center gap-2">
-                    <div className="flex-1 h-[3px] rounded-full bg-[#1e1e1e] overflow-hidden">
+                    <div className="flex-1 h-[3px] rounded-full bg-surface-2 overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-150 ease-out"
                         style={{
@@ -719,7 +719,7 @@ export default function Home() {
                     )}
                     <Link
                       href={`/${project.slug}`}
-                      className="h-9 px-3.5 flex items-center justify-center rounded-[8px] border border-[#2a2a2a] text-[12px] text-muted hover:text-foreground hover:border-[#3a3a3a] transition-colors duration-150"
+                      className="h-9 px-3.5 flex items-center justify-center rounded-[8px] border border-border text-[12px] text-muted hover:text-foreground hover:border-foreground/20 transition-colors duration-150"
                     >
                       View
                     </Link>
@@ -727,7 +727,7 @@ export default function Home() {
                       href={`${REPO_BASE}/${project.slug}/page.tsx`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center w-9 h-9 rounded-[8px] border border-[#2a2a2a] text-muted hover:text-foreground hover:border-[#3a3a3a] transition-colors duration-150"
+                      className="flex items-center justify-center w-9 h-9 rounded-[8px] border border-border text-muted hover:text-foreground hover:border-foreground/20 transition-colors duration-150"
                     >
                       <Github size={14} strokeWidth={1.5} />
                     </a>
@@ -737,14 +737,14 @@ export default function Home() {
 
               {/* Inset drawer */}
               <div
-                className="absolute rounded-[13px] bg-[#111111] flex flex-col"
+                className="absolute rounded-[13px] bg-card flex flex-col"
                 style={{
                   inset: 3,
                   transform: isDrawerOpen ? "translateY(0)" : "translateY(105%)",
                   transition: "transform 150ms ease-out",
-                  boxShadow: isDrawerOpen ? "0 -4px 32px rgba(0,0,0,0.5)" : "none",
+                  boxShadow: isDrawerOpen ? "0 -4px 32px rgba(0,0,0,0.08)" : "none",
                   pointerEvents: isDrawerOpen ? "auto" : "none",
-                  border: "1px solid #1e1e1e",
+                  border: "1px solid #e7e7e5",
                 }}
               >
                 {/* Drawer header */}
@@ -754,7 +754,7 @@ export default function Home() {
                       Go live checklist
                     </span>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <div className="w-24 h-[3px] rounded-full bg-[#1e1e1e] overflow-hidden">
+                      <div className="w-24 h-[3px] rounded-full bg-surface-2 overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-150 ease-out"
                           style={{
@@ -792,14 +792,14 @@ export default function Home() {
                                 <Check
                                   size={10}
                                   strokeWidth={2.5}
-                                  className="text-[#0a0a0a]"
+                                  className="text-white"
                                 />
                               </div>
                             ) : (
                               <Circle
                                 size={18}
                                 strokeWidth={1.5}
-                                className="text-[#2a2a2a]"
+                                className="text-border"
                               />
                             )}
                           </div>
@@ -816,7 +816,7 @@ export default function Home() {
                             </span>
 
                             {step.type === "upload" && !done && (
-                              <label className="mt-1.5 flex items-center gap-2 px-3 py-2 rounded-[6px] border border-dashed border-[#2a2a2a] hover:border-[#3a3a3a] cursor-pointer transition-colors duration-150 bg-[#0a0a0a]/50">
+                              <label className="mt-1.5 flex items-center gap-2 px-3 py-2 rounded-[6px] border border-dashed border-border hover:border-foreground/20 cursor-pointer transition-colors duration-150 bg-surface/40">
                                 <Upload
                                   size={12}
                                   strokeWidth={1.5}
@@ -861,7 +861,7 @@ export default function Home() {
                               <input
                                 type="text"
                                 placeholder={step.placeholder}
-                                className="mt-1.5 w-full h-7 px-2.5 rounded-[6px] border border-[#2a2a2a] bg-[#0a0a0a]/50 text-[11px] text-foreground placeholder:text-muted/40 focus:outline-none focus:border-primary/40 transition-colors duration-150"
+                                className="mt-1.5 w-full h-7 px-2.5 rounded-[6px] border border-border bg-surface/40 text-[11px] text-foreground placeholder:text-muted/40 focus:outline-none focus:border-primary/40 transition-colors duration-150"
                                 onKeyDown={(e) => {
                                   if (
                                     e.key === "Enter" &&
@@ -901,7 +901,7 @@ export default function Home() {
                                           choice: option,
                                         })
                                       }
-                                      className="h-6 px-2.5 rounded-[6px] border border-[#2a2a2a] bg-[#0a0a0a]/50 text-[10px] text-foreground/80 hover:border-primary/40 hover:text-foreground transition-colors duration-150"
+                                      className="h-6 px-2.5 rounded-[6px] border border-border bg-surface/40 text-[10px] text-foreground/80 hover:border-primary/40 hover:text-foreground transition-colors duration-150"
                                     >
                                       {option}
                                     </button>
@@ -921,7 +921,7 @@ export default function Home() {
                                 onClick={() =>
                                   updateStep(project.slug, i, {})
                                 }
-                                className="mt-1.5 h-6 px-2.5 rounded-[6px] border border-[#2a2a2a] bg-[#0a0a0a]/50 text-[10px] text-foreground/80 hover:border-primary/40 hover:text-foreground transition-colors duration-150"
+                                className="mt-1.5 h-6 px-2.5 rounded-[6px] border border-border bg-surface/40 text-[10px] text-foreground/80 hover:border-primary/40 hover:text-foreground transition-colors duration-150"
                               >
                                 Done
                               </button>
@@ -933,7 +933,7 @@ export default function Home() {
                   </div>
 
                   {/* Notes */}
-                  <div className="mt-3 pt-3 border-t border-[#1e1e1e]">
+                  <div className="mt-3 pt-3 border-t border-border">
                     <textarea
                       placeholder="Anything else we should know?"
                       rows={2}
@@ -944,7 +944,7 @@ export default function Home() {
                           [project.slug]: e.target.value,
                         }))
                       }
-                      className="w-full px-2.5 py-2 rounded-[6px] border border-[#2a2a2a] bg-[#0a0a0a]/50 text-[11px] text-foreground placeholder:text-muted/40 focus:outline-none focus:border-primary/40 transition-colors duration-150 resize-none"
+                      className="w-full px-2.5 py-2 rounded-[6px] border border-border bg-surface/40 text-[11px] text-foreground placeholder:text-muted/40 focus:outline-none focus:border-primary/40 transition-colors duration-150 resize-none"
                     />
                   </div>
 
@@ -1005,7 +1005,7 @@ export default function Home() {
                       className={`mt-2.5 w-full h-8 rounded-[8px] text-[12px] font-medium transition-all duration-150 ${
                         allDone(project.slug) && !submitting[project.slug]
                           ? "bg-primary text-white hover:brightness-110"
-                          : "bg-[#1a1a1a] text-muted/40 cursor-not-allowed"
+                          : "bg-surface-2 text-muted/40 cursor-not-allowed"
                       }`}
                     >
                       {submitting[project.slug]
@@ -1023,7 +1023,7 @@ export default function Home() {
       </div>
 
       {/* Bottom bar */}
-      <div className="flex-shrink-0 border-t border-[#1a1a1a] px-8 py-4">
+      <div className="flex-shrink-0 border-t border-border px-8 py-4">
         {/* Chat messages */}
         {chatMessages.length > 0 && (
           <div className="max-w-[600px] mx-auto mb-3 max-h-24 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
@@ -1045,7 +1045,7 @@ export default function Home() {
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
               onClick={() => scrollBy(-1)}
-              className="w-8 h-8 rounded-[8px] border border-[#2a2a2a] flex items-center justify-center text-muted/50 hover:text-foreground hover:border-[#3a3a3a] transition-all duration-150"
+              className="w-8 h-8 rounded-[8px] border border-border flex items-center justify-center text-muted/50 hover:text-foreground hover:border-foreground/20 transition-all duration-150"
             >
               <ChevronLeft size={14} strokeWidth={1.5} />
             </button>
@@ -1054,14 +1054,14 @@ export default function Home() {
             </span>
             <button
               onClick={() => scrollBy(1)}
-              className="w-8 h-8 rounded-[8px] border border-[#2a2a2a] flex items-center justify-center text-muted/50 hover:text-foreground hover:border-[#3a3a3a] transition-all duration-150"
+              className="w-8 h-8 rounded-[8px] border border-border flex items-center justify-center text-muted/50 hover:text-foreground hover:border-foreground/20 transition-all duration-150"
             >
               <ChevronRight size={14} strokeWidth={1.5} />
             </button>
           </div>
 
           {/* Chat input */}
-          <div className="flex-1 flex items-center h-9 rounded-[8px] border border-[#2a2a2a] bg-[#111111] px-4 gap-2">
+          <div className="flex-1 flex items-center h-9 rounded-[8px] border border-border bg-card px-4 gap-2">
             <input
               ref={chatInputRef}
               type="text"
