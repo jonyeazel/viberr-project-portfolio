@@ -13,8 +13,32 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Viberr Projects",
-  description: "Project portfolio",
+  title: {
+    default: "Viberr Projects",
+    template: "%s | Viberr",
+  },
+  description:
+    "12 production-ready projects built by Viberr. Workflow automation, platforms, and tools — ready to go live.",
+  metadataBase: new URL("https://swift-bear-260.vercel.app"),
+  openGraph: {
+    title: "Viberr Projects",
+    description:
+      "12 production-ready projects built by Viberr. Workflow automation, platforms, and tools.",
+    url: "https://swift-bear-260.vercel.app",
+    siteName: "Viberr",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Viberr Projects",
+    description:
+      "12 production-ready projects built by Viberr. Workflow automation, platforms, and tools.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

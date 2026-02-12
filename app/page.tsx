@@ -483,6 +483,7 @@ export default function Home() {
   const [state, setState] = useState<ProjectState>(initProjectState);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
+  const [submitting, setSubmitting] = useState<Record<string, boolean>>({});
   const [openDrawer, setOpenDrawer] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [chatValue, setChatValue] = useState("");
@@ -549,6 +550,12 @@ export default function Home() {
     const focused = projects[focusedIndex];
     setChatMessages((prev) => [...prev, { from: "user", text: msg }]);
     setChatValue("");
+    // Persist to server
+    fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: focused.slug, message: msg }),
+    }).catch(() => {});
     // Auto-reply acknowledging the message
     setTimeout(() => {
       setChatMessages((prev) => [
@@ -828,6 +835,15 @@ export default function Home() {
                                       updateStep(project.slug, i, {
                                         fileName: file.name,
                                       });
+                                      // Persist file to server
+                                      const fd = new FormData();
+                                      fd.append("file", file);
+                                      fd.append("slug", project.slug);
+                                      fd.append("stepLabel", step.label);
+                                      fetch("/api/upload", {
+                                        method: "POST",
+                                        body: fd,
+                                      }).catch(() => {});
                                     }
                                   }}
                                 />
@@ -946,22 +962,57 @@ export default function Home() {
                     </div>
                   ) : (
                     <button
-                      onClick={() => {
-                        setSubmitted((prev) => ({
-                          ...prev,
-                          [project.slug]: true,
+                      onClick={async () => {
+                        if (submitting[project.slug]) return;
+                        setSubmitting((prev) => ({ ...prev, [project.slug]: true }));
+
+                        const stepData = state[project.slug].map((s, idx) => ({
+                          label: project.steps[idx].label,
+                          type: project.steps[idx].type,
+                          ...s,
                         }));
+
+                        try {
+                          await Promise.all([
+                            fetch("/api/submissions", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                slug: project.slug,
+                                steps: stepData,
+                                notes: notes[project.slug] || "",
+                              }),
+                            }),
+                            fetch("/api/notify", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                slug: project.slug,
+                                projectName: project.name,
+                                completedSteps: stepData.filter((s) => s.completed),
+                                notes: notes[project.slug] || "",
+                              }),
+                            }),
+                          ]);
+                        } catch {
+                          // Persistence failed silently — still mark as submitted for the user
+                        }
+
+                        setSubmitting((prev) => ({ ...prev, [project.slug]: false }));
+                        setSubmitted((prev) => ({ ...prev, [project.slug]: true }));
                       }}
-                      disabled={!allDone(project.slug)}
+                      disabled={!allDone(project.slug) || submitting[project.slug]}
                       className={`mt-2.5 w-full h-8 rounded-md text-[12px] font-medium transition-opacity duration-150 ${
-                        allDone(project.slug)
+                        allDone(project.slug) && !submitting[project.slug]
                           ? "bg-foreground text-background hover:opacity-85"
                           : "bg-surface-2 text-muted cursor-not-allowed"
                       }`}
                     >
-                      {allDone(project.slug)
-                        ? "Submit everything"
-                        : `${project.steps.length - completedCount} remaining`}
+                      {submitting[project.slug]
+                        ? "Submitting..."
+                        : allDone(project.slug)
+                          ? "Submit everything"
+                          : `${project.steps.length - completedCount} remaining`}
                     </button>
                   )}
                 </div>
