@@ -16,6 +16,9 @@ import {
   Monitor,
   Smartphone,
   ArrowLeft,
+  Maximize2,
+  Mic,
+  Square,
 } from "lucide-react";
 
 type StepType = "upload" | "input" | "choice" | "confirm";
@@ -482,6 +485,21 @@ function initProjectState(): ProjectState {
 const TOTAL_VALUE = projects.reduce((sum, p) => sum + p.estimate, 0);
 const TOTAL_PAYOUT = Math.round(TOTAL_VALUE / 2);
 
+// Preview modes: null = card view, "mobile" = phone frame, "desktop" = expanded, "fullscreen" = overlay
+type PreviewMode = null | "mobile" | "desktop" | "fullscreen";
+
+// Card dimensions per mode
+const CARD_W = 380;
+const CARD_H = Math.round(CARD_W * (4 / 3)); // 507
+const MOBILE_FRAME_W = 380;
+const MOBILE_FRAME_H = 720; // iPhone-like proportions
+const MOBILE_IFRAME_W = 375;
+const MOBILE_IFRAME_H = 812;
+const DESKTOP_FRAME_W = 920;
+const DESKTOP_FRAME_H = 580;
+const DESKTOP_IFRAME_W = 1280;
+const DESKTOP_IFRAME_H = 2000;
+
 export default function Home() {
   const [state, setState] = useState<ProjectState>(initProjectState);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -490,11 +508,18 @@ export default function Home() {
   const [openDrawer, setOpenDrawer] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [chatValue, setChatValue] = useState("");
-  const [chatMessages, setChatMessages] = useState<Array<{ from: "user" | "system"; text: string }>>([]);
+  const [chatMessages, setChatMessages] = useState<
+    Array<{ from: "user" | "assistant"; text: string }>
+  >([]);
+  const [chatLoading, setChatLoading] = useState(false);
   const [previewSlug, setPreviewSlug] = useState<string | null>(null);
-  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("mobile");
+  const [previewMode, setPreviewMode] = useState<PreviewMode>(null);
+  const [isRecording, setIsRecording] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const chatInputRef = useRef<HTMLInputElement>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Track which card is closest to center
   useEffect(() => {
@@ -549,38 +574,128 @@ export default function Home() {
     el.scrollBy({ left: direction * 400, behavior: "smooth" });
   }, []);
 
-  const sendChat = useCallback(() => {
-    const msg = chatValue.trim();
-    if (!msg) return;
-    const focused = projects[focusedIndex];
-    setChatMessages((prev) => [...prev, { from: "user", text: msg }]);
-    setChatValue("");
-    // Persist to server
-    fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug: focused.slug, message: msg }),
-    }).catch(() => {});
-    // Auto-reply acknowledging the message
-    setTimeout(() => {
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          from: "system",
-          text: `Noted for ${focused.name}. We'll follow up on "${msg.length > 60 ? msg.slice(0, 60) + "..." : msg}" before go-live.`,
-        },
-      ]);
-    }, 400);
-  }, [chatValue, focusedIndex]);
+  // AI chat
+  const sendChat = useCallback(
+    async (messageOverride?: string) => {
+      const msg = (messageOverride || chatValue).trim();
+      if (!msg || chatLoading) return;
+      const focused = projects[focusedIndex];
+      setChatMessages((prev) => [...prev, { from: "user", text: msg }]);
+      setChatValue("");
+      setChatLoading(true);
 
+      try {
+        const res = await fetch("/api/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug: focused.slug,
+            message: msg,
+            projectName: focused.name,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setChatMessages((prev) => [
+            ...prev,
+            { from: "assistant", text: data.response },
+          ]);
+        } else {
+          setChatMessages((prev) => [
+            ...prev,
+            {
+              from: "assistant",
+              text: "Something went wrong. Try again.",
+            },
+          ]);
+        }
+      } catch {
+        setChatMessages((prev) => [
+          ...prev,
+          { from: "assistant", text: "Connection failed. Try again." },
+        ]);
+      }
+
+      setChatLoading(false);
+    },
+    [chatValue, focusedIndex, chatLoading]
+  );
+
+  // Voice recording
+  const toggleRecording = useCallback(async () => {
+    if (isRecording) {
+      // Stop recording
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream, {
+        mimeType: "audio/webm;codecs=opus",
+      });
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: "audio/webm",
+        });
+
+        // Transcribe
+        const fd = new FormData();
+        fd.append("audio", audioBlob);
+
+        try {
+          const res = await fetch("/api/transcribe", {
+            method: "POST",
+            body: fd,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.text) {
+              sendChat(data.text);
+            }
+          }
+        } catch {
+          // Silently fail transcription
+        }
+      };
+
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+    } catch {
+      // Microphone access denied
+    }
+  }, [isRecording, sendChat]);
+
+  // Auto-scroll chat
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
+
+  // Keyboard handlers
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === "Escape") {
+        if (previewMode === "fullscreen") {
+          setPreviewMode("desktop");
+          return;
+        }
         if (previewSlug) {
           setPreviewSlug(null);
-          setPreviewDevice("mobile");
+          setPreviewMode(null);
           return;
         }
         setOpenDrawer(null);
@@ -593,9 +708,58 @@ export default function Home() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [scrollBy, previewSlug]);
+  }, [scrollBy, previewSlug, previewMode]);
 
   const focusedProject = projects[focusedIndex];
+
+  // Calculate card dimensions based on preview mode for the active card
+  const getCardStyle = (
+    isPreviewing: boolean,
+    isFocused: boolean
+  ): React.CSSProperties => {
+    if (isPreviewing && previewMode === "mobile") {
+      return {
+        width: MOBILE_FRAME_W,
+        height: MOBILE_FRAME_H,
+        borderRadius: 36,
+        transform: "scale(1)",
+        opacity: 1,
+        transition:
+          "width 300ms cubic-bezier(0.32, 0.72, 0, 1), height 300ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 300ms cubic-bezier(0.32, 0.72, 0, 1), transform 150ms ease-out, opacity 150ms ease-out",
+        border: "1px solid #e7e7e5",
+        boxShadow:
+          "0 0 0 1px rgba(99,91,255,0.06), 0 20px 60px rgba(0,0,0,0.12)",
+      };
+    }
+    if (isPreviewing && previewMode === "desktop") {
+      return {
+        width: DESKTOP_FRAME_W,
+        height: DESKTOP_FRAME_H,
+        borderRadius: 12,
+        transform: "scale(1)",
+        opacity: 1,
+        transition:
+          "width 300ms cubic-bezier(0.32, 0.72, 0, 1), height 300ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 300ms cubic-bezier(0.32, 0.72, 0, 1), transform 150ms ease-out, opacity 150ms ease-out",
+        border: "1px solid #e7e7e5",
+        boxShadow:
+          "0 0 0 1px rgba(99,91,255,0.06), 0 20px 60px rgba(0,0,0,0.12)",
+      };
+    }
+    // Default card
+    return {
+      width: CARD_W,
+      height: CARD_H,
+      borderRadius: 16,
+      transform: isFocused ? "scale(1)" : "scale(0.95)",
+      opacity: isFocused ? 1 : 0.4,
+      transition:
+        "width 300ms cubic-bezier(0.32, 0.72, 0, 1), height 300ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 300ms cubic-bezier(0.32, 0.72, 0, 1), transform 150ms ease-out, opacity 150ms ease-out",
+      border: isFocused ? "1px solid #e7e7e5" : "1px solid #eeeeec",
+      boxShadow: isFocused
+        ? "0 0 0 1px rgba(99,91,255,0.06), 0 8px 40px rgba(0,0,0,0.06)"
+        : "none",
+    };
+  };
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
@@ -611,11 +775,13 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-5 text-[12px] text-muted">
           <span>{projects.length} projects</span>
-          <span className="tabular-nums">${TOTAL_PAYOUT.toLocaleString()}</span>
+          <span className="tabular-nums">
+            ${TOTAL_PAYOUT.toLocaleString()}
+          </span>
         </div>
       </header>
 
-      {/* Card slideshow — takes up the main space */}
+      {/* Card slideshow */}
       <div
         ref={scrollRef}
         className="flex-1 flex items-center gap-5 overflow-x-auto snap-x snap-mandatory"
@@ -624,7 +790,9 @@ export default function Home() {
           scrollBehavior: "smooth",
           paddingLeft: "calc(50vw - 190px)",
           paddingRight: "calc(50vw - 190px)",
-          ...(previewSlug ? { overflow: "hidden", touchAction: "none" } : {}),
+          ...(previewSlug
+            ? { overflow: "hidden", touchAction: "none" }
+            : {}),
         }}
       >
         {projects.map((project, idx) => {
@@ -637,28 +805,11 @@ export default function Home() {
           const isFocused = idx === focusedIndex;
           const isPreviewing = previewSlug === project.slug;
 
-          // Iframe scaling constants
-          const CARD_W = 380;
-          const DESKTOP_W = 1280;
-          const DESKTOP_H = 2000;
-          const MOBILE_W = 640;
-          const MOBILE_H = 1200;
-          const dScale = CARD_W / DESKTOP_W; // ~0.297
-          const mScale = CARD_W / MOBILE_W; // ~0.594
-
           return (
             <div
               key={project.slug}
-              className="flex-shrink-0 relative overflow-hidden rounded-[16px] bg-card snap-center"
-              style={{
-                width: CARD_W,
-                aspectRatio: "3/4",
-                transform: isFocused ? "scale(1)" : "scale(0.95)",
-                opacity: isFocused ? 1 : 0.4,
-                transition: "transform 150ms ease-out, opacity 150ms ease-out",
-                border: isFocused ? "1px solid #e7e7e5" : "1px solid #eeeeec",
-                boxShadow: isFocused ? "0 0 0 1px rgba(99,91,255,0.06), 0 8px 40px rgba(0,0,0,0.06)" : "none",
-              }}
+              className="flex-shrink-0 relative overflow-hidden bg-card snap-center"
+              style={getCardStyle(isPreviewing, isFocused)}
             >
               {/* Card face — static content */}
               <div
@@ -740,7 +891,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setPreviewSlug(project.slug);
-                        setPreviewDevice("mobile");
+                        setPreviewMode("mobile");
                       }}
                       className="flex-1 h-9 flex items-center justify-center rounded-[8px] bg-primary text-white text-[12px] font-medium hover:brightness-110 transition-all duration-150"
                     >
@@ -748,8 +899,14 @@ export default function Home() {
                     </button>
                     {isSubmitted ? (
                       <div className="h-9 px-3.5 flex items-center justify-center gap-1.5 rounded-[8px] bg-[#00d4aa]/10">
-                        <Check size={12} strokeWidth={2} className="text-[#00d4aa]" />
-                        <span className="text-[12px] text-[#00d4aa] font-medium">Submitted</span>
+                        <Check
+                          size={12}
+                          strokeWidth={2}
+                          className="text-[#00d4aa]"
+                        />
+                        <span className="text-[12px] text-[#00d4aa] font-medium">
+                          Submitted
+                        </span>
                       </div>
                     ) : (
                       <button
@@ -771,7 +928,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Live preview — inline iframe */}
+              {/* Live preview — iframe layer */}
               <div
                 className="absolute inset-0 flex flex-col"
                 style={{
@@ -781,17 +938,58 @@ export default function Home() {
                 }}
               >
                 {/* Iframe viewport */}
-                <div className="flex-1 relative overflow-hidden rounded-t-[16px]">
+                <div
+                  className="flex-1 relative overflow-hidden"
+                  style={{
+                    borderRadius:
+                      previewMode === "mobile"
+                        ? "35px 35px 0 0"
+                        : previewMode === "desktop"
+                          ? "11px 11px 0 0"
+                          : "0",
+                    transition: "border-radius 300ms cubic-bezier(0.32, 0.72, 0, 1)",
+                  }}
+                >
                   {isPreviewing && (
                     <>
-                      {/* Desktop iframe */}
+                      {/* Mobile iframe — 375px at 1:1 */}
                       <div
                         style={{
                           position: "absolute",
                           inset: 0,
                           overflow: "hidden",
-                          opacity: previewDevice === "desktop" ? 1 : 0,
-                          pointerEvents: previewDevice === "desktop" ? "auto" : "none",
+                          opacity: previewMode === "mobile" ? 1 : 0,
+                          pointerEvents:
+                            previewMode === "mobile" ? "auto" : "none",
+                          transition: "opacity 150ms ease-out",
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: (MOBILE_FRAME_W - MOBILE_IFRAME_W) / 2,
+                            width: MOBILE_IFRAME_W,
+                            height: MOBILE_IFRAME_H,
+                          }}
+                        >
+                          <iframe
+                            src={`/${project.slug}`}
+                            className="w-full h-full border-none"
+                            style={{ background: "#fff" }}
+                            title={`${project.name} — mobile`}
+                          />
+                        </div>
+                      </div>
+                      {/* Desktop iframe — 1280px scaled */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          overflow: "hidden",
+                          opacity: previewMode === "desktop" ? 1 : 0,
+                          pointerEvents:
+                            previewMode === "desktop" ? "auto" : "none",
                           transition: "opacity 150ms ease-out",
                         }}
                       >
@@ -800,9 +998,9 @@ export default function Home() {
                             position: "absolute",
                             top: 0,
                             left: 0,
-                            width: DESKTOP_W,
-                            height: DESKTOP_H,
-                            transform: `scale(${dScale})`,
+                            width: DESKTOP_IFRAME_W,
+                            height: DESKTOP_IFRAME_H,
+                            transform: `scale(${DESKTOP_FRAME_W / DESKTOP_IFRAME_W})`,
                             transformOrigin: "top left",
                           }}
                         >
@@ -811,36 +1009,6 @@ export default function Home() {
                             className="w-full h-full border-none"
                             style={{ background: "#fff" }}
                             title={`${project.name} — desktop`}
-                          />
-                        </div>
-                      </div>
-                      {/* Mobile iframe */}
-                      <div
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          overflow: "hidden",
-                          opacity: previewDevice === "mobile" ? 1 : 0,
-                          pointerEvents: previewDevice === "mobile" ? "auto" : "none",
-                          transition: "opacity 150ms ease-out",
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            width: MOBILE_W,
-                            height: MOBILE_H,
-                            transform: `scale(${mScale})`,
-                            transformOrigin: "top left",
-                          }}
-                        >
-                          <iframe
-                            src={`/${project.slug}`}
-                            className="w-full h-full border-none"
-                            style={{ background: "#fff" }}
-                            title={`${project.name} — mobile`}
                           />
                         </div>
                       </div>
@@ -860,7 +1028,7 @@ export default function Home() {
                   <button
                     onClick={() => {
                       setPreviewSlug(null);
-                      setPreviewDevice("mobile");
+                      setPreviewMode(null);
                     }}
                     className="flex items-center gap-1.5 text-[11px] text-muted hover:text-foreground transition-colors duration-150"
                   >
@@ -870,46 +1038,49 @@ export default function Home() {
 
                   <div className="flex items-center gap-0.5 bg-surface rounded-[6px] p-0.5">
                     <button
-                      onClick={() => setPreviewDevice("desktop")}
+                      onClick={() => setPreviewMode("mobile")}
                       className={`w-7 h-6 rounded-[5px] flex items-center justify-center transition-colors duration-150 ${
-                        previewDevice === "desktop"
-                          ? "bg-card text-foreground shadow-sm"
-                          : "text-muted/40 hover:text-muted"
-                      }`}
-                    >
-                      <Monitor size={12} strokeWidth={1.5} />
-                    </button>
-                    <button
-                      onClick={() => setPreviewDevice("mobile")}
-                      className={`w-7 h-6 rounded-[5px] flex items-center justify-center transition-colors duration-150 ${
-                        previewDevice === "mobile"
+                        previewMode === "mobile"
                           ? "bg-card text-foreground shadow-sm"
                           : "text-muted/40 hover:text-muted"
                       }`}
                     >
                       <Smartphone size={12} strokeWidth={1.5} />
                     </button>
+                    <button
+                      onClick={() => setPreviewMode("desktop")}
+                      className={`w-7 h-6 rounded-[5px] flex items-center justify-center transition-colors duration-150 ${
+                        previewMode === "desktop"
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted/40 hover:text-muted"
+                      }`}
+                    >
+                      <Monitor size={12} strokeWidth={1.5} />
+                    </button>
                   </div>
 
-                  <a
-                    href={`/${project.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] text-muted/40 hover:text-muted transition-colors duration-150"
+                  <button
+                    onClick={() => setPreviewMode("fullscreen")}
+                    className="flex items-center gap-1.5 text-[11px] text-muted/40 hover:text-muted transition-colors duration-150"
                   >
-                    Open
-                  </a>
+                    <Maximize2 size={12} strokeWidth={1.5} />
+                  </button>
                 </div>
               </div>
 
               {/* Inset drawer */}
               <div
-                className="absolute rounded-[13px] bg-card flex flex-col"
+                className="absolute bg-card flex flex-col"
                 style={{
                   inset: 3,
-                  transform: isDrawerOpen ? "translateY(0)" : "translateY(105%)",
+                  borderRadius: "inherit",
+                  transform: isDrawerOpen
+                    ? "translateY(0)"
+                    : "translateY(105%)",
                   transition: "transform 150ms ease-out",
-                  boxShadow: isDrawerOpen ? "0 -4px 32px rgba(0,0,0,0.08)" : "none",
+                  boxShadow: isDrawerOpen
+                    ? "0 -4px 32px rgba(0,0,0,0.08)"
+                    : "none",
                   pointerEvents: isDrawerOpen ? "auto" : "none",
                   border: "1px solid #e7e7e5",
                 }}
@@ -1002,7 +1173,6 @@ export default function Home() {
                                       updateStep(project.slug, i, {
                                         fileName: file.name,
                                       });
-                                      // Persist file to server
                                       const fd = new FormData();
                                       fd.append("file", file);
                                       fd.append("slug", project.slug);
@@ -1131,19 +1301,26 @@ export default function Home() {
                     <button
                       onClick={async () => {
                         if (submitting[project.slug]) return;
-                        setSubmitting((prev) => ({ ...prev, [project.slug]: true }));
-
-                        const stepData = state[project.slug].map((s, idx) => ({
-                          label: project.steps[idx].label,
-                          type: project.steps[idx].type,
-                          ...s,
+                        setSubmitting((prev) => ({
+                          ...prev,
+                          [project.slug]: true,
                         }));
+
+                        const stepData = state[project.slug].map(
+                          (s, sidx) => ({
+                            label: project.steps[sidx].label,
+                            type: project.steps[sidx].type,
+                            ...s,
+                          })
+                        );
 
                         try {
                           await Promise.all([
                             fetch("/api/submissions", {
                               method: "POST",
-                              headers: { "Content-Type": "application/json" },
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
                               body: JSON.stringify({
                                 slug: project.slug,
                                 steps: stepData,
@@ -1152,23 +1329,35 @@ export default function Home() {
                             }),
                             fetch("/api/notify", {
                               method: "POST",
-                              headers: { "Content-Type": "application/json" },
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
                               body: JSON.stringify({
                                 slug: project.slug,
                                 projectName: project.name,
-                                completedSteps: stepData.filter((s) => s.completed),
+                                completedSteps: stepData.filter(
+                                  (s) => s.completed
+                                ),
                                 notes: notes[project.slug] || "",
                               }),
                             }),
                           ]);
                         } catch {
-                          // Persistence failed silently — still mark as submitted for the user
+                          // Silently continue
                         }
 
-                        setSubmitting((prev) => ({ ...prev, [project.slug]: false }));
-                        setSubmitted((prev) => ({ ...prev, [project.slug]: true }));
+                        setSubmitting((prev) => ({
+                          ...prev,
+                          [project.slug]: false,
+                        }));
+                        setSubmitted((prev) => ({
+                          ...prev,
+                          [project.slug]: true,
+                        }));
                       }}
-                      disabled={!allDone(project.slug) || submitting[project.slug]}
+                      disabled={
+                        !allDone(project.slug) || submitting[project.slug]
+                      }
                       className={`mt-2.5 w-full h-8 rounded-[8px] text-[12px] font-medium transition-all duration-150 ${
                         allDone(project.slug) && !submitting[project.slug]
                           ? "bg-primary text-white hover:brightness-110"
@@ -1189,69 +1378,168 @@ export default function Home() {
         })}
       </div>
 
-      {/* Bottom bar */}
-      <div className="flex-shrink-0 border-t border-border px-8 py-4">
-        {/* Chat messages */}
-        {chatMessages.length > 0 && (
-          <div className="max-w-[600px] mx-auto mb-3 max-h-24 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
-            {chatMessages.slice(-4).map((msg, i) => (
-              <div
-                key={i}
-                className={`text-[12px] leading-[1.5] py-0.5 ${
-                  msg.from === "user" ? "text-foreground/80" : "text-muted/60"
+      {/* Bottom — AI chat interface */}
+      <div className="flex-shrink-0 px-8 pb-6 pt-4">
+        <div className="max-w-[680px] mx-auto">
+          {/* Chat messages */}
+          {chatMessages.length > 0 && (
+            <div
+              ref={chatScrollRef}
+              className="mb-3 max-h-40 overflow-y-auto rounded-[12px] bg-card border border-border p-4 space-y-3"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {chatMessages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`text-[13px] leading-[1.6] ${
+                    msg.from === "user"
+                      ? "text-foreground"
+                      : "text-muted"
+                  }`}
+                >
+                  {msg.text}
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className="w-1.5 h-1.5 rounded-full bg-muted/30"
+                    style={{
+                      animation: "pulse 1s ease-in-out infinite",
+                    }}
+                  />
+                  <div
+                    className="w-1.5 h-1.5 rounded-full bg-muted/30"
+                    style={{
+                      animation: "pulse 1s ease-in-out 0.15s infinite",
+                    }}
+                  />
+                  <div
+                    className="w-1.5 h-1.5 rounded-full bg-muted/30"
+                    style={{
+                      animation: "pulse 1s ease-in-out 0.3s infinite",
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Nav + chat input row */}
+          <div className="flex items-end gap-3">
+            {/* Nav arrows */}
+            <div className="flex items-center gap-1.5 flex-shrink-0 pb-1">
+              <button
+                onClick={() => scrollBy(-1)}
+                className="w-8 h-8 rounded-[8px] border border-border flex items-center justify-center text-muted/50 hover:text-foreground hover:border-foreground/20 transition-all duration-150"
+              >
+                <ChevronLeft size={14} strokeWidth={1.5} />
+              </button>
+              <span className="text-[11px] tabular-nums text-muted/50 w-10 text-center">
+                {focusedIndex + 1}/{projects.length}
+              </span>
+              <button
+                onClick={() => scrollBy(1)}
+                className="w-8 h-8 rounded-[8px] border border-border flex items-center justify-center text-muted/50 hover:text-foreground hover:border-foreground/20 transition-all duration-150"
+              >
+                <ChevronRight size={14} strokeWidth={1.5} />
+              </button>
+            </div>
+
+            {/* Chat textarea */}
+            <div className="flex-1 flex items-end rounded-[12px] border border-border bg-card px-4 py-3 gap-3 min-h-[52px]">
+              <textarea
+                ref={chatInputRef}
+                value={chatValue}
+                onChange={(e) => {
+                  setChatValue(e.target.value);
+                  // Auto-resize
+                  e.target.style.height = "auto";
+                  e.target.style.height =
+                    Math.min(e.target.scrollHeight, 120) + "px";
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendChat();
+                  }
+                }}
+                placeholder={`Ask anything about ${focusedProject?.name ?? "this project"}...`}
+                rows={1}
+                className="flex-1 text-[13px] text-foreground placeholder:text-muted/30 bg-transparent focus:outline-none resize-none leading-[1.5]"
+                style={{ minHeight: 20, maxHeight: 120 }}
+              />
+
+              {/* Voice button */}
+              <button
+                onClick={toggleRecording}
+                className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 ${
+                  isRecording
+                    ? "bg-destructive text-white"
+                    : "text-muted/30 hover:text-muted"
                 }`}
               >
-                <span>{msg.text}</span>
-              </div>
-            ))}
-          </div>
-        )}
+                {isRecording ? (
+                  <Square size={12} strokeWidth={2} />
+                ) : (
+                  <Mic size={14} strokeWidth={1.5} />
+                )}
+              </button>
 
-        <div className="max-w-[600px] mx-auto flex items-center gap-3">
-          {/* Nav arrows + counter */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button
-              onClick={() => scrollBy(-1)}
-              className="w-8 h-8 rounded-[8px] border border-border flex items-center justify-center text-muted/50 hover:text-foreground hover:border-foreground/20 transition-all duration-150"
-            >
-              <ChevronLeft size={14} strokeWidth={1.5} />
-            </button>
-            <span className="text-[11px] tabular-nums text-muted/50 w-10 text-center">
-              {focusedIndex + 1}/{projects.length}
-            </span>
-            <button
-              onClick={() => scrollBy(1)}
-              className="w-8 h-8 rounded-[8px] border border-border flex items-center justify-center text-muted/50 hover:text-foreground hover:border-foreground/20 transition-all duration-150"
-            >
-              <ChevronRight size={14} strokeWidth={1.5} />
-            </button>
-          </div>
-
-          {/* Chat input */}
-          <div className="flex-1 flex items-center h-9 rounded-[8px] border border-border bg-card px-4 gap-2">
-            <input
-              ref={chatInputRef}
-              type="text"
-              value={chatValue}
-              onChange={(e) => setChatValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") sendChat();
-              }}
-              placeholder={`Message about ${focusedProject?.name ?? "this project"}...`}
-              className="flex-1 text-[12px] text-foreground placeholder:text-muted/30 bg-transparent focus:outline-none"
-            />
-            <button
-              onClick={sendChat}
-              disabled={!chatValue.trim()}
-              className="text-muted/40 hover:text-primary disabled:opacity-20 transition-all duration-150 flex-shrink-0"
-            >
-              <SendHorizontal size={14} strokeWidth={1.5} />
-            </button>
+              {/* Send button */}
+              <button
+                onClick={() => sendChat()}
+                disabled={!chatValue.trim() || chatLoading}
+                className="flex-shrink-0 w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white disabled:opacity-20 hover:brightness-110 transition-all duration-150"
+              >
+                <SendHorizontal size={13} strokeWidth={2} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Fullscreen overlay */}
+      {previewSlug && previewMode === "fullscreen" && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col"
+          style={{ background: "rgba(25, 25, 25, 0.96)" }}
+        >
+          {/* Fullscreen header */}
+          <div className="flex items-center justify-between px-6 py-3 flex-shrink-0">
+            <button
+              onClick={() => setPreviewMode("desktop")}
+              className="flex items-center gap-1.5 text-[12px] text-white/60 hover:text-white transition-colors duration-150"
+            >
+              <ArrowLeft size={14} strokeWidth={1.5} />
+              Back
+            </button>
+            <span className="text-[12px] text-white/40">
+              {projects.find((p) => p.slug === previewSlug)?.name}
+            </span>
+            <a
+              href={`/${previewSlug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[12px] text-white/40 hover:text-white/60 transition-colors duration-150"
+            >
+              Open
+            </a>
+          </div>
 
+          {/* Fullscreen iframe */}
+          <div className="flex-1 mx-6 mb-6 rounded-[8px] overflow-hidden">
+            <iframe
+              src={`/${previewSlug}`}
+              className="w-full h-full border-none"
+              style={{ background: "#fff" }}
+              title={
+                projects.find((p) => p.slug === previewSlug)?.name ?? ""
+              }
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
