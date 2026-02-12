@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  SendHorizontal,
 } from "lucide-react";
 
 type StepType = "upload" | "input" | "choice" | "confirm";
@@ -484,7 +485,10 @@ export default function Home() {
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [openDrawer, setOpenDrawer] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
+  const [chatValue, setChatValue] = useState("");
+  const [chatMessages, setChatMessages] = useState<Array<{ from: "user" | "system"; text: string }>>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   // Track which card is closest to center
   useEffect(() => {
@@ -536,8 +540,26 @@ export default function Home() {
   const scrollBy = useCallback((direction: number) => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollBy({ left: direction * 395, behavior: "smooth" });
+    el.scrollBy({ left: direction * 400, behavior: "smooth" });
   }, []);
+
+  const sendChat = useCallback(() => {
+    const msg = chatValue.trim();
+    if (!msg) return;
+    const focused = projects[focusedIndex];
+    setChatMessages((prev) => [...prev, { from: "user", text: msg }]);
+    setChatValue("");
+    // Auto-reply acknowledging the message
+    setTimeout(() => {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          from: "system",
+          text: `Noted for ${focused.name}. We'll follow up on "${msg.length > 60 ? msg.slice(0, 60) + "..." : msg}" before go-live.`,
+        },
+      ]);
+    }, 400);
+  }, [chatValue, focusedIndex]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -551,50 +573,37 @@ export default function Home() {
     return () => window.removeEventListener("keydown", onKey);
   }, [scrollBy]);
 
+  const focusedProject = projects[focusedIndex];
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
-      {/* Header */}
-      <header className="flex items-center justify-between px-8 py-4 flex-shrink-0 border-b border-border">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
-              <span className="text-[12px] font-semibold text-background">V</span>
-            </div>
-            <span className="text-[15px] font-semibold tracking-tight text-foreground">
-              Viberr
-            </span>
+      {/* Minimal header */}
+      <header className="flex items-center justify-between px-8 py-3 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
+            <span className="text-[12px] font-semibold text-background">V</span>
           </div>
-          <div className="flex items-center gap-4 text-[12px] text-muted">
-            <span>{projects.length} projects</span>
-            <span className="text-border">|</span>
-            <span className="tabular-nums">${TOTAL_PAYOUT.toLocaleString()} portfolio</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => scrollBy(-1)}
-            className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/20 transition-all duration-150"
-          >
-            <ChevronLeft size={14} strokeWidth={1.5} />
-          </button>
-          <span className="text-[11px] tabular-nums text-muted w-10 text-center">
-            {focusedIndex + 1}/{projects.length}
+          <span className="text-[15px] font-semibold tracking-tight text-foreground">
+            Viberr
           </span>
-          <button
-            onClick={() => scrollBy(1)}
-            className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/20 transition-all duration-150"
-          >
-            <ChevronRight size={14} strokeWidth={1.5} />
-          </button>
+        </div>
+        <div className="flex items-center gap-4 text-[12px] text-muted">
+          <span>{projects.length} projects</span>
+          <span className="text-border">|</span>
+          <span className="tabular-nums">${TOTAL_PAYOUT.toLocaleString()} portfolio</span>
         </div>
       </header>
 
-      {/* Multi-card slideshow */}
+      {/* Card slideshow — takes up the main space */}
       <div
         ref={scrollRef}
-        className="flex-1 flex items-center gap-5 overflow-x-auto snap-x snap-mandatory py-6"
-        style={{ scrollbarWidth: "none", scrollBehavior: "smooth", paddingLeft: "calc(50vw - 187px)", paddingRight: "calc(50vw - 187px)" }}
+        className="flex-1 flex items-center gap-5 overflow-x-auto snap-x snap-mandatory"
+        style={{
+          scrollbarWidth: "none",
+          scrollBehavior: "smooth",
+          paddingLeft: "calc(50vw - 190px)",
+          paddingRight: "calc(50vw - 190px)",
+        }}
       >
         {projects.map((project, idx) => {
           const TypeIcon = typeConfig[project.type].icon;
@@ -610,10 +619,10 @@ export default function Home() {
               key={project.slug}
               className="flex-shrink-0 relative overflow-hidden rounded-[16px] border border-border bg-card snap-center"
               style={{
-                width: 375,
-                aspectRatio: "4/5",
+                width: 380,
+                aspectRatio: "3/4",
                 transform: isFocused ? "scale(1)" : "scale(0.94)",
-                opacity: isFocused ? 1 : 0.55,
+                opacity: isFocused ? 1 : 0.5,
                 transition: "transform 150ms ease-out, opacity 150ms ease-out",
               }}
             >
@@ -960,6 +969,72 @@ export default function Home() {
             </div>
           );
         })}
+      </div>
+
+      {/* Bottom bar: navigation + chat */}
+      <div className="flex-shrink-0 border-t border-border px-8 py-4">
+        {/* Chat messages (if any) */}
+        {chatMessages.length > 0 && (
+          <div className="max-w-[600px] mx-auto mb-3 max-h-24 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+            {chatMessages.slice(-4).map((msg, i) => (
+              <div
+                key={i}
+                className={`text-[12px] leading-[1.5] py-0.5 ${
+                  msg.from === "user" ? "text-foreground" : "text-muted"
+                }`}
+              >
+                {msg.from === "user" ? (
+                  <span>{msg.text}</span>
+                ) : (
+                  <span>{msg.text}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="max-w-[600px] mx-auto flex items-center gap-3">
+          {/* Nav arrows + counter */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              onClick={() => scrollBy(-1)}
+              className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/20 transition-all duration-150"
+            >
+              <ChevronLeft size={14} strokeWidth={1.5} />
+            </button>
+            <span className="text-[11px] tabular-nums text-muted w-10 text-center">
+              {focusedIndex + 1}/{projects.length}
+            </span>
+            <button
+              onClick={() => scrollBy(1)}
+              className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-foreground/20 transition-all duration-150"
+            >
+              <ChevronRight size={14} strokeWidth={1.5} />
+            </button>
+          </div>
+
+          {/* Chat input */}
+          <div className="flex-1 flex items-center h-9 rounded-full border border-border bg-card px-4 gap-2">
+            <input
+              ref={chatInputRef}
+              type="text"
+              value={chatValue}
+              onChange={(e) => setChatValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") sendChat();
+              }}
+              placeholder={`Message about ${focusedProject?.name ?? "this project"}...`}
+              className="flex-1 text-[12px] text-foreground placeholder:text-muted/50 bg-transparent focus:outline-none"
+            />
+            <button
+              onClick={sendChat}
+              disabled={!chatValue.trim()}
+              className="text-muted hover:text-foreground disabled:opacity-30 transition-all duration-150 flex-shrink-0"
+            >
+              <SendHorizontal size={14} strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
