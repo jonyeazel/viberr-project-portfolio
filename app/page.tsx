@@ -493,12 +493,56 @@ const CARD_W = 380;
 const CARD_H = Math.round(CARD_W * (4 / 3)); // 507
 const MOBILE_FRAME_W = 380;
 const MOBILE_FRAME_H = 720; // iPhone-like proportions
-const MOBILE_IFRAME_W = 375;
+const MOBILE_IFRAME_W = 640;
 const MOBILE_IFRAME_H = 812;
 const DESKTOP_FRAME_W = 920;
 const DESKTOP_FRAME_H = 580;
 const DESKTOP_IFRAME_W = 1280;
 const DESKTOP_IFRAME_H = 2000;
+
+// Simple inline markdown → React nodes (bold, italic, inline code)
+function renderMarkdown(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  // Split by markdown patterns: **bold**, *italic*, `code`
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+  let lastIndex = 0;
+  let match;
+  let key = 0;
+  while ((match = regex.exec(text)) !== null) {
+    // Push text before match
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    if (match[2]) {
+      // **bold**
+      parts.push(
+        <span key={key++} className="font-semibold text-foreground">
+          {match[2]}
+        </span>
+      );
+    } else if (match[3]) {
+      // *italic*
+      parts.push(
+        <em key={key++}>{match[3]}</em>
+      );
+    } else if (match[4]) {
+      // `code`
+      parts.push(
+        <code
+          key={key++}
+          className="px-1 py-0.5 rounded bg-surface-2 text-[12px] font-mono"
+        >
+          {match[4]}
+        </code>
+      );
+    }
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts;
+}
 
 export default function Home() {
   const [state, setState] = useState<ProjectState>(initProjectState);
@@ -817,7 +861,9 @@ export default function Home() {
                 style={{
                   opacity: isPreviewing ? 0 : 1,
                   pointerEvents: isPreviewing ? "none" : "auto",
-                  transition: "opacity 150ms ease-out",
+                  transition: isPreviewing
+                    ? "opacity 100ms ease-out"
+                    : "opacity 200ms ease-out 150ms",
                 }}
               >
                 {/* Type badge + code */}
@@ -934,7 +980,9 @@ export default function Home() {
                 style={{
                   opacity: isPreviewing ? 1 : 0,
                   pointerEvents: isPreviewing ? "auto" : "none",
-                  transition: "opacity 150ms ease-out",
+                  transition: isPreviewing
+                    ? "opacity 200ms ease-out 100ms"
+                    : "opacity 100ms ease-out",
                 }}
               >
                 {/* Iframe viewport */}
@@ -952,7 +1000,7 @@ export default function Home() {
                 >
                   {isPreviewing && (
                     <>
-                      {/* Mobile iframe — 375px at 1:1 */}
+                      {/* Mobile iframe — 640px scaled to fit */}
                       <div
                         style={{
                           position: "absolute",
@@ -964,13 +1012,29 @@ export default function Home() {
                           transition: "opacity 150ms ease-out",
                         }}
                       >
+                        {/* Dynamic Island notch */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 10,
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            width: 90,
+                            height: 24,
+                            borderRadius: 12,
+                            background: "#191919",
+                            zIndex: 10,
+                          }}
+                        />
                         <div
                           style={{
                             position: "absolute",
                             top: 0,
-                            left: (MOBILE_FRAME_W - MOBILE_IFRAME_W) / 2,
+                            left: 0,
                             width: MOBILE_IFRAME_W,
                             height: MOBILE_IFRAME_H,
+                            transform: `scale(${MOBILE_FRAME_W / MOBILE_IFRAME_W})`,
+                            transformOrigin: "top left",
                           }}
                         >
                           <iframe
@@ -1393,11 +1457,20 @@ export default function Home() {
                   key={i}
                   className={`text-[13px] leading-[1.6] ${
                     msg.from === "user"
-                      ? "text-foreground"
-                      : "text-muted"
+                      ? "text-foreground font-medium"
+                      : "text-muted/80"
                   }`}
                 >
-                  {msg.text}
+                  {msg.from === "user" ? (
+                    msg.text
+                  ) : (
+                    msg.text.split("\n").map((line, li) => (
+                      <span key={li}>
+                        {renderMarkdown(line)}
+                        {li < msg.text.split("\n").length - 1 && <br />}
+                      </span>
+                    ))
+                  )}
                 </div>
               ))}
               {chatLoading && (
