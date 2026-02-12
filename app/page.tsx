@@ -587,7 +587,7 @@ export default function Home() {
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-4 flex-shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-6 h-6 rounded-[6px] bg-primary flex items-center justify-center flex-shrink-0">
+          <div className="w-6 h-6 rounded-[6px] bg-primary flex items-center justify-center flex-shrink-0 ring-1 ring-foreground/10">
             <span className="text-[11px] font-semibold text-white">V</span>
           </div>
           <span className="text-[14px] font-medium text-foreground/90 tracking-[-0.01em]">
@@ -714,7 +714,7 @@ export default function Home() {
                         onClick={() => setOpenDrawer(project.slug)}
                         className="flex-1 h-9 flex items-center justify-center rounded-[8px] bg-primary text-white text-[12px] font-medium hover:brightness-110 transition-all duration-150"
                       >
-                        Go live
+                        Start
                       </button>
                     )}
                     <Link
@@ -751,7 +751,7 @@ export default function Home() {
                 <div className="px-5 pt-4 pb-3 flex items-center justify-between flex-shrink-0">
                   <div>
                     <span className="text-[11px] text-muted/70 tracking-[0.05em] uppercase">
-                      Go live checklist
+                      What we need
                     </span>
                     <div className="flex items-center gap-2 mt-1.5">
                       <div className="w-24 h-[3px] rounded-full bg-surface-2 overflow-hidden">
