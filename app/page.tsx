@@ -1228,6 +1228,12 @@ export default function Home() {
   const desktopW = isMobile ? windowW - 24 : Math.min(Math.round(windowW * 0.8), 1200);
   const desktopH = Math.min(Math.round(desktopW * 0.5625), windowH - 160);
 
+  // Mobile preview card: sized to fit phone frame with padding
+  const mobileAvailH = desktopH - 44;
+  const mobilePhoneH = Math.min(mobileH - 32, mobileAvailH - 12);
+  const mobilePhoneW = Math.round(mobilePhoneH * (MOBILE_FRAME_W / (MOBILE_FRAME_H - 32)));
+  const mobilePreviewW = isMobile ? cardW : Math.max(mobilePhoneW + 80, cardW);
+
   const SPRING = "cubic-bezier(0.32, 0.72, 0, 1)";
   const T = `width 350ms ${SPRING}, height 350ms ${SPRING}, border-radius 350ms ${SPRING}, transform 150ms ease-out, opacity 150ms ease-out`;
 
@@ -1239,7 +1245,7 @@ export default function Home() {
   ): React.CSSProperties => {
     if (isPreviewing && previewMode === "mobile") {
       return {
-        width: isMobile ? cardW : desktopW,
+        width: mobilePreviewW,
         height: isMobile ? cardH : desktopH,
         borderRadius: isMobile ? 36 : 12,
         transform: "scale(1)",
@@ -1539,7 +1545,7 @@ export default function Home() {
                 <div
                   className="flex items-center gap-2 px-2.5 flex-shrink-0"
                   style={{
-                    height: 28,
+                    height: 44,
                     background: '#f5f5f4',
                     borderBottom: '1px solid #e7e5e4',
                     borderRadius: previewMode === "mobile" && isMobile
@@ -1637,7 +1643,7 @@ export default function Home() {
                         }}
                       >
                         {(() => {
-                          const availH = (isMobile ? cardH : desktopH) - 28;
+                          const availH = (isMobile ? cardH : desktopH) - 44;
                           const phoneH = Math.min(mobileH - 32, availH - 12);
                           const phoneW = Math.round(phoneH * (MOBILE_FRAME_W / (MOBILE_FRAME_H - 32)));
                           const iframeScale = phoneW / MOBILE_IFRAME_W;
