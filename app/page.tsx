@@ -2050,30 +2050,29 @@ export default function Home() {
         <div
           className="fixed z-10 pointer-events-none"
           style={{
-            left: 48,
+            left: 32,
             top: '50%',
-            transform: 'translateY(-52%)',
-            width: leftSpace - 72,
-            maxWidth: 280,
+            transform: 'translateY(-50%)',
+            width: Math.min(leftSpace - 56, 240),
           }}
         >
           <div
-            className="rounded-[12px] overflow-hidden"
+            className="rounded-[8px] overflow-hidden"
             style={{ background: '#ffffff', border: '1px solid #e7e5e4' }}
           >
             {showHint ? (
               /* Welcome / onboarding state */
-              <div key="welcome" className="p-5" style={{ animation: 'coachFadeIn 500ms ease-out both', animationDelay: '200ms' }}>
-                <div className="text-[24px] font-medium tracking-[-0.03em] leading-[1.15]" style={{ color: '#1a1a1a' }}>
+              <div key="welcome" className="p-4" style={{ animation: 'coachFadeIn 500ms ease-out both', animationDelay: '200ms' }}>
+                <div className="text-[18px] font-medium tracking-[-0.02em] leading-[1.2]" style={{ color: '#1a1a1a' }}>
                   Viberr
                 </div>
-                <p className="text-[12px] leading-[1.6] mt-2" style={{ color: '#78716c' }}>
+                <p className="text-[11px] leading-[1.5] mt-1.5" style={{ color: '#78716c' }}>
                   12 projects built and ready to ship.
                 </p>
 
-                <div className="mt-5" style={{ height: 1, background: '#e7e5e4' }} />
+                <div className="mt-4" style={{ height: 1, background: '#e7e5e4' }} />
 
-                <div className="mt-5 flex flex-col gap-4">
+                <div className="mt-4 flex flex-col gap-3">
                   {[
                     { num: '01', label: 'Browse', desc: 'Scroll or arrow keys' },
                     { num: '02', label: 'Preview', desc: 'Live interactive demos' },
@@ -2082,15 +2081,15 @@ export default function Home() {
                   ].map((step, i) => (
                     <div
                       key={step.num}
-                      className="flex items-start gap-2.5"
+                      className="flex items-start gap-2"
                       style={{ animation: 'coachFadeIn 400ms ease-out both', animationDelay: `${400 + i * 100}ms` }}
                     >
                       <span className="text-[10px] tabular-nums leading-none flex-shrink-0" style={{ color: '#d6d3d1', marginTop: 2 }}>
                         {step.num}
                       </span>
                       <div>
-                        <span className="text-[12px] font-medium leading-none" style={{ color: '#1a1a1a' }}>{step.label}</span>
-                        <p className="text-[11px] leading-[1.4] mt-0.5" style={{ color: '#a8a29e' }}>{step.desc}</p>
+                        <span className="text-[11px] font-medium leading-none" style={{ color: '#1a1a1a' }}>{step.label}</span>
+                        <p className="text-[10px] leading-[1.4] mt-0.5" style={{ color: '#a8a29e' }}>{step.desc}</p>
                       </div>
                     </div>
                   ))}
@@ -2098,10 +2097,10 @@ export default function Home() {
               </div>
             ) : focusedProject ? (
               /* Per-project context state */
-              <div key={focusedProject.slug} className="p-5" style={{ animation: 'coachFadeIn 250ms ease-out both' }}>
+              <div key={focusedProject.slug} className="p-4" style={{ animation: 'coachFadeIn 250ms ease-out both' }}>
                 {/* Type + code */}
-                <div className="flex items-center gap-2">
-                  <FocusedTypeIcon size={12} strokeWidth={1.5} style={{ color: '#a8a29e' }} />
+                <div className="flex items-center gap-1.5">
+                  <FocusedTypeIcon size={11} strokeWidth={1.5} style={{ color: '#a8a29e' }} />
                   <span className="text-[10px] tracking-[0.05em] uppercase" style={{ color: '#a8a29e' }}>
                     {focusedProject.type}
                   </span>
@@ -2111,96 +2110,80 @@ export default function Home() {
                 </div>
 
                 {/* Description */}
-                <p className="text-[11px] leading-[1.5] mt-2.5" style={{ color: '#78716c' }}>
+                <p className="text-[11px] leading-[1.5] mt-2" style={{ color: '#78716c' }}>
                   {focusedProject.description}
                 </p>
 
-                {/* What you'll need — step preview with type tags */}
-                <div className="mt-4">
-                  <span className="text-[10px] tracking-[0.05em] uppercase" style={{ color: '#a8a29e' }}>
-                    What you{'\u2019'}ll need
-                  </span>
-                  <ul className="mt-2.5 space-y-2">
-                    {focusedProject.steps.map((step, i) => {
-                      const done = state[focusedProject.slug]?.[i]?.completed;
-                      const typeLabel = step.type === 'upload' ? 'file' : step.type === 'choice' ? 'select' : step.type === 'input' ? 'text' : '';
-                      return (
-                        <li key={i} className="flex items-start gap-2">
-                          {done ? (
-                            <Check size={10} strokeWidth={2.5} className="flex-shrink-0 mt-[2px]" style={{ color: '#059669' }} />
-                          ) : (
-                            <span className="w-1 h-1 rounded-full flex-shrink-0 mt-[5px]" style={{ background: '#d6d3d1' }} />
-                          )}
-                          <span className="flex-1 min-w-0 flex items-baseline gap-1.5">
-                            <span
-                              className={`text-[12px] leading-[1.4] ${done ? 'line-through' : ''}`}
-                              style={{ color: done ? '#a8a29e' : '#525252' }}
-                            >
-                              {step.label}
-                            </span>
-                            {!done && typeLabel && (
-                              <span className="text-[9px] flex-shrink-0" style={{ color: '#d6d3d1' }}>
-                                {typeLabel}
-                              </span>
-                            )}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
+                {/* Step list — no header, self-explanatory */}
+                <ul className="mt-3 space-y-1.5">
+                  {focusedProject.steps.map((step, i) => {
+                    const done = state[focusedProject.slug]?.[i]?.completed;
+                    return (
+                      <li key={i} className="flex items-center gap-2">
+                        {done ? (
+                          <Check size={9} strokeWidth={2.5} className="flex-shrink-0" style={{ color: '#059669' }} />
+                        ) : (
+                          <span className="flex-shrink-0" style={{ width: 3, height: 3, borderRadius: '50%', background: '#d6d3d1' }} />
+                        )}
+                        <span
+                          className={`text-[11px] leading-[1.3] ${done ? 'line-through' : ''}`}
+                          style={{ color: done ? '#a8a29e' : '#525252' }}
+                        >
+                          {step.label}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
 
                 {/* Divider */}
-                <div className="mt-4 mb-3" style={{ height: 1, background: '#e7e5e4' }} />
+                <div className="mt-3.5 mb-3" style={{ height: 1, background: '#e7e5e4' }} />
 
                 {/* Status + estimate */}
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px]" style={{ color: focusedSubmitted ? '#059669' : focusedCompleted === focusedTotal ? '#4f46e5' : '#a8a29e' }}>
+                  <span className="text-[10px]" style={{ color: focusedSubmitted ? '#059669' : focusedCompleted === focusedTotal ? '#4f46e5' : '#a8a29e' }}>
                     {focusedSubmitted
                       ? 'Submitted'
                       : focusedCompleted === focusedTotal
                         ? 'Ready to submit'
                         : `${focusedCompleted}/${focusedTotal} configured`}
                   </span>
-                  <span className="text-[11px] tabular-nums" style={{ color: '#d6d3d1' }}>
+                  <span className="text-[10px] tabular-nums" style={{ color: '#d6d3d1' }}>
                     ${focusedProject.estimate.toLocaleString()}
                   </span>
                 </div>
 
                 {/* Chat thread indicator */}
                 {(chatBySlug[focusedProject.slug]?.length ?? 0) > 0 && (
-                  <div className="flex items-center gap-1.5 mt-2.5">
-                    <div className="w-1 h-1 rounded-full" style={{ background: '#4f46e5' }} />
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#4f46e5' }} />
                     <span className="text-[10px]" style={{ color: '#a8a29e' }}>
                       {chatBySlug[focusedProject.slug].filter(m => !isStatusMsg(m.text)).length} messages
                     </span>
                   </div>
                 )}
 
-                {/* Start button — interactive */}
+                {/* Action — ghost button, understated */}
                 {!focusedSubmitted && (
                   <button
                     onClick={() => setOpenDrawer(focusedProject.slug)}
-                    className="mt-3 w-full h-8 rounded-[6px] flex items-center justify-center text-[11px] font-medium transition-colors duration-150 pointer-events-auto"
+                    className="mt-3 w-full h-7 rounded-[4px] flex items-center justify-center text-[10px] font-medium pointer-events-auto"
                     style={{
-                      color: focusedCompleted === focusedTotal ? '#ffffff' : '#525252',
-                      background: focusedCompleted === focusedTotal ? '#4f46e5' : '#f5f5f4',
+                      color: focusedCompleted === focusedTotal ? '#ffffff' : '#78716c',
+                      background: focusedCompleted === focusedTotal ? '#4f46e5' : 'transparent',
                       border: focusedCompleted === focusedTotal ? 'none' : '1px solid #e7e5e4',
+                      transition: 'border-color 150ms ease-out, color 150ms ease-out',
                     }}
                     onMouseEnter={(e) => {
                       if (focusedCompleted !== focusedTotal) {
-                        e.currentTarget.style.borderColor = '#4f46e5';
-                        e.currentTarget.style.color = '#4f46e5';
-                      } else {
-                        e.currentTarget.style.filter = 'brightness(1.1)';
+                        e.currentTarget.style.borderColor = '#a8a29e';
+                        e.currentTarget.style.color = '#525252';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (focusedCompleted !== focusedTotal) {
                         e.currentTarget.style.borderColor = '#e7e5e4';
-                        e.currentTarget.style.color = '#525252';
-                      } else {
-                        e.currentTarget.style.filter = 'none';
+                        e.currentTarget.style.color = '#78716c';
                       }
                     }}
                   >
