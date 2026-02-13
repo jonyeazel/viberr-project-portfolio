@@ -86,8 +86,21 @@ Rules:
         points: parsed.points || null,
       });
     } catch {
+      // Try to extract JSON from the raw string
+      const jsonMatch = raw.match(/\{[\s\S]*"message"\s*:\s*"[\s\S]*?\}(?:\s*$)/);
+      if (jsonMatch) {
+        try {
+          const extracted = JSON.parse(jsonMatch[0]);
+          return NextResponse.json({
+            message: extracted.message || raw,
+            points: extracted.points || null,
+          });
+        } catch { /* fall through */ }
+      }
+      // Strip any JSON-like content from the raw text
+      const cleaned = raw.replace(/\{[^{}]*"message"[^{}]*\}/g, '').trim();
       return NextResponse.json({
-        message: raw,
+        message: cleaned || raw,
         points: null,
       });
     }

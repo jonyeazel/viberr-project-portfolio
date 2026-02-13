@@ -27,9 +27,6 @@ import {
   ExternalLink,
   Globe,
   Copy,
-  Activity,
-  Settings,
-  BarChart3,
 } from "lucide-react";
 
 type StepType = "upload" | "input" | "choice" | "confirm";
@@ -592,7 +589,8 @@ export default function Home() {
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [keyNav, setKeyNav] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "finalReview" | "launch" | "domain" | "dashboard" | "browse">("intake");
+  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "finalReview" | "launch" | "domain" | "browse">("intake");
+  const [builtProject, setBuiltProject] = useState<typeof projects[0] | null>(null);
   const [intakeMessages, setIntakeMessages] = useState<Array<{ from: "user" | "ai"; text: string }>>([
     { from: "ai", text: "What are you building?" },
   ]);
@@ -667,7 +665,7 @@ export default function Home() {
   const [domainProgress, setDomainProgress] = useState(0);
   const [domainConnected, setDomainConnected] = useState(false);
   const domainTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "finalReview" | "launch" | "domain" | "dashboard" | "browse">("intake");
+  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "finalReview" | "launch" | "domain" | "browse">("intake");
   const intakeScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -679,7 +677,8 @@ export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mouseRef = useRef({ x: -9999, y: -9999 });
 
-  const focusedProject = projects[focusedIndex];
+  const displayProjects = builtProject ? [builtProject, ...projects] : projects;
+  const focusedProject = displayProjects[focusedIndex];
   const chatMessagesAll = chatBySlug[focusedProject?.slug ?? ""] || [];
   const isStatusMsg = (t: string) => t.startsWith("Step completed") || /^All \d+ steps complete/.test(t);
   const statusMessages = chatMessagesAll.filter((m) => m.from === "assistant" && isStatusMsg(m.text));
@@ -1279,8 +1278,28 @@ export default function Home() {
   }, []);
 
   const confirmDomain = useCallback(() => {
-    setPhase("dashboard");
-  }, []);
+    // Build a project card from the accumulated build data
+    const selectedBrand = brandSelected !== null ? brandOptions[brandSelected] : null;
+    const totalCost = decomposeItems.reduce((sum, item) => sum + item.tasks.filter(t => t.included).reduce((s, t) => s + t.price, 0), 0);
+    const allDeliverables = specData?.sections?.flatMap(s => s.items) || [];
+
+    const newProject: typeof projects[0] = {
+      slug: projects[0]?.slug || "outbound-email", // reuse existing page for preview
+      name: selectedBrand?.name || "Your Project",
+      type: "Platform",
+      code: `VBR-${Math.floor(1000 + Math.random() * 9000)}`,
+      description: specData?.summary || "Custom-built application",
+      estimate: totalCost || 2000,
+      deliverables: allDeliverables.slice(0, 5),
+      steps: [],
+    };
+
+    setBuiltProject(newProject);
+    setFocusedIndex(0);
+    setPreviewSlug(null);
+    setPreviewMode(null);
+    setPhase("browse");
+  }, [brandSelected, brandOptions, decomposeItems, specData]);
 
   // Center expanded card in scroll container
   useLayoutEffect(() => {
@@ -1288,7 +1307,7 @@ export default function Home() {
     const center = () => {
       const el = scrollRef.current;
       if (!el) return;
-      const idx = projects.findIndex(p => p.slug === previewSlug);
+      const idx = displayProjects.findIndex(p => p.slug === previewSlug);
       if (idx < 0) return;
       const child = el.children[idx] as HTMLElement;
       if (!child) return;
@@ -1306,7 +1325,7 @@ export default function Home() {
     async (messageOverride?: string) => {
       const msg = (messageOverride || chatValue).trim();
       if (!msg || chatLoading) return;
-      const focused = projects[focusedIndex];
+      const focused = displayProjects[focusedIndex];
       const slug = focused.slug;
       setChatBySlug((prev) => ({
         ...prev,
@@ -3144,7 +3163,7 @@ export default function Home() {
                   onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
                 >
-                  View dashboard
+                  Connect domain
                   <ArrowRight size={12} strokeWidth={2} />
                 </button>
               </div>
@@ -3596,248 +3615,11 @@ export default function Home() {
                   onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
                 >
-                  View dashboard
+                  View project
                   <ArrowRight size={12} strokeWidth={2} />
                 </button>
               </div>
             )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── DASHBOARD PHASE ──────────────────────────────────────────────
-  if (phase === "dashboard") {
-    const selectedBrand = brandSelected !== null ? brandOptions[brandSelected] : null;
-    const brandPrimary = selectedBrand?.colors.primary || "#4f46e5";
-    const siteDomain = selectedBrand?.domains[0] || "yoursite.com";
-    const siteUrl = `https://${siteDomain}`;
-    const previewUrl = `/${projects[0]?.slug || "outbound-email"}?embed=1`;
-    const totalDeliverables = specData?.sections?.reduce((sum, s) => sum + s.items.length, 0) || 0;
-    const totalCost = decomposeItems.reduce((sum, item) => sum + item.tasks.filter(t => t.included).reduce((s, t) => s + t.price, 0), 0);
-
-    // Generate mock activity feed from build steps
-    const activityItems = buildSteps
-      .filter(s => s.status === "done")
-      .slice(-5)
-      .reverse()
-      .map((s, i) => ({
-        label: s.label,
-        time: `${i === 0 ? "Just now" : i === 1 ? "1m ago" : `${i}m ago`}`,
-      }));
-
-    // Generate mock analytics
-    const mockStats = [
-      { label: "Visitors", value: Math.floor(Math.random() * 40 + 12), change: `+${Math.floor(Math.random() * 20 + 5)}%` },
-      { label: "Page views", value: Math.floor(Math.random() * 120 + 40), change: `+${Math.floor(Math.random() * 30 + 10)}%` },
-      { label: "Uptime", value: "100%", change: null },
-    ];
-
-    return (
-      <div className="flex flex-col" style={{ height: "100dvh", background: "#fafaf9" }}>
-        {/* Top bar */}
-        <div
-          className="flex items-center justify-between flex-shrink-0 px-6"
-          style={{ height: 52, borderBottom: "1px solid #e7e5e4" }}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-6 h-6 rounded-[4px] flex items-center justify-center"
-              style={{ background: brandPrimary }}
-            >
-              <span className="text-[10px] font-semibold text-white">
-                {(selectedBrand?.name || "S").charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <span className="text-[13px] font-medium" style={{ color: "#1a1a1a" }}>
-              {selectedBrand?.name || "Your Site"}
-            </span>
-            <span
-              className="text-[10px] px-1.5 py-0.5 rounded-[3px] font-medium"
-              style={{ background: "#ecfdf5", color: "#059669" }}
-            >
-              Live
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => window.open(siteUrl, "_blank")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[12px] font-medium transition-all duration-150"
-              style={{ color: "#78716c" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f5f4"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-            >
-              <ExternalLink size={12} strokeWidth={2} />
-              {siteDomain}
-            </button>
-          </div>
-        </div>
-
-        {/* Main content */}
-        <div className="flex-1 overflow-y-auto px-6 py-8">
-          <div className="max-w-[720px] mx-auto">
-            {/* Site preview card */}
-            <div
-              className="rounded-[8px] overflow-hidden mb-6"
-              style={{ border: "1px solid #e7e5e4" }}
-            >
-              <div
-                className="relative w-full overflow-hidden"
-                style={{ height: 280 }}
-              >
-                <iframe
-                  src={previewUrl}
-                  className="w-full border-0 pointer-events-none"
-                  style={{
-                    height: 800,
-                    transform: "scale(0.5)",
-                    transformOrigin: "top left",
-                    width: "200%",
-                  }}
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: "linear-gradient(transparent 60%, rgba(250,250,249,0.9))",
-                    pointerEvents: "none",
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Stats grid */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              {mockStats.map((stat, i) => (
-                <div
-                  key={i}
-                  className="flex flex-col px-4 py-3 rounded-[8px]"
-                  style={{ background: "#fff", border: "1px solid #e7e5e4" }}
-                >
-                  <span className="text-[11px] mb-1" style={{ color: "#a8a29e" }}>
-                    {stat.label}
-                  </span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-[18px] font-medium tabular-nums" style={{ color: "#1a1a1a" }}>
-                      {stat.value}
-                    </span>
-                    {stat.change && (
-                      <span className="text-[11px] font-medium" style={{ color: "#059669" }}>
-                        {stat.change}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Two-column layout */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              {/* Quick actions */}
-              <div
-                className="flex flex-col rounded-[8px] p-4"
-                style={{ background: "#fff", border: "1px solid #e7e5e4" }}
-              >
-                <span className="text-[11px] font-medium mb-3" style={{ color: "#a8a29e" }}>
-                  QUICK ACTIONS
-                </span>
-                <div className="flex flex-col gap-1">
-                  {[
-                    { icon: Settings, label: "Site settings" },
-                    { icon: BarChart3, label: "Analytics" },
-                    { icon: Globe, label: "Domain settings" },
-                    { icon: MessageCircle, label: "Request changes" },
-                  ].map((action, i) => (
-                    <button
-                      key={i}
-                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-[6px] text-[13px] text-left transition-all duration-150"
-                      style={{ color: "#1a1a1a" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f5f4"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                    >
-                      <action.icon size={14} strokeWidth={1.5} style={{ color: "#78716c" }} />
-                      {action.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Activity feed */}
-              <div
-                className="flex flex-col rounded-[8px] p-4"
-                style={{ background: "#fff", border: "1px solid #e7e5e4" }}
-              >
-                <span className="text-[11px] font-medium mb-3" style={{ color: "#a8a29e" }}>
-                  RECENT ACTIVITY
-                </span>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2.5 px-2.5 py-1.5">
-                    <div
-                      className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ background: "#ecfdf5" }}
-                    >
-                      <Check size={10} strokeWidth={2.5} style={{ color: "#059669" }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[12px] font-medium" style={{ color: "#1a1a1a" }}>
-                        Site deployed
-                      </span>
-                    </div>
-                    <span className="text-[11px]" style={{ color: "#a8a29e" }}>Just now</span>
-                  </div>
-                  {activityItems.slice(0, 4).map((item, i) => (
-                    <div key={i} className="flex items-center gap-2.5 px-2.5 py-1.5">
-                      <div
-                        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ background: "#f5f5f4" }}
-                      >
-                        <Activity size={10} strokeWidth={2} style={{ color: "#a8a29e" }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[12px] truncate block" style={{ color: "#78716c" }}>
-                          {item.label}
-                        </span>
-                      </div>
-                      <span className="text-[11px] flex-shrink-0" style={{ color: "#d6d3d1" }}>
-                        {item.time}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Project summary */}
-            <div
-              className="flex items-center justify-between px-4 py-3 rounded-[8px]"
-              style={{ background: "#fff", border: "1px solid #e7e5e4" }}
-            >
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col">
-                  <span className="text-[11px]" style={{ color: "#a8a29e" }}>Deliverables</span>
-                  <span className="text-[14px] font-medium tabular-nums" style={{ color: "#1a1a1a" }}>{totalDeliverables}</span>
-                </div>
-                <div className="w-px h-8" style={{ background: "#e7e5e4" }} />
-                <div className="flex flex-col">
-                  <span className="text-[11px]" style={{ color: "#a8a29e" }}>Timeline</span>
-                  <span className="text-[14px] font-medium" style={{ color: "#1a1a1a" }}>{specData?.timeline || "—"}</span>
-                </div>
-                <div className="w-px h-8" style={{ background: "#e7e5e4" }} />
-                <div className="flex flex-col">
-                  <span className="text-[11px]" style={{ color: "#a8a29e" }}>Investment</span>
-                  <span className="text-[14px] font-medium tabular-nums" style={{ color: "#1a1a1a" }}>${totalCost.toLocaleString()}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[11px]" style={{ color: "#a8a29e" }}>
-                  {selectedBrand?.font.heading} / {selectedBrand?.font.body}
-                </span>
-                <div
-                  className="w-4 h-4 rounded-full"
-                  style={{ background: brandPrimary, border: "1px solid rgba(0,0,0,0.08)" }}
-                />
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -3884,13 +3666,15 @@ export default function Home() {
             : {}),
         }}
       >
-        {projects.map((project, idx) => {
+        {displayProjects.map((project, idx) => {
+          const isBuiltCard = builtProject !== null && idx === 0;
           const TypeIcon = typeConfig[project.type].icon;
           const progress = getProgress(project.slug);
           const isSubmitted = submitted[project.slug];
           const isDrawerOpen = openDrawer === project.slug;
           const isFocused = idx === focusedIndex;
           const isPreviewing = previewSlug === project.slug;
+          const cardAccent = isBuiltCard ? (brandOptions[brandSelected ?? 0]?.colors.primary || "#4f46e5") : "#4f46e5";
 
           const cardStyle = getCardStyle(isPreviewing, isFocused, (chatBySlug[project.slug]?.length ?? 0) > 0);
           return (
@@ -3946,7 +3730,7 @@ export default function Home() {
                   {(chatBySlug[project.slug]?.length ?? 0) > 0 && (
                     <div
                       className="w-[5px] h-[5px] rounded-full"
-                      style={{ background: '#4f46e5' }}
+                      style={{ background: cardAccent }}
                     />
                   )}
                 </div>
@@ -3955,7 +3739,7 @@ export default function Home() {
                 <h2 className={`${isMobile ? 'text-[24px]' : 'text-[22px]'} font-medium text-foreground mt-3 leading-[1.25] tracking-[-0.02em]`}>
                   {project.name}
                 </h2>
-                <p className={`${isMobile ? 'text-[15px]' : 'text-[14px]'} text-secondary-foreground leading-[1.6] mt-1`}>
+                <p className={`${isMobile ? 'text-[15px]' : 'text-[14px]'} text-secondary-foreground leading-[1.6] mt-1`} style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
                   {project.description}
                 </p>
 
@@ -3980,7 +3764,7 @@ export default function Home() {
                       >
                         <span className="w-[3px] h-[3px] rounded-full mt-[8px] flex-shrink-0" style={{ background: '#c4c0bc' }} />
                         <span className="flex-1">{d}</span>
-                        <Zap size={10} strokeWidth={2} className="flex-shrink-0 mt-[5px] opacity-0 group-hover/deliv:opacity-40 transition-opacity duration-150" style={{ color: '#4f46e5' }} />
+                        <Zap size={10} strokeWidth={2} className="flex-shrink-0 mt-[5px] opacity-0 group-hover/deliv:opacity-40 transition-opacity duration-150" style={{ color: cardAccent }} />
                       </button>
                     </li>
                   ))}
@@ -4009,7 +3793,7 @@ export default function Home() {
                   <div className="flex items-baseline gap-1.5">
                     {tourCompleted ? (
                       <>
-                        <span className={`${isMobile ? 'text-[22px]' : 'text-[20px]'} font-medium tabular-nums leading-none tracking-[-0.02em]`} style={{ color: '#4f46e5' }}>
+                        <span className={`${isMobile ? 'text-[22px]' : 'text-[20px]'} font-medium tabular-nums leading-none tracking-[-0.02em]`} style={{ color: cardAccent }}>
                           ${Math.round(project.estimate * 0.3).toLocaleString()}
                         </span>
                         <span className={`${isMobile ? 'text-[14px]' : 'text-[13px]'} line-through`} style={{ color: '#d6d3d1' }}>
@@ -4039,7 +3823,7 @@ export default function Home() {
                         setPreviewMode(isMobile ? "fullscreen" : "desktop");
                       }}
                       className={`flex-1 h-10 flex items-center justify-center rounded-[6px] ${isMobile ? 'text-[14px]' : 'text-[12px]'} font-medium text-white transition-all duration-150`}
-                      style={{ background: '#4f46e5' }}
+                      style={{ background: cardAccent }}
                       onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(1.1)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
                       {...(isFocused ? { 'data-tour': 'view-project' } : {})}
@@ -4971,7 +4755,7 @@ export default function Home() {
                   </>
                 )}
                 <span className={`${isMobile ? 'text-[12px]' : 'text-[10px]'} tabular-nums select-none ml-0.5`} style={{ color: '#c4c0bc' }}>
-                  {focusedIndex + 1}/{projects.length}
+                  {focusedIndex + 1}/{displayProjects.length}
                 </span>
                 {!isMobile && (
                   <>
@@ -5049,7 +4833,7 @@ export default function Home() {
               className="w-full h-full border-none"
               style={{ background: "#fff" }}
               title={
-                projects.find((p) => p.slug === previewSlug)?.name ?? ""
+                displayProjects.find((p) => p.slug === previewSlug)?.name ?? ""
               }
             />
           </div>
