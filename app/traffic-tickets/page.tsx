@@ -387,6 +387,9 @@ function daysUntil(date: Date): number {
 }
 
 export default function TrafficTicketsPage() {
+  const [isEmbedded, setIsEmbedded] = useState(false);
+  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
+
   const initialTickets = useMemo(() => generateTickets(), []);
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -613,106 +616,89 @@ export default function TrafficTicketsPage() {
   const CHART_COLORS = ['var(--primary)', 'var(--success)', 'var(--warning)', 'var(--destructive)'];
 
   return (
-    <div className="h-screen flex flex-col" style={{ backgroundColor: '#fafaf9' }}>
+    <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
+      {isEmbedded && <div className="flex-shrink-0" style={{ height: 47, background: 'var(--background)' }} />}
       {/* Header */}
-      <header className="flex-shrink-0 px-6 py-4 border-b" style={{ borderColor: '#e5e5e3' }}>
+      <header className="flex-shrink-0 px-6 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-4">
           <Link
             href="/"
+            onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }}
             className="flex items-center gap-2 text-[13px] transition-opacity duration-150 ease-out hover:opacity-70"
-            style={{ color: '#737373' }}
+            style={{ color: 'var(--muted)' }}
           >
             <ArrowLeft size={16} strokeWidth={1.5} />
             Back
           </Link>
-          <div className="w-px h-4" style={{ backgroundColor: '#e5e5e3' }} />
-          <span className="text-[15px] font-medium" style={{ color: '#191919' }}>
+          <div className="w-px h-4" style={{ backgroundColor: 'var(--border)' }} />
+          <span className="text-[15px] font-medium" style={{ color: 'var(--foreground)' }}>
             Traffic Ticket Processing
           </span>
         </div>
       </header>
 
       {/* KPI Bar */}
-      <div className="flex-shrink-0 px-6 py-5 border-b" style={{ borderColor: '#e5e5e3', backgroundColor: '#f5f5f4' }}>
-        <div className="flex flex-wrap gap-x-12 gap-y-4">
-          <div>
-            <div className="text-[11px] uppercase tracking-wider mb-1" style={{ color: '#737373', letterSpacing: '0.05em' }}>
-              Tickets Today
+      <div className="flex-shrink-0 border-b" style={{ borderColor: 'var(--border)', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory' }}>
+        <div className="flex px-6" style={{ minWidth: 'min-content' }}>
+          {[
+            { label: 'Tickets Today', value: kpis.ticketsToday, color: 'var(--foreground)' },
+            { label: 'Auto-Processed', value: `${kpis.autoProcessedRate.toFixed(0)}%`, color: kpis.autoProcessedRate >= 90 ? 'var(--success)' : 'var(--warning)' },
+            { label: 'Avg Processing', value: formatProcessingTime(kpis.avgProcessingTime), color: 'var(--foreground)' },
+            { label: 'Pending Review', value: kpis.pendingReview, color: kpis.pendingReview > 0 ? 'var(--warning)' : 'var(--foreground)' },
+            { label: 'Deadline Alerts', value: kpis.deadlineAlerts, color: kpis.deadlineAlerts > 0 ? 'var(--destructive)' : 'var(--foreground)' },
+          ].map((stat, i, arr) => (
+            <div
+              key={stat.label}
+              className="flex-shrink-0"
+              style={{
+                padding: '20px 24px 20px 0',
+                paddingLeft: i > 0 ? 24 : 0,
+                scrollSnapAlign: 'start',
+                borderRight: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
+              }}
+            >
+              <div className="text-[24px] font-medium tabular-nums" style={{ color: stat.color }}>{stat.value}</div>
+              <div className="text-[11px] uppercase tracking-wider mt-1.5 whitespace-nowrap" style={{ color: 'var(--muted)', letterSpacing: '0.05em' }}>{stat.label}</div>
             </div>
-            <div className="text-[28px] font-medium tabular-nums" style={{ color: '#191919' }}>
-              {kpis.ticketsToday}
-            </div>
-          </div>
-          <div>
-            <div className="text-[11px] uppercase tracking-wider mb-1" style={{ color: '#737373', letterSpacing: '0.05em' }}>
-              Auto-Processed
-            </div>
-            <div className="text-[28px] font-medium tabular-nums" style={{ color: kpis.autoProcessedRate >= 90 ? 'var(--success)' : 'var(--warning)' }}>
-              {kpis.autoProcessedRate.toFixed(0)}%
-            </div>
-          </div>
-          <div>
-            <div className="text-[11px] uppercase tracking-wider mb-1" style={{ color: '#737373', letterSpacing: '0.05em' }}>
-              Avg Processing
-            </div>
-            <div className="text-[28px] font-medium tabular-nums" style={{ color: '#191919' }}>
-              {formatProcessingTime(kpis.avgProcessingTime)}
-            </div>
-          </div>
-          <div>
-            <div className="text-[11px] uppercase tracking-wider mb-1" style={{ color: '#737373', letterSpacing: '0.05em' }}>
-              Pending Review
-            </div>
-            <div className="text-[28px] font-medium tabular-nums" style={{ color: kpis.pendingReview > 0 ? 'var(--warning)' : '#191919' }}>
-              {kpis.pendingReview}
-            </div>
-          </div>
-          <div>
-            <div className="text-[11px] uppercase tracking-wider mb-1" style={{ color: '#737373', letterSpacing: '0.05em' }}>
-              Deadline Alerts
-            </div>
-            <div className="text-[28px] font-medium tabular-nums" style={{ color: kpis.deadlineAlerts > 0 ? 'var(--destructive)' : '#191919' }}>
-              {kpis.deadlineAlerts}
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
       {/* Pipeline Visualization */}
-      <div className="flex-shrink-0 px-6 py-4 border-b overflow-x-auto" style={{ borderColor: '#e5e5e3' }}>
+      <div className="flex-shrink-0 px-6 py-4 border-b" style={{ borderColor: 'var(--border)', overflowX: 'auto', scrollbarWidth: 'none' }}>
         <div className="flex items-center" style={{ minWidth: 'max-content' }}>
           {(['ingested', 'parsed', 'matched', 'dispatched'] as const).map((status, index) => (
-            <div key={status} className="flex items-center">
+            <div key={status} className="flex items-center" style={{ whiteSpace: 'nowrap' }}>
               <div className="flex items-center gap-3">
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-medium"
                   style={{
-                    backgroundColor: status === 'dispatched' ? 'var(--success)' : '#eeeeec',
-                    color: status === 'dispatched' ? '#fff' : '#191919',
+                    backgroundColor: status === 'dispatched' ? 'var(--success)' : 'var(--surface-2)',
+                    color: status === 'dispatched' ? '#fff' : 'var(--foreground)',
                   }}
                 >
                   {pipelineCounts[status]}
                 </div>
-                <span className="text-[13px]" style={{ color: '#191919' }}>
+                <span className="text-[13px]" style={{ color: 'var(--foreground)', whiteSpace: 'nowrap' }}>
                   {statusLabels[status]}
                 </span>
               </div>
               {index < 3 && (
-                <ChevronRight size={16} strokeWidth={1.5} className="mx-4" style={{ color: '#737373' }} />
+                <ChevronRight size={16} strokeWidth={1.5} className="mx-4" style={{ color: 'var(--muted)' }} />
               )}
             </div>
           ))}
           {pipelineCounts.exception > 0 && (
             <>
-              <div className="mx-4 w-px h-6" style={{ backgroundColor: '#e5e5e3' }} />
-              <div className="flex items-center gap-3">
+              <div className="mx-4 w-px h-6" style={{ backgroundColor: 'var(--border)' }} />
+              <div className="flex items-center gap-3" style={{ whiteSpace: 'nowrap' }}>
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-medium"
                   style={{ backgroundColor: 'var(--destructive)', color: '#fff' }}
                 >
                   {pipelineCounts.exception}
                 </div>
-                <span className="text-[13px]" style={{ color: 'var(--destructive)' }}>
+                <span className="text-[13px]" style={{ color: 'var(--destructive)', whiteSpace: 'nowrap' }}>
                   Exceptions
                 </span>
               </div>
@@ -722,21 +708,21 @@ export default function TrafficTicketsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex-shrink-0 px-6 border-b flex" style={{ borderColor: '#e5e5e3' }}>
+      <div className="flex-shrink-0 px-6 border-b flex overflow-x-auto" style={{ borderColor: 'var(--border)', scrollbarWidth: 'none' }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className="px-4 py-3 text-[13px] transition-colors duration-150 ease-out relative"
+            className="px-3 py-3 text-[13px] transition-colors duration-150 ease-out relative whitespace-nowrap shrink-0"
             style={{
-              color: activeTab === tab.id ? '#191919' : '#737373',
+              color: activeTab === tab.id ? 'var(--foreground)' : 'var(--muted)',
             }}
           >
             <span>{tab.label}</span>
             {tab.count !== undefined && (
               <span
                 className="ml-2 px-1.5 py-0.5 rounded text-[11px] tabular-nums"
-                style={{ backgroundColor: '#eeeeec', color: '#737373' }}
+                style={{ backgroundColor: 'var(--surface-2)', color: 'var(--muted)' }}
               >
                 {tab.count}
               </span>
@@ -744,7 +730,7 @@ export default function TrafficTicketsPage() {
             {activeTab === tab.id && (
               <div
                 className="absolute bottom-0 left-0 right-0 h-0.5"
-                style={{ backgroundColor: '#191919' }}
+                style={{ backgroundColor: 'var(--foreground)' }}
               />
             )}
           </button>
@@ -757,8 +743,8 @@ export default function TrafficTicketsPage() {
           <div className="flex-1 p-6 overflow-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-[1200px]">
               {/* Violation Types Pie Chart */}
-              <div className="p-5" style={{ backgroundColor: '#f5f5f4', borderRadius: '4px' }}>
-                <div className="text-[11px] uppercase tracking-wider mb-4" style={{ color: '#737373', letterSpacing: '0.05em' }}>
+              <div className="p-5" style={{ backgroundColor: 'var(--secondary)', borderRadius: '4px' }}>
+                <div className="text-[11px] uppercase tracking-wider mb-4" style={{ color: 'var(--muted)', letterSpacing: '0.05em' }}>
                   Violation Types
                 </div>
                 <div className="h-[200px]">
@@ -780,10 +766,10 @@ export default function TrafficTicketsPage() {
                       </Pie>
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#fafaf9',
-                          border: '1px solid #e5e5e3',
+                          backgroundColor: 'var(--background)',
+                          border: '1px solid var(--border)',
                           borderRadius: '4px',
-                          color: '#191919',
+                          color: 'var(--foreground)',
                           fontSize: '13px',
                           boxShadow: 'none',
                         }}
@@ -799,17 +785,17 @@ export default function TrafficTicketsPage() {
                           className="w-2 h-2 rounded-full"
                           style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
                         />
-                        <span style={{ color: '#737373' }}>{item.name}</span>
+                        <span style={{ color: 'var(--muted)' }}>{item.name}</span>
                       </div>
-                      <span className="tabular-nums" style={{ color: '#191919' }}>{item.value}</span>
+                      <span className="tabular-nums" style={{ color: 'var(--foreground)' }}>{item.value}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Daily Volume Bar Chart */}
-              <div className="p-5" style={{ backgroundColor: '#f5f5f4', borderRadius: '4px' }}>
-                <div className="text-[11px] uppercase tracking-wider mb-4" style={{ color: '#737373', letterSpacing: '0.05em' }}>
+              <div className="p-5" style={{ backgroundColor: 'var(--secondary)', borderRadius: '4px' }}>
+                <div className="text-[11px] uppercase tracking-wider mb-4" style={{ color: 'var(--muted)', letterSpacing: '0.05em' }}>
                   Daily Volume
                 </div>
                 <div className="h-[280px]">
@@ -819,20 +805,20 @@ export default function TrafficTicketsPage() {
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: '#737373', fontSize: 11 }}
+                        tick={{ fill: 'var(--muted)', fontSize: 11 }}
                       />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: '#737373', fontSize: 11 }}
+                        tick={{ fill: 'var(--muted)', fontSize: 11 }}
                         width={24}
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#fafaf9',
-                          border: '1px solid #e5e5e3',
+                          backgroundColor: 'var(--background)',
+                          border: '1px solid var(--border)',
                           borderRadius: '4px',
-                          color: '#191919',
+                          color: 'var(--foreground)',
                           fontSize: '13px',
                           boxShadow: 'none',
                         }}
@@ -845,8 +831,8 @@ export default function TrafficTicketsPage() {
               </div>
 
               {/* Auto-Processing Rate Line Chart */}
-              <div className="p-5" style={{ backgroundColor: '#f5f5f4', borderRadius: '4px' }}>
-                <div className="text-[11px] uppercase tracking-wider mb-4" style={{ color: '#737373', letterSpacing: '0.05em' }}>
+              <div className="p-5" style={{ backgroundColor: 'var(--secondary)', borderRadius: '4px' }}>
+                <div className="text-[11px] uppercase tracking-wider mb-4" style={{ color: 'var(--muted)', letterSpacing: '0.05em' }}>
                   Auto-Processing Rate
                 </div>
                 <div className="h-[280px]">
@@ -856,23 +842,23 @@ export default function TrafficTicketsPage() {
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: '#737373', fontSize: 11 }}
+                        tick={{ fill: 'var(--muted)', fontSize: 11 }}
                       />
                       <YAxis
                         domain={[80, 100]}
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: '#737373', fontSize: 11 }}
+                        tick={{ fill: 'var(--muted)', fontSize: 11 }}
                         width={28}
                         tickFormatter={(v) => `${v}%`}
                       />
                       <ReferenceLine y={95} stroke="var(--success)" strokeDasharray="4 4" strokeOpacity={0.5} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#fafaf9',
-                          border: '1px solid #e5e5e3',
+                          backgroundColor: 'var(--background)',
+                          border: '1px solid var(--border)',
                           borderRadius: '4px',
-                          color: '#191919',
+                          color: 'var(--foreground)',
                           fontSize: '13px',
                           boxShadow: 'none',
                         }}
@@ -889,7 +875,7 @@ export default function TrafficTicketsPage() {
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-2 flex items-center gap-2 text-[11px]" style={{ color: '#737373' }}>
+                <div className="mt-2 flex items-center gap-2 text-[11px]" style={{ color: 'var(--muted)' }}>
                   <div className="w-4 border-t border-dashed" style={{ borderColor: 'var(--success)' }} />
                   <span>95% Target</span>
                 </div>
@@ -900,20 +886,20 @@ export default function TrafficTicketsPage() {
           <>
             <div className="flex-1 flex flex-col min-w-0" style={{ display: isMobile && showDetail ? 'none' : 'flex' }}>
               {/* Table */}
-              <div className="flex-1 overflow-auto">
+              <div className="flex-1" style={{ overflow: 'auto' }}>
                 <table className="w-full" style={{ minWidth: 900 }}>
-                  <thead className="sticky top-0" style={{ backgroundColor: '#fafaf9' }}>
-                    <tr className="border-b" style={{ borderColor: '#e5e5e3' }}>
-                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: '#737373', letterSpacing: '0.05em' }}>ID</th>
-                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: '#737373', letterSpacing: '0.05em' }}>Received</th>
-                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: '#737373', letterSpacing: '0.05em' }}>Violation</th>
-                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: '#737373', letterSpacing: '0.05em' }}>Vehicle</th>
-                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: '#737373', letterSpacing: '0.05em' }}>Renter</th>
-                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: '#737373', letterSpacing: '0.05em' }}>Status</th>
-                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: '#737373', letterSpacing: '0.05em' }}>Deadline</th>
-                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: '#737373', letterSpacing: '0.05em' }}>Time</th>
+                  <thead className="sticky top-0" style={{ backgroundColor: 'var(--background)' }}>
+                    <tr className="border-b" style={{ borderColor: 'var(--border)' }}>
+                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>ID</th>
+                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Received</th>
+                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Violation</th>
+                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Vehicle</th>
+                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Renter</th>
+                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Status</th>
+                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Deadline</th>
+                      <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Time</th>
                       {activeTab === 'exceptions' && (
-                        <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: '#737373', letterSpacing: '0.05em' }}>Reason</th>
+                        <th className="text-left px-6 py-3 text-[11px] uppercase tracking-wider font-normal" style={{ color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Reason</th>
                       )}
                     </tr>
                   </thead>
@@ -929,55 +915,55 @@ export default function TrafficTicketsPage() {
                           onClick={() => handleSelectTicket(ticket.id)}
                           className="border-b cursor-pointer transition-colors duration-150 ease-out"
                           style={{
-                            borderColor: '#e5e5e3',
-                            backgroundColor: isSelected ? '#eeeeec' : 'transparent',
+                            borderColor: 'var(--border)',
+                            backgroundColor: isSelected ? 'var(--surface-2)' : 'transparent',
                           }}
                           onMouseEnter={(e) => {
-                            if (!isSelected) e.currentTarget.style.backgroundColor = '#f5f5f4';
+                            if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--secondary)';
                           }}
                           onMouseLeave={(e) => {
                             if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
                           }}
                         >
-                          <td className="px-6 py-3 text-[13px] font-medium tabular-nums" style={{ color: '#191919' }}>
+                          <td className="px-6 py-3 text-[13px] font-medium tabular-nums" style={{ color: 'var(--foreground)', whiteSpace: 'nowrap' }}>
                             {ticket.id}
                           </td>
-                          <td className="px-6 py-3 text-[13px] tabular-nums" style={{ color: '#737373' }}>
+                          <td className="px-6 py-3 text-[13px] tabular-nums" style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                             {formatDate(ticket.dateReceived)}
                           </td>
-                          <td className="px-6 py-3 text-[13px]" style={{ color: '#191919' }}>
+                          <td className="px-6 py-3 text-[13px]" style={{ color: 'var(--foreground)', whiteSpace: 'nowrap' }}>
                             {violationLabels[ticket.violationType]}
                           </td>
-                          <td className="px-6 py-3 text-[13px] font-medium" style={{ color: '#191919' }}>
+                          <td className="px-6 py-3 text-[13px] font-medium" style={{ color: 'var(--foreground)', whiteSpace: 'nowrap' }}>
                             {ticket.licensePlate}
                           </td>
-                          <td className="px-6 py-3 text-[13px]" style={{ color: ticket.renterName ? '#191919' : '#737373' }}>
+                          <td className="px-6 py-3 text-[13px]" style={{ color: ticket.renterName ? 'var(--foreground)' : 'var(--muted)', whiteSpace: 'nowrap' }}>
                             {ticket.renterName || '—'}
                           </td>
-                          <td className="px-6 py-3">
+                          <td className="px-6 py-3" style={{ whiteSpace: 'nowrap' }}>
                             <span
                               className="inline-block px-2 py-0.5 rounded text-[11px] font-medium"
                               style={{
                                 backgroundColor: ticket.status === 'dispatched' ? 'rgba(22, 163, 74, 0.1)' :
-                                  ticket.status === 'exception' ? 'rgba(220, 38, 38, 0.1)' : '#eeeeec',
+                                  ticket.status === 'exception' ? 'rgba(220, 38, 38, 0.1)' : 'var(--surface-2)',
                                 color: ticket.status === 'dispatched' ? 'var(--success)' :
-                                  ticket.status === 'exception' ? 'var(--destructive)' : '#737373',
+                                  ticket.status === 'exception' ? 'var(--destructive)' : 'var(--muted)',
                               }}
                             >
                               {statusLabels[ticket.status]}
                             </span>
                           </td>
-                          <td className="px-6 py-3 text-[13px] tabular-nums" style={{ color: isUrgent ? 'var(--destructive)' : '#737373' }}>
+                          <td className="px-6 py-3 text-[13px] tabular-nums" style={{ color: isUrgent ? 'var(--destructive)' : 'var(--muted)', whiteSpace: 'nowrap' }}>
                             {formatDate(ticket.deadline)}
                             {isUrgent && (
                               <span className="ml-1 font-medium">({deadlineDays}d)</span>
                             )}
                           </td>
-                          <td className="px-6 py-3 text-[13px] tabular-nums" style={{ color: '#737373' }}>
+                          <td className="px-6 py-3 text-[13px] tabular-nums" style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                             {formatProcessingTime(ticket.processingTimeMs)}
                           </td>
                           {activeTab === 'exceptions' && (
-                            <td className="px-6 py-3 text-[13px]" style={{ color: 'var(--warning)' }}>
+                            <td className="px-6 py-3 text-[13px]" style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}>
                               {ticket.exceptionReason ? exceptionLabels[ticket.exceptionReason] : '—'}
                             </td>
                           )}
@@ -989,7 +975,7 @@ export default function TrafficTicketsPage() {
                 {filteredTickets.length === 0 && (
                   <div className="flex-1 flex items-center justify-center py-16">
                     <div className="text-center">
-                      <div className="text-[15px]" style={{ color: '#737373' }}>
+                      <div className="text-[15px]" style={{ color: 'var(--muted)' }}>
                         {activeTab === 'incoming' && 'All tickets have been processed'}
                         {activeTab === 'exceptions' && 'No exceptions to review'}
                         {activeTab === 'completed' && 'No completed tickets'}
@@ -1004,25 +990,25 @@ export default function TrafficTicketsPage() {
             {selectedTicket && (!isMobile || showDetail) && (
               <div
                 className="w-full md:w-[420px] flex-shrink-0 border-l flex flex-col"
-                style={{ borderColor: '#e5e5e3', backgroundColor: '#fafaf9', minWidth: isMobile ? '100%' : 'auto' }}
+                style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)', minWidth: isMobile ? '100%' : 'auto' }}
               >
                 {/* Panel header */}
-                <div className="flex-shrink-0 px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: '#e5e5e3', backgroundColor: '#f5f5f4' }}>
+                <div className="flex-shrink-0 px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--secondary)' }}>
                   <div className="flex items-center gap-3">
                     {isMobile && (
                       <button
                         onClick={handleBackToList}
                         className="p-1.5 rounded transition-opacity duration-150 ease-out hover:opacity-70"
-                        style={{ color: '#737373' }}
+                        style={{ color: 'var(--muted)' }}
                       >
                         <ArrowLeft size={18} strokeWidth={1.5} />
                       </button>
                     )}
                     <div>
-                      <div className="text-[15px] font-medium" style={{ color: '#191919' }}>
+                      <div className="text-[15px] font-medium" style={{ color: 'var(--foreground)' }}>
                         {selectedTicket.id}
                       </div>
-                      <div className="text-[13px] mt-0.5" style={{ color: '#737373' }}>
+                      <div className="text-[13px] mt-0.5" style={{ color: 'var(--muted)' }}>
                         {violationLabels[selectedTicket.violationType]} in {selectedTicket.location}
                       </div>
                     </div>
@@ -1031,7 +1017,7 @@ export default function TrafficTicketsPage() {
                     <button
                       onClick={() => setSelectedTicketId(null)}
                       className="p-1.5 rounded transition-opacity duration-150 ease-out hover:opacity-70"
-                      style={{ color: '#737373' }}
+                      style={{ color: 'var(--muted)' }}
                     >
                       <X size={18} strokeWidth={1.5} />
                     </button>
@@ -1051,7 +1037,7 @@ export default function TrafficTicketsPage() {
                         <div className="text-[13px] font-medium" style={{ color: 'var(--destructive)' }}>
                           {exceptionLabels[selectedTicket.exceptionReason]}
                         </div>
-                        <div className="text-[13px] mt-1" style={{ color: '#737373' }}>
+                        <div className="text-[13px] mt-1" style={{ color: 'var(--muted)' }}>
                           {exceptionDescriptions[selectedTicket.exceptionReason]}
                         </div>
                       </div>
@@ -1059,31 +1045,31 @@ export default function TrafficTicketsPage() {
                   )}
 
                   {/* Ticket info */}
-                  <div className="px-5 py-5 border-b" style={{ borderColor: '#e5e5e3' }}>
+                  <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border)' }}>
                     <div className="flex items-center gap-2 mb-4">
-                      <FileText size={16} strokeWidth={1.5} style={{ color: '#737373' }} />
-                      <span className="text-[11px] uppercase tracking-wider" style={{ color: '#737373', letterSpacing: '0.05em' }}>
+                      <FileText size={16} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
+                      <span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--muted)', letterSpacing: '0.05em' }}>
                         Ticket Details
                       </span>
                     </div>
                     <div className="space-y-3">
                       <div className="flex justify-between text-[13px]">
-                        <span style={{ color: '#737373' }}>Date</span>
-                        <span className="tabular-nums" style={{ color: '#191919' }}>{formatDateTime(selectedTicket.dateReceived)}</span>
+                        <span style={{ color: 'var(--muted)' }}>Date</span>
+                        <span className="tabular-nums" style={{ color: 'var(--foreground)' }}>{formatDateTime(selectedTicket.dateReceived)}</span>
                       </div>
                       <div className="flex justify-between text-[13px]">
-                        <span style={{ color: '#737373' }}>Location</span>
-                        <span className="text-right" style={{ color: '#191919' }}>{selectedTicket.streetAddress}, {selectedTicket.location}</span>
+                        <span style={{ color: 'var(--muted)' }}>Location</span>
+                        <span className="text-right" style={{ color: 'var(--foreground)' }}>{selectedTicket.streetAddress}, {selectedTicket.location}</span>
                       </div>
                       <div className="flex justify-between text-[13px]">
-                        <span style={{ color: '#737373' }}>Fine</span>
-                        <span className="font-medium tabular-nums" style={{ color: '#191919' }}>{formatCurrency(selectedTicket.fineAmount)}</span>
+                        <span style={{ color: 'var(--muted)' }}>Fine</span>
+                        <span className="font-medium tabular-nums" style={{ color: 'var(--foreground)' }}>{formatCurrency(selectedTicket.fineAmount)}</span>
                       </div>
                       <div className="flex justify-between text-[13px]">
-                        <span style={{ color: '#737373' }}>Deadline</span>
+                        <span style={{ color: 'var(--muted)' }}>Deadline</span>
                         <span
                           className="tabular-nums"
-                          style={{ color: daysUntil(selectedTicket.deadline) <= 3 && selectedTicket.status !== 'dispatched' ? 'var(--destructive)' : '#191919' }}
+                          style={{ color: daysUntil(selectedTicket.deadline) <= 3 && selectedTicket.status !== 'dispatched' ? 'var(--destructive)' : 'var(--foreground)' }}
                         >
                           {formatDate(selectedTicket.deadline)}
                           {daysUntil(selectedTicket.deadline) <= 7 && selectedTicket.status !== 'dispatched' && (
@@ -1095,53 +1081,53 @@ export default function TrafficTicketsPage() {
                   </div>
 
                   {/* Vehicle info */}
-                  <div className="px-5 py-5 border-b" style={{ borderColor: '#e5e5e3' }}>
+                  <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border)' }}>
                     <div className="flex items-center gap-2 mb-4">
-                      <Car size={16} strokeWidth={1.5} style={{ color: '#737373' }} />
-                      <span className="text-[11px] uppercase tracking-wider" style={{ color: '#737373', letterSpacing: '0.05em' }}>
+                      <Car size={16} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
+                      <span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--muted)', letterSpacing: '0.05em' }}>
                         Vehicle
                       </span>
                     </div>
                     <div className="space-y-3">
                       <div className="flex justify-between text-[13px]">
-                        <span style={{ color: '#737373' }}>Plate</span>
-                        <span className="font-medium" style={{ color: '#191919' }}>{selectedTicket.licensePlate}</span>
+                        <span style={{ color: 'var(--muted)' }}>Plate</span>
+                        <span className="font-medium" style={{ color: 'var(--foreground)' }}>{selectedTicket.licensePlate}</span>
                       </div>
                       <div className="flex justify-between text-[13px]">
-                        <span style={{ color: '#737373' }}>Vehicle</span>
-                        <span style={{ color: '#191919' }}>{selectedTicket.vehicleYear} {selectedTicket.vehicleMake} {selectedTicket.vehicleModel}</span>
+                        <span style={{ color: 'var(--muted)' }}>Vehicle</span>
+                        <span style={{ color: 'var(--foreground)' }}>{selectedTicket.vehicleYear} {selectedTicket.vehicleMake} {selectedTicket.vehicleModel}</span>
                       </div>
                       <div className="flex justify-between text-[13px]">
-                        <span style={{ color: '#737373' }}>Fleet</span>
-                        <span style={{ color: '#191919' }}>{selectedTicket.fleetAssignment}</span>
+                        <span style={{ color: 'var(--muted)' }}>Fleet</span>
+                        <span style={{ color: 'var(--foreground)' }}>{selectedTicket.fleetAssignment}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Renter match */}
-                  <div className="px-5 py-5 border-b" style={{ borderColor: '#e5e5e3' }}>
+                  <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border)' }}>
                     <div className="flex items-center gap-2 mb-4">
-                      <User size={16} strokeWidth={1.5} style={{ color: '#737373' }} />
-                      <span className="text-[11px] uppercase tracking-wider" style={{ color: '#737373', letterSpacing: '0.05em' }}>
+                      <User size={16} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
+                      <span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--muted)', letterSpacing: '0.05em' }}>
                         Renter Match
                       </span>
                     </div>
                     {selectedTicket.renterName ? (
                       <div className="space-y-3">
                         <div className="flex justify-between text-[13px]">
-                          <span style={{ color: '#737373' }}>Name</span>
-                          <span className="font-medium" style={{ color: '#191919' }}>{selectedTicket.renterName}</span>
+                          <span style={{ color: 'var(--muted)' }}>Name</span>
+                          <span className="font-medium" style={{ color: 'var(--foreground)' }}>{selectedTicket.renterName}</span>
                         </div>
                         {selectedTicket.renterEmail && (
                           <div className="flex justify-between text-[13px]">
-                            <span style={{ color: '#737373' }}>Email</span>
-                            <span style={{ color: '#191919' }}>{selectedTicket.renterEmail}</span>
+                            <span style={{ color: 'var(--muted)' }}>Email</span>
+                            <span style={{ color: 'var(--foreground)' }}>{selectedTicket.renterEmail}</span>
                           </div>
                         )}
                         <div className="flex justify-between text-[13px] items-center">
-                          <span style={{ color: '#737373' }}>Confidence</span>
+                          <span style={{ color: 'var(--muted)' }}>Confidence</span>
                           <div className="flex items-center gap-2">
-                            <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: '#eeeeec' }}>
+                            <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-2)' }}>
                               <div
                                 className="h-full rounded-full transition-all duration-150"
                                 style={{
@@ -1164,21 +1150,21 @@ export default function TrafficTicketsPage() {
                         </div>
                         {selectedTicket.bookingId && (
                           <div className="flex justify-between text-[13px]">
-                            <span style={{ color: '#737373' }}>Booking</span>
-                            <span className="tabular-nums" style={{ color: '#191919' }}>{selectedTicket.bookingId}</span>
+                            <span style={{ color: 'var(--muted)' }}>Booking</span>
+                            <span className="tabular-nums" style={{ color: 'var(--foreground)' }}>{selectedTicket.bookingId}</span>
                           </div>
                         )}
                         {selectedTicket.bookingStart && selectedTicket.bookingEnd && (
                           <div className="flex justify-between text-[13px]">
-                            <span style={{ color: '#737373' }}>Period</span>
-                            <span className="tabular-nums" style={{ color: '#191919' }}>
+                            <span style={{ color: 'var(--muted)' }}>Period</span>
+                            <span className="tabular-nums" style={{ color: 'var(--foreground)' }}>
                               {formatDate(selectedTicket.bookingStart)} - {formatDate(selectedTicket.bookingEnd)}
                             </span>
                           </div>
                         )}
                       </div>
                     ) : (
-                      <div className="text-[13px]" style={{ color: '#737373' }}>
+                      <div className="text-[13px]" style={{ color: 'var(--muted)' }}>
                         No renter matched yet
                       </div>
                     )}
@@ -1187,8 +1173,8 @@ export default function TrafficTicketsPage() {
                   {/* Processing timeline */}
                   <div className="px-5 py-5">
                     <div className="flex items-center gap-2 mb-4">
-                      <Clock size={16} strokeWidth={1.5} style={{ color: '#737373' }} />
-                      <span className="text-[11px] uppercase tracking-wider" style={{ color: '#737373', letterSpacing: '0.05em' }}>
+                      <Clock size={16} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
+                      <span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--muted)', letterSpacing: '0.05em' }}>
                         Processing Timeline
                       </span>
                     </div>
@@ -1201,7 +1187,7 @@ export default function TrafficTicketsPage() {
                               <div
                                 className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
                                 style={{
-                                  backgroundColor: step.completed ? 'var(--success)' : step.timestamp ? 'var(--primary)' : '#eeeeec',
+                                  backgroundColor: step.completed ? 'var(--success)' : step.timestamp ? 'var(--primary)' : 'var(--surface-2)',
                                 }}
                               >
                                 {step.completed && <Check size={12} strokeWidth={2.5} style={{ color: '#fff' }} />}
@@ -1209,19 +1195,19 @@ export default function TrafficTicketsPage() {
                               {!isLast && (
                                 <div
                                   className="w-px flex-1 my-1"
-                                  style={{ backgroundColor: step.completed ? 'var(--success)' : '#eeeeec', minHeight: '24px' }}
+                                  style={{ backgroundColor: step.completed ? 'var(--success)' : 'var(--surface-2)', minHeight: '24px' }}
                                 />
                               )}
                             </div>
                             <div className="pb-4">
                               <div
                                 className="text-[13px]"
-                                style={{ color: step.timestamp ? '#191919' : '#737373' }}
+                                style={{ color: step.timestamp ? 'var(--foreground)' : 'var(--muted)' }}
                               >
                                 {step.name}
                               </div>
                               {step.timestamp && (
-                                <div className="text-[11px] mt-0.5 tabular-nums" style={{ color: '#737373' }}>
+                                <div className="text-[11px] mt-0.5 tabular-nums" style={{ color: 'var(--muted)' }}>
                                   {formatTime(step.timestamp)}
                                 </div>
                               )}
@@ -1234,7 +1220,7 @@ export default function TrafficTicketsPage() {
                 </div>
 
                 {/* Panel actions */}
-                <div className="flex-shrink-0 p-5 border-t space-y-2" style={{ borderColor: '#e5e5e3', backgroundColor: '#f5f5f4' }}>
+                <div className="flex-shrink-0 p-5 border-t space-y-2" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--secondary)' }}>
                   {selectedTicket.status === 'exception' ? (
                     <>
                       <button
@@ -1247,14 +1233,14 @@ export default function TrafficTicketsPage() {
                       <button
                         onClick={() => reassignTicket(selectedTicket.id)}
                         className="w-full px-4 py-2.5 rounded text-[13px] font-medium transition-opacity duration-150 ease-out hover:opacity-90"
-                        style={{ backgroundColor: '#eeeeec', color: '#191919' }}
+                        style={{ backgroundColor: 'var(--surface-2)', color: 'var(--foreground)' }}
                       >
                         Reassign Renter
                       </button>
                       <button
                         onClick={() => dismissTicket(selectedTicket.id)}
                         className="w-full px-4 py-2.5 rounded text-[13px] transition-opacity duration-150 ease-out hover:opacity-90"
-                        style={{ backgroundColor: 'transparent', color: '#737373' }}
+                        style={{ backgroundColor: 'transparent', color: 'var(--muted)' }}
                       >
                         Dismiss
                       </button>
@@ -1271,7 +1257,7 @@ export default function TrafficTicketsPage() {
                       <button
                         onClick={() => reassignTicket(selectedTicket.id)}
                         className="w-full px-4 py-2.5 rounded text-[13px] font-medium transition-opacity duration-150 ease-out hover:opacity-90"
-                        style={{ backgroundColor: '#eeeeec', color: '#191919' }}
+                        style={{ backgroundColor: 'var(--surface-2)', color: 'var(--foreground)' }}
                       >
                         Reassign Renter
                       </button>
@@ -1286,7 +1272,7 @@ export default function TrafficTicketsPage() {
                         <button
                           onClick={() => dismissTicket(selectedTicket.id)}
                           className="flex-1 px-4 py-2.5 rounded text-[13px] transition-opacity duration-150 ease-out hover:opacity-90"
-                          style={{ backgroundColor: 'transparent', color: '#737373', border: '1px solid #e5e5e3' }}
+                          style={{ backgroundColor: 'transparent', color: 'var(--muted)', border: '1px solid var(--border)' }}
                         >
                           Dismiss
                         </button>
@@ -1296,7 +1282,7 @@ export default function TrafficTicketsPage() {
                     <button
                       onClick={() => dismissTicket(selectedTicket.id)}
                       className="w-full px-4 py-2.5 rounded text-[13px] transition-opacity duration-150 ease-out hover:opacity-90"
-                      style={{ backgroundColor: 'transparent', color: '#737373', border: '1px solid #e5e5e3' }}
+                      style={{ backgroundColor: 'transparent', color: 'var(--muted)', border: '1px solid var(--border)' }}
                     >
                       Remove from List
                     </button>
@@ -1307,6 +1293,7 @@ export default function TrafficTicketsPage() {
           </>
         )}
       </div>
+      {isEmbedded && <div className="flex-shrink-0" style={{ height: 34, background: 'var(--background)' }} />}
     </div>
   );
 }

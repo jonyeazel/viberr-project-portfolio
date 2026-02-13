@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ChevronRight, X, AlertTriangle, Check, Clock, Mail, User } from 'lucide-react';
 
@@ -236,6 +236,9 @@ function getRelativeTime(date: Date): string {
 }
 
 export default function VoucherFulfillmentPage() {
+  const [isEmbedded, setIsEmbedded] = useState(false);
+  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
+
   const initialOrders = useMemo(() => generateOrders(), []);
   const [orders, setOrders] = useState<Order[]>(initialOrders);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -343,23 +346,25 @@ export default function VoucherFulfillmentPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col" style={{ backgroundColor: '#fafaf9' }}>
+    <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
+      {isEmbedded && <div className="flex-shrink-0" style={{ height: 47, background: 'var(--background)' }} />}
       {/* Header */}
       <header
         className="flex-shrink-0 px-6 py-4 border-b flex items-center justify-between"
-        style={{ borderColor: '#e5e5e3' }}
+        style={{ borderColor: 'var(--border)' }}
       >
         <div className="flex items-center gap-4">
           <Link
             href="/"
+            onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }}
             className="flex items-center gap-2 text-[13px] transition-opacity duration-150 hover:opacity-60"
-            style={{ color: '#737373' }}
+            style={{ color: 'var(--muted)' }}
           >
             <ArrowLeft size={16} strokeWidth={1.5} />
             Back
           </Link>
-          <div className="w-px h-4" style={{ backgroundColor: '#e5e5e3' }} />
-          <span className="text-[15px] font-medium" style={{ color: '#191919' }}>
+          <div className="w-px h-4" style={{ backgroundColor: 'var(--border)' }} />
+          <span className="text-[15px] font-medium" style={{ color: 'var(--foreground)' }}>
             Voucher Fulfillment
           </span>
         </div>
@@ -367,34 +372,34 @@ export default function VoucherFulfillmentPage() {
         {/* Stats inline */}
         <div className="hidden md:flex items-center gap-8">
           <div className="flex items-center gap-2">
-            <span className="text-[13px]" style={{ color: '#737373' }}>
+            <span className="text-[13px]" style={{ color: 'var(--muted)' }}>
               Today
             </span>
-            <span className="text-[15px] font-medium" style={{ color: '#191919' }}>
+            <span className="text-[15px] font-medium" style={{ color: 'var(--foreground)' }}>
               {stats.ordersToday}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[13px]" style={{ color: '#737373' }}>
+            <span className="text-[13px]" style={{ color: 'var(--muted)' }}>
               Pending
             </span>
-            <span className="text-[15px] font-medium" style={{ color: '#191919' }}>
+            <span className="text-[15px] font-medium" style={{ color: 'var(--foreground)' }}>
               {stats.pending}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[13px]" style={{ color: '#737373' }}>
+            <span className="text-[13px]" style={{ color: 'var(--muted)' }}>
               Completed
             </span>
-            <span className="text-[15px] font-medium" style={{ color: '#191919' }}>
+            <span className="text-[15px] font-medium" style={{ color: 'var(--foreground)' }}>
               {stats.completed}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[13px]" style={{ color: '#737373' }}>
+            <span className="text-[13px]" style={{ color: 'var(--muted)' }}>
               Revenue
             </span>
-            <span className="text-[15px] font-medium" style={{ color: '#191919' }}>
+            <span className="text-[15px] font-medium" style={{ color: 'var(--foreground)' }}>
               {formatCurrency(stats.revenue)}
             </span>
           </div>
@@ -409,20 +414,20 @@ export default function VoucherFulfillmentPage() {
             <div
               key={stage.key}
               className="flex-1 min-w-[220px] flex flex-col border-r last:border-r-0"
-              style={{ borderColor: '#e5e5e3' }}
+              style={{ borderColor: 'var(--border)' }}
             >
               {/* Column header */}
               <div
                 className="flex-shrink-0 px-3 py-3 border-b"
-                style={{ borderColor: '#e5e5e3', backgroundColor: '#f5f5f4' }}
+                style={{ borderColor: 'var(--border)', backgroundColor: 'var(--secondary)' }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[13px] font-medium" style={{ color: '#191919' }}>
+                  <span className="text-[13px] font-medium" style={{ color: 'var(--foreground)' }}>
                     {stage.label}
                   </span>
                   <span
                     className="text-[11px] px-1.5 py-0.5 rounded"
-                    style={{ color: '#737373', backgroundColor: '#eeeeec' }}
+                    style={{ color: 'var(--muted)', backgroundColor: 'var(--surface-2)' }}
                   >
                     {ordersByStage[stage.key].length}
                   </span>
@@ -439,15 +444,15 @@ export default function VoucherFulfillmentPage() {
                       onClick={() => setSelectedOrderId(order.id)}
                       className="w-full text-left p-3 rounded transition-all duration-150"
                       style={{
-                        backgroundColor: isSelected ? '#f5f5f4' : '#ffffff',
-                        border: `1px solid ${isSelected ? 'var(--primary)' : '#e5e5e3'}`,
+                        backgroundColor: isSelected ? 'var(--secondary)' : 'var(--card)',
+                        border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
                       }}
                     >
                       {/* Order ID and flag */}
                       <div className="flex items-center justify-between mb-2">
                         <span
                           className="text-[12px] font-medium"
-                          style={{ color: '#737373' }}
+                          style={{ color: 'var(--muted)' }}
                         >
                           {order.id}
                         </span>
@@ -462,7 +467,7 @@ export default function VoucherFulfillmentPage() {
                       {/* Customer name */}
                       <div
                         className="text-[14px] font-medium mb-1 truncate"
-                        style={{ color: '#191919' }}
+                        style={{ color: 'var(--foreground)' }}
                       >
                         {order.customerName}
                       </div>
@@ -470,7 +475,7 @@ export default function VoucherFulfillmentPage() {
                       {/* Voucher count and value */}
                       <div
                         className="flex items-center justify-between text-[12px]"
-                        style={{ color: '#737373' }}
+                        style={{ color: 'var(--muted)' }}
                       >
                         <span>
                           {getTotalQuantity(order)} voucher
@@ -480,7 +485,7 @@ export default function VoucherFulfillmentPage() {
                       </div>
 
                       {/* Time */}
-                      <div className="text-[11px] mt-2" style={{ color: '#a3a3a3' }}>
+                      <div className="text-[11px] mt-2" style={{ color: 'var(--muted)' }}>
                         {getRelativeTime(order.createdAt)}
                       </div>
                     </button>
@@ -495,26 +500,26 @@ export default function VoucherFulfillmentPage() {
         {selectedOrder && (
           <div
             className="w-full md:w-[420px] flex-shrink-0 md:border-l flex flex-col overflow-hidden"
-            style={{ borderColor: '#e5e5e3', backgroundColor: '#ffffff' }}
+            style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card)' }}
           >
             {/* Panel header */}
             <div
               className="flex-shrink-0 px-5 py-4 border-b flex items-center justify-between"
-              style={{ borderColor: '#e5e5e3' }}
+              style={{ borderColor: 'var(--border)' }}
             >
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setSelectedOrderId(null)}
                   className="md:hidden p-1.5 -ml-1.5 rounded transition-colors duration-150 hover:bg-[#f5f5f4]"
-                  style={{ color: '#737373' }}
+                  style={{ color: 'var(--muted)' }}
                 >
                   <ArrowLeft size={18} strokeWidth={1.5} />
                 </button>
                 <div>
-                  <div className="text-[15px] font-medium" style={{ color: '#191919' }}>
+                  <div className="text-[15px] font-medium" style={{ color: 'var(--foreground)' }}>
                     {selectedOrder.id}
                   </div>
-                  <div className="text-[12px] mt-0.5" style={{ color: '#737373' }}>
+                  <div className="text-[12px] mt-0.5" style={{ color: 'var(--muted)' }}>
                     {formatDate(selectedOrder.createdAt)} at {formatTime(selectedOrder.createdAt)}
                   </div>
                 </div>
@@ -522,7 +527,7 @@ export default function VoucherFulfillmentPage() {
               <button
                 onClick={() => setSelectedOrderId(null)}
                 className="hidden md:block p-1.5 rounded transition-colors duration-150 hover:bg-[#f5f5f4]"
-                style={{ color: '#737373' }}
+                style={{ color: 'var(--muted)' }}
               >
                 <X size={18} strokeWidth={1.5} />
               </button>
@@ -531,27 +536,27 @@ export default function VoucherFulfillmentPage() {
             {/* Panel content */}
             <div className="flex-1 overflow-y-auto">
               {/* Customer section */}
-              <div className="px-5 py-4 border-b" style={{ borderColor: '#e5e5e3' }}>
+              <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
                 <div
                   className="text-[11px] uppercase tracking-wider mb-3"
-                  style={{ color: '#a3a3a3', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--muted)', letterSpacing: '0.05em' }}
                 >
                   Customer
                 </div>
                 <div className="flex items-start gap-3">
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: '#f5f5f4' }}
+                    style={{ backgroundColor: 'var(--secondary)' }}
                   >
-                    <User size={18} strokeWidth={1.5} style={{ color: '#737373' }} />
+                    <User size={18} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
                   </div>
                   <div>
-                    <div className="text-[14px] font-medium" style={{ color: '#191919' }}>
+                    <div className="text-[14px] font-medium" style={{ color: 'var(--foreground)' }}>
                       {selectedOrder.customerName}
                     </div>
                     <div
                       className="flex items-center gap-1.5 text-[13px] mt-1"
-                      style={{ color: '#737373' }}
+                      style={{ color: 'var(--muted)' }}
                     >
                       <Mail size={13} strokeWidth={1.5} />
                       {selectedOrder.customerEmail}
@@ -561,10 +566,10 @@ export default function VoucherFulfillmentPage() {
               </div>
 
               {/* Order items section */}
-              <div className="px-5 py-4 border-b" style={{ borderColor: '#e5e5e3' }}>
+              <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
                 <div
                   className="text-[11px] uppercase tracking-wider mb-3"
-                  style={{ color: '#a3a3a3', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--muted)', letterSpacing: '0.05em' }}
                 >
                   Order Items
                 </div>
@@ -573,17 +578,17 @@ export default function VoucherFulfillmentPage() {
                     <div
                       key={i}
                       className="flex items-center justify-between py-2 px-3 rounded"
-                      style={{ backgroundColor: '#fafaf9' }}
+                      style={{ backgroundColor: 'var(--background)' }}
                     >
                       <div>
-                        <div className="text-[13px]" style={{ color: '#191919' }}>
+                        <div className="text-[13px]" style={{ color: 'var(--foreground)' }}>
                           {item.type}
                         </div>
-                        <div className="text-[12px]" style={{ color: '#737373' }}>
+                        <div className="text-[12px]" style={{ color: 'var(--muted)' }}>
                           {formatCurrency(item.value)} x {item.quantity}
                         </div>
                       </div>
-                      <div className="text-[13px] font-medium" style={{ color: '#191919' }}>
+                      <div className="text-[13px] font-medium" style={{ color: 'var(--foreground)' }}>
                         {formatCurrency(item.value * item.quantity)}
                       </div>
                     </div>
@@ -591,22 +596,22 @@ export default function VoucherFulfillmentPage() {
                 </div>
                 <div
                   className="flex items-center justify-between mt-3 pt-3 border-t"
-                  style={{ borderColor: '#e5e5e3' }}
+                  style={{ borderColor: 'var(--border)' }}
                 >
-                  <span className="text-[13px]" style={{ color: '#737373' }}>
+                  <span className="text-[13px]" style={{ color: 'var(--muted)' }}>
                     Total
                   </span>
-                  <span className="text-[15px] font-medium" style={{ color: '#191919' }}>
+                  <span className="text-[15px] font-medium" style={{ color: 'var(--foreground)' }}>
                     {formatCurrency(getOrderTotal(selectedOrder))}
                   </span>
                 </div>
               </div>
 
               {/* Voucher codes section */}
-              <div className="px-5 py-4 border-b" style={{ borderColor: '#e5e5e3' }}>
+              <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
                 <div
                   className="text-[11px] uppercase tracking-wider mb-3"
-                  style={{ color: '#a3a3a3', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--muted)', letterSpacing: '0.05em' }}
                 >
                   Voucher Codes ({selectedOrder.voucherCodes.length})
                 </div>
@@ -615,13 +620,13 @@ export default function VoucherFulfillmentPage() {
                     <div
                       key={i}
                       className="flex items-center justify-between py-2 px-3 rounded"
-                      style={{ backgroundColor: '#fafaf9' }}
+                      style={{ backgroundColor: 'var(--background)' }}
                     >
                       <div className="flex items-center gap-2">
                         <span
                           className="text-[13px]"
                           style={{
-                            color: code.generated ? '#191919' : '#a3a3a3',
+                            color: code.generated ? 'var(--foreground)' : 'var(--muted)',
                             fontFamily:
                               'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                             letterSpacing: '0.02em',
@@ -630,7 +635,7 @@ export default function VoucherFulfillmentPage() {
                           {code.generated ? code.code : '------------'}
                         </span>
                       </div>
-                      <span className="text-[12px]" style={{ color: '#737373' }}>
+                      <span className="text-[12px]" style={{ color: 'var(--muted)' }}>
                         {formatCurrency(code.value)}
                       </span>
                     </div>
@@ -639,10 +644,10 @@ export default function VoucherFulfillmentPage() {
               </div>
 
               {/* Fulfillment progress section */}
-              <div className="px-5 py-4 border-b" style={{ borderColor: '#e5e5e3' }}>
+              <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
                 <div
                   className="text-[11px] uppercase tracking-wider mb-3"
-                  style={{ color: '#a3a3a3', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--muted)', letterSpacing: '0.05em' }}
                 >
                   Fulfillment Progress
                 </div>
@@ -667,20 +672,20 @@ export default function VoucherFulfillmentPage() {
                                 ? 'var(--success)'
                                 : isActive
                                   ? 'var(--primary)'
-                                  : '#e5e5e3',
+                                  : 'var(--border)',
                             }}
                           >
                             {isCompleted ? (
-                              <Check size={12} strokeWidth={2} style={{ color: '#ffffff' }} />
+                              <Check size={12} strokeWidth={2} style={{ color: 'var(--card)' }} />
                             ) : isActive ? (
-                              <Clock size={10} strokeWidth={2} style={{ color: '#ffffff' }} />
+                              <Clock size={10} strokeWidth={2} style={{ color: 'var(--card)' }} />
                             ) : null}
                           </div>
                           {!isLast && (
                             <div
                               className="w-px flex-1 min-h-[24px]"
                               style={{
-                                backgroundColor: isCompleted ? 'var(--success)' : '#e5e5e3',
+                                backgroundColor: isCompleted ? 'var(--success)' : 'var(--border)',
                               }}
                             />
                           )}
@@ -691,14 +696,14 @@ export default function VoucherFulfillmentPage() {
                           <div
                             className="text-[13px]"
                             style={{
-                              color: isPending ? '#a3a3a3' : '#191919',
+                              color: isPending ? 'var(--muted)' : 'var(--foreground)',
                               fontWeight: isActive ? 500 : 400,
                             }}
                           >
                             {stage.label}
                           </div>
                           {historyEntry && (
-                            <div className="text-[11px] mt-0.5" style={{ color: '#737373' }}>
+                            <div className="text-[11px] mt-0.5" style={{ color: 'var(--muted)' }}>
                               {formatDateTime(historyEntry.timestamp)}
                             </div>
                           )}
@@ -711,7 +716,7 @@ export default function VoucherFulfillmentPage() {
 
               {/* Flag warning */}
               {selectedOrder.flagged && (
-                <div className="px-5 py-4 border-b" style={{ borderColor: '#e5e5e3' }}>
+                <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
                   <div
                     className="flex items-start gap-3 p-3 rounded"
                     style={{ backgroundColor: 'rgba(217, 119, 6, 0.08)' }}
@@ -725,7 +730,7 @@ export default function VoucherFulfillmentPage() {
                       <div className="text-[13px] font-medium" style={{ color: 'var(--warning)' }}>
                         Flagged for Review
                       </div>
-                      <div className="text-[12px] mt-0.5" style={{ color: '#b45309' }}>
+                      <div className="text-[12px] mt-0.5" style={{ color: 'var(--warning)' }}>
                         {selectedOrder.flagReason}
                       </div>
                     </div>
@@ -737,13 +742,13 @@ export default function VoucherFulfillmentPage() {
             {/* Panel actions */}
             <div
               className="flex-shrink-0 p-4 border-t space-y-2"
-              style={{ borderColor: '#e5e5e3', backgroundColor: '#fafaf9' }}
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}
             >
               {selectedOrder.currentStage !== 'delivered' && (
                 <button
                   onClick={() => advanceOrder(selectedOrder.id)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded text-[13px] font-medium transition-opacity duration-150 hover:opacity-90"
-                  style={{ backgroundColor: 'var(--primary)', color: '#ffffff' }}
+                  style={{ backgroundColor: 'var(--primary)', color: 'var(--card)' }}
                 >
                   Advance to {STAGES[STAGE_INDEX[selectedOrder.currentStage] + 1]?.label}
                   <ChevronRight size={16} strokeWidth={1.5} />
@@ -753,8 +758,8 @@ export default function VoucherFulfillmentPage() {
                 onClick={() => toggleFlag(selectedOrder.id)}
                 className="w-full px-4 py-2.5 rounded text-[13px] transition-opacity duration-150 hover:opacity-80"
                 style={{
-                  backgroundColor: selectedOrder.flagged ? 'transparent' : '#f5f5f4',
-                  color: selectedOrder.flagged ? 'var(--warning)' : '#737373',
+                  backgroundColor: selectedOrder.flagged ? 'transparent' : 'var(--secondary)',
+                  color: selectedOrder.flagged ? 'var(--warning)' : 'var(--muted)',
                   border: selectedOrder.flagged ? '1px solid var(--warning)' : '1px solid transparent',
                 }}
               >
@@ -764,6 +769,7 @@ export default function VoucherFulfillmentPage() {
           </div>
         )}
       </div>
+      {isEmbedded && <div className="flex-shrink-0" style={{ height: 34, background: 'var(--background)' }} />}
     </div>
   );
 }

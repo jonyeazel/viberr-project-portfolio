@@ -342,9 +342,9 @@ function FilterSelect({
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="appearance-none text-[13px] pl-3 pr-7 py-1.5 rounded cursor-pointer"
+        className="appearance-none text-[13px] pl-3 pr-9 py-[7px] rounded-md cursor-pointer outline-none"
         style={{ 
-          backgroundColor: 'var(--secondary)', 
+          backgroundColor: 'var(--surface)', 
           color: 'var(--foreground)', 
           border: '1px solid var(--border)' 
         }}
@@ -356,7 +356,8 @@ function FilterSelect({
       </select>
       <ChevronDown 
         size={14} 
-        className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" 
+        strokeWidth={1.5}
+        className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" 
         style={{ color: 'var(--muted)' }} 
       />
     </div>
@@ -364,6 +365,9 @@ function FilterSelect({
 }
 
 export default function SustainabilityReviewPage() {
+  const [isEmbedded, setIsEmbedded] = useState(false);
+  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
+
   const [submissions, setSubmissions] = useState<Submission[]>(initialSubmissions);
   const [selectedId, setSelectedId] = useState<string | null>(initialSubmissions[0]?.id || null);
   const [statusFilter, setStatusFilter] = useState('All');
@@ -427,23 +431,25 @@ export default function SustainabilityReviewPage() {
 
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
+      {isEmbedded && <div className="flex-shrink-0" style={{ height: 47, background: 'var(--background)' }} />}
       {/* Header */}
       <header 
-        className="flex-shrink-0 flex items-center gap-4 px-6 h-14 border-b"
+        className="flex-shrink-0 flex flex-wrap items-center gap-x-4 gap-y-2 px-4 sm:px-6 py-3 sm:py-0 sm:h-14 border-b"
         style={{ borderColor: 'var(--border)' }}
       >
         <Link 
           href="/" 
+          onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }}
           className="flex items-center gap-2 text-[13px] transition-opacity duration-150 hover:opacity-60"
           style={{ color: 'var(--muted)' }}
         >
           <ArrowLeft size={16} strokeWidth={1.5} />
           Back
         </Link>
-        <div className="h-4 w-px" style={{ backgroundColor: 'var(--border)' }} />
+        <div className="h-4 w-px hidden sm:block" style={{ backgroundColor: 'var(--border)' }} />
         <span className="text-[15px] font-semibold">Sustainability Review</span>
-        <div className="flex-1" />
-        <div className="flex items-center gap-6 text-[13px]">
+        <div className="flex-1 min-w-0" />
+        <div className="flex items-center gap-4 sm:gap-6 text-[13px] w-full sm:w-auto">
           <div>
             <span style={{ color: 'var(--muted)' }}>Pending </span>
             <span className="font-medium" style={{ color: 'var(--warning)' }}>{stats.pending}</span>
@@ -662,7 +668,7 @@ export default function SustainabilityReviewPage() {
             
             {/* Action buttons */}
             <div className="flex-shrink-0 px-8 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={() => handleStatusChange('Approved')}
                   className="flex items-center gap-1.5 px-4 py-2 rounded text-[13px] font-medium transition-opacity duration-150 hover:opacity-80"
@@ -726,6 +732,7 @@ export default function SustainabilityReviewPage() {
           </div>
         ) : null}
       </div>
+      {isEmbedded && <div className="flex-shrink-0" style={{ height: 34, background: 'var(--background)' }} />}
     </div>
   );
 }

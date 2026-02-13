@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Search, Grid3X3, List, X, Eye, TrendingUp, ShoppingCart, Heart } from 'lucide-react';
+import { ArrowLeft, Search, Grid3X3, List, X, Eye, TrendingUp, ShoppingCart, Heart, ChevronDown } from 'lucide-react';
 
 type Category = 'Trading Cards' | 'Vinyl Records' | 'Comics' | 'Sneakers' | 'Watches' | 'Art';
 type Condition = 'Mint' | 'Near Mint' | 'Excellent' | 'Good' | 'Fair';
@@ -244,6 +244,9 @@ function getInitials(name: string): string {
 }
 
 export default function CollectablesPage() {
+  const [isEmbedded, setIsEmbedded] = useState(false);
+  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
+
   const [collectibles, setCollectibles] = useState<Collectible[]>(initialCollectibles);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
@@ -339,11 +342,11 @@ export default function CollectablesPage() {
       case 'Near Mint':
         return { color: 'var(--primary)', bg: 'rgba(37, 99, 235, 0.08)' };
       case 'Excellent':
-        return { color: '#525252', bg: 'rgba(82, 82, 82, 0.08)' };
+        return { color: 'var(--muted)', bg: 'rgba(82, 82, 82, 0.08)' };
       case 'Good':
         return { color: 'var(--warning)', bg: 'rgba(217, 119, 6, 0.08)' };
       case 'Fair':
-        return { color: '#737373', bg: 'rgba(115, 115, 115, 0.08)' };
+        return { color: 'var(--muted)', bg: 'rgba(115, 115, 115, 0.08)' };
     }
   };
 
@@ -358,17 +361,18 @@ export default function CollectablesPage() {
   return (
     <div
       style={{
-        backgroundColor: '#fafaf9',
-        color: '#191919',
+        backgroundColor: 'var(--background)',
+        color: 'var(--foreground)',
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
       }}
     >
+      {isEmbedded && <div style={{ height: 47, flexShrink: 0, background: 'var(--background)' }} />}
       <header
         style={{
-          borderBottom: '1px solid #e5e5e3',
+          borderBottom: '1px solid var(--border)',
           padding: '12px 16px',
           display: 'flex',
           alignItems: 'center',
@@ -379,8 +383,9 @@ export default function CollectablesPage() {
       >
         <Link
           href="/"
+          onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }}
           style={{
-            color: '#737373',
+            color: 'var(--muted)',
             textDecoration: 'none',
             display: 'flex',
             alignItems: 'center',
@@ -388,26 +393,29 @@ export default function CollectablesPage() {
             fontSize: '13px',
             transition: 'color 150ms ease-out',
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#191919')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#737373')}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--muted)')}
         >
           <ArrowLeft size={16} strokeWidth={1.5} />
+          Back
         </Link>
+        <div style={{ width: 1, height: 16, backgroundColor: 'var(--border)' }} />
+        <span style={{ fontSize: 15, fontWeight: 500 }}>Collectibles</span>
 
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            backgroundColor: '#f5f5f4',
-            border: '1px solid #e5e5e3',
+            backgroundColor: 'var(--secondary)',
+            border: '1px solid var(--border)',
             borderRadius: '6px',
             padding: '8px 12px',
             flex: '1',
             maxWidth: '320px',
           }}
         >
-          <Search size={16} strokeWidth={1.5} style={{ color: '#737373', flexShrink: 0 }} />
+          <Search size={16} strokeWidth={1.5} style={{ color: 'var(--muted)', flexShrink: 0 }} />
           <input
             type="text"
             placeholder="Search collectibles..."
@@ -417,7 +425,7 @@ export default function CollectablesPage() {
               background: 'transparent',
               border: 'none',
               outline: 'none',
-              color: '#191919',
+              color: 'var(--foreground)',
               fontSize: '13px',
               width: '100%',
             }}
@@ -425,77 +433,92 @@ export default function CollectablesPage() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', flexWrap: 'wrap' }}>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value as Category | 'All')}
-            style={{
-              backgroundColor: '#f5f5f4',
-              border: '1px solid #e5e5e3',
-              borderRadius: '6px',
-              padding: '8px 12px',
-              color: '#191919',
-              fontSize: '13px',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-          >
-            <option value="All">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
+          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value as Category | 'All')}
+              style={{
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                backgroundColor: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                padding: '7px 36px 7px 12px',
+                color: 'var(--foreground)',
+                fontSize: '13px',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              <option value="All">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={14} strokeWidth={1.5} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'var(--muted)' }} />
+          </div>
 
-          <select
-            value={selectedCondition}
-            onChange={(e) => setSelectedCondition(e.target.value as Condition | 'All')}
-            style={{
-              backgroundColor: '#f5f5f4',
-              border: '1px solid #e5e5e3',
-              borderRadius: '6px',
-              padding: '8px 12px',
-              color: '#191919',
-              fontSize: '13px',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-          >
-            <option value="All">All Conditions</option>
-            {conditions.map((cond) => (
-              <option key={cond} value={cond}>
-                {cond}
-              </option>
-            ))}
-          </select>
+          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+            <select
+              value={selectedCondition}
+              onChange={(e) => setSelectedCondition(e.target.value as Condition | 'All')}
+              style={{
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                backgroundColor: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                padding: '7px 36px 7px 12px',
+                color: 'var(--foreground)',
+                fontSize: '13px',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              <option value="All">All Conditions</option>
+              {conditions.map((cond) => (
+                <option key={cond} value={cond}>
+                  {cond}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={14} strokeWidth={1.5} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'var(--muted)' }} />
+          </div>
 
-          <select
-            value={priceRange}
-            onChange={(e) =>
-              setPriceRange(e.target.value as 'All' | 'Under $500' | '$500-$5000' | '$5000+')
-            }
-            style={{
-              backgroundColor: '#f5f5f4',
-              border: '1px solid #e5e5e3',
-              borderRadius: '6px',
-              padding: '8px 12px',
-              color: '#191919',
-              fontSize: '13px',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-          >
+          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+            <select
+              value={priceRange}
+              onChange={(e) =>
+                setPriceRange(e.target.value as 'All' | 'Under $500' | '$500-$5000' | '$5000+')
+              }
+              style={{
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                backgroundColor: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                padding: '7px 36px 7px 12px',
+                color: 'var(--foreground)',
+                fontSize: '13px',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
             <option value="All">All Prices</option>
             <option value="Under $500">Under $500</option>
             <option value="$500-$5000">$500 - $5,000</option>
             <option value="$5000+">$5,000+</option>
           </select>
+            <ChevronDown size={14} strokeWidth={1.5} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'var(--muted)' }} />
+          </div>
 
           <div
             style={{
               display: 'flex',
-              backgroundColor: '#f5f5f4',
-              border: '1px solid #e5e5e3',
+              backgroundColor: 'var(--secondary)',
+              border: '1px solid var(--border)',
               borderRadius: '6px',
               padding: '2px',
             }}
@@ -503,12 +526,12 @@ export default function CollectablesPage() {
             <button
               onClick={() => setViewMode('grid')}
               style={{
-                background: viewMode === 'grid' ? '#fafaf9' : 'transparent',
+                background: viewMode === 'grid' ? 'var(--background)' : 'transparent',
                 border: 'none',
                 borderRadius: '4px',
                 padding: '6px 8px',
                 cursor: 'pointer',
-                color: viewMode === 'grid' ? '#191919' : '#737373',
+                color: viewMode === 'grid' ? 'var(--foreground)' : 'var(--muted)',
                 display: 'flex',
                 alignItems: 'center',
                 transition: 'all 150ms ease-out',
@@ -519,12 +542,12 @@ export default function CollectablesPage() {
             <button
               onClick={() => setViewMode('list')}
               style={{
-                background: viewMode === 'list' ? '#fafaf9' : 'transparent',
+                background: viewMode === 'list' ? 'var(--background)' : 'transparent',
                 border: 'none',
                 borderRadius: '4px',
                 padding: '6px 8px',
                 cursor: 'pointer',
-                color: viewMode === 'list' ? '#191919' : '#737373',
+                color: viewMode === 'list' ? 'var(--foreground)' : 'var(--muted)',
                 display: 'flex',
                 alignItems: 'center',
                 transition: 'all 150ms ease-out',
@@ -538,11 +561,13 @@ export default function CollectablesPage() {
 
       <nav
         style={{
-          borderBottom: '1px solid #e5e5e3',
+          borderBottom: '1px solid var(--border)',
           padding: '0 24px',
           display: 'flex',
-          gap: '32px',
+          gap: '24px',
           flexShrink: 0,
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
         }}
       >
         {tabs.map((tab) => (
@@ -552,10 +577,10 @@ export default function CollectablesPage() {
             style={{
               background: 'transparent',
               border: 'none',
-              borderBottom: activeTab === tab ? '2px solid #191919' : '2px solid transparent',
+              borderBottom: activeTab === tab ? '2px solid var(--foreground)' : '2px solid transparent',
               padding: '12px 0',
               marginBottom: '-1px',
-              color: activeTab === tab ? '#191919' : '#737373',
+              color: activeTab === tab ? 'var(--foreground)' : 'var(--muted)',
               fontSize: '13px',
               fontWeight: activeTab === tab ? 500 : 400,
               cursor: 'pointer',
@@ -563,13 +588,15 @@ export default function CollectablesPage() {
               gap: '8px',
               alignItems: 'center',
               transition: 'color 150ms ease-out',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
             }}
           >
             {tab}
             <span
               style={{
-                backgroundColor: activeTab === tab ? '#eeeeec' : '#f5f5f4',
-                color: activeTab === tab ? '#191919' : '#737373',
+                backgroundColor: activeTab === tab ? 'var(--surface-2)' : 'var(--secondary)',
+                color: activeTab === tab ? 'var(--foreground)' : 'var(--muted)',
                 padding: '2px 8px',
                 borderRadius: '4px',
                 fontSize: '11px',
@@ -591,7 +618,7 @@ export default function CollectablesPage() {
               alignItems: 'center',
               justifyContent: 'center',
               height: '100%',
-              color: '#737373',
+              color: 'var(--muted)',
             }}
           >
             <p style={{ fontSize: '15px' }}>No items found</p>
@@ -614,19 +641,19 @@ export default function CollectablesPage() {
                   key={item.id}
                   onClick={() => setSelectedItem(item)}
                   style={{
-                    backgroundColor: '#fafaf9',
-                    border: '1px solid #e5e5e3',
+                    backgroundColor: 'var(--background)',
+                    border: '1px solid var(--border)',
                     borderRadius: '8px',
                     cursor: 'pointer',
                     transition: 'border-color 150ms ease-out, box-shadow 150ms ease-out',
                     overflow: 'hidden',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#d4d4d2';
+                    e.currentTarget.style.borderColor = 'var(--border)';
                     e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#e5e5e3';
+                    e.currentTarget.style.borderColor = 'var(--border)';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
@@ -634,32 +661,44 @@ export default function CollectablesPage() {
                     style={{
                       width: '100%',
                       height: '140px',
-                      backgroundColor: catColor.bg,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      backgroundColor: 'var(--surface)',
+                      background: 'repeating-linear-gradient(-45deg, transparent, transparent 8px, var(--surface-2) 8px, var(--surface-2) 9px)',
                       position: 'relative',
                     }}
                   >
-                    <span
+                    <div
                       style={{
-                        fontSize: '48px',
-                        fontWeight: 600,
-                        color: catColor.text,
-                        opacity: 0.25,
-                        letterSpacing: '-0.02em',
-                        userSelect: 'none',
+                        position: 'absolute',
+                        bottom: '8px',
+                        left: '10px',
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        backgroundColor: catColor.bg,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
                     >
-                      {getInitials(item.name)}
-                    </span>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          color: catColor.text,
+                          letterSpacing: '-0.02em',
+                          userSelect: 'none',
+                        }}
+                      >
+                        {getInitials(item.name)}
+                      </span>
+                    </div>
                     {item.watched && (
                       <div
                         style={{
                           position: 'absolute',
                           top: '8px',
                           right: '8px',
-                          backgroundColor: '#fafaf9',
+                          backgroundColor: 'var(--background)',
                           borderRadius: '4px',
                           padding: '4px',
                           display: 'flex',
@@ -675,42 +714,32 @@ export default function CollectablesPage() {
                     <div
                       style={{
                         display: 'flex',
-                        justifyContent: 'space-between',
                         alignItems: 'center',
-                        marginBottom: '8px',
+                        gap: '6px',
+                        marginBottom: '6px',
                       }}
                     >
                       <span
                         style={{
-                          fontSize: '11px',
-                          color: catColor.text,
-                          backgroundColor: catColor.bg,
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontWeight: 500,
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          backgroundColor: catColor.text,
+                          flexShrink: 0,
                         }}
-                      >
+                      />
+                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
                         {item.category}
                       </span>
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          color: statusStyle.color,
-                          backgroundColor: statusStyle.bg,
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontWeight: 500,
-                        }}
-                      >
-                        {item.status}
-                        {item.auctionEnds && ` - ${item.auctionEnds}`}
+                      <span style={{ fontSize: '11px', color: 'var(--muted)', marginLeft: 'auto' }}>
+                        {item.year}
                       </span>
                     </div>
                     <h3
                       style={{
                         fontSize: '13px',
                         fontWeight: 500,
-                        marginBottom: '6px',
+                        marginBottom: '8px',
                         lineHeight: 1.4,
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
@@ -726,21 +755,13 @@ export default function CollectablesPage() {
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        marginBottom: '8px',
+                        marginBottom: '6px',
                       }}
                     >
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          color: condStyle.color,
-                          backgroundColor: condStyle.bg,
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                        }}
-                      >
+                      <span style={{ fontSize: '15px', fontWeight: 600 }}>{formatPrice(item.price)}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
                         {item.condition}
                       </span>
-                      <span style={{ fontSize: '15px', fontWeight: 600 }}>{formatPrice(item.price)}</span>
                     </div>
                     <div
                       style={{
@@ -749,8 +770,11 @@ export default function CollectablesPage() {
                         alignItems: 'center',
                       }}
                     >
-                      <span style={{ fontSize: '11px', color: '#737373' }}>{item.seller}</span>
-                      <span style={{ fontSize: '11px', color: '#a3a3a3' }}>{item.year}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{item.seller}</span>
+                      <span style={{ fontSize: '11px', color: statusStyle.color }}>
+                        {item.status}
+                        {item.auctionEnds && ` - ${item.auctionEnds}`}
+                      </span>
                     </div>
                   </div>
                 </article>
@@ -768,8 +792,8 @@ export default function CollectablesPage() {
                   key={item.id}
                   onClick={() => setSelectedItem(item)}
                   style={{
-                    backgroundColor: '#fafaf9',
-                    border: '1px solid #e5e5e3',
+                    backgroundColor: 'var(--background)',
+                    border: '1px solid var(--border)',
                     borderRadius: '6px',
                     padding: '12px 16px',
                     cursor: 'pointer',
@@ -778,32 +802,31 @@ export default function CollectablesPage() {
                     gap: '16px',
                     transition: 'border-color 150ms ease-out',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#d4d4d2')}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e5e5e3')}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
                 >
                   <div
                     style={{
-                      width: '56px',
-                      height: '56px',
-                      backgroundColor: catColor.bg,
+                      width: '48px',
+                      height: '48px',
+                      backgroundColor: 'var(--surface)',
+                      background: 'repeating-linear-gradient(-45deg, transparent, transparent 8px, var(--surface-2) 8px, var(--surface-2) 9px)',
                       borderRadius: '6px',
                       flexShrink: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      position: 'relative',
                     }}
                   >
                     <span
                       style={{
-                        fontSize: '18px',
-                        fontWeight: 600,
-                        color: catColor.text,
-                        opacity: 0.4,
-                        letterSpacing: '-0.02em',
+                        position: 'absolute',
+                        bottom: '4px',
+                        right: '4px',
+                        width: '4px',
+                        height: '4px',
+                        borderRadius: '50%',
+                        backgroundColor: catColor.text,
                       }}
-                    >
-                      {getInitials(item.name)}
-                    </span>
+                    />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
@@ -837,7 +860,7 @@ export default function CollectablesPage() {
                       >
                         {item.condition}
                       </span>
-                      <span style={{ fontSize: '11px', color: '#a3a3a3' }}>{item.year}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{item.year}</span>
                     </div>
                     <h3
                       style={{
@@ -850,7 +873,7 @@ export default function CollectablesPage() {
                     >
                       {item.name}
                     </h3>
-                    <p style={{ fontSize: '11px', color: '#737373', marginTop: '2px' }}>{item.seller}</p>
+                    <p style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{item.seller}</p>
                   </div>
                   <div
                     style={{
@@ -901,8 +924,8 @@ export default function CollectablesPage() {
               right: 0,
               bottom: 0,
               width: 'min(480px, 100%)',
-              backgroundColor: '#fafaf9',
-              borderLeft: '1px solid #e5e5e3',
+              backgroundColor: 'var(--background)',
+              borderLeft: '1px solid var(--border)',
               zIndex: 100,
               display: 'flex',
               flexDirection: 'column',
@@ -912,7 +935,7 @@ export default function CollectablesPage() {
             <div
               style={{
                 padding: '16px 20px',
-                borderBottom: '1px solid #e5e5e3',
+                borderBottom: '1px solid var(--border)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'flex-start',
@@ -924,7 +947,7 @@ export default function CollectablesPage() {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#737373',
+                  color: 'var(--muted)',
                   cursor: 'pointer',
                   padding: '4px',
                   marginRight: '12px',
@@ -933,8 +956,8 @@ export default function CollectablesPage() {
                   display: 'flex',
                   alignItems: 'center',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = '#191919')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = '#737373')}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--muted)')}
               >
                 <ArrowLeft size={20} strokeWidth={1.5} />
               </button>
@@ -984,14 +1007,14 @@ export default function CollectablesPage() {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#737373',
+                  color: 'var(--muted)',
                   cursor: 'pointer',
                   padding: '4px',
                   transition: 'color 150ms ease-out',
                   flexShrink: 0,
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = '#191919')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = '#737373')}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--muted)')}
               >
                 <X size={20} strokeWidth={1.5} />
               </button>
@@ -1001,28 +1024,43 @@ export default function CollectablesPage() {
               <div
                 style={{
                   width: '100%',
-                  height: '200px',
-                  backgroundColor: categoryColors[selectedItem.category].bg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  height: '180px',
+                  backgroundColor: 'var(--surface)',
+                  background: 'repeating-linear-gradient(-45deg, transparent, transparent 8px, var(--surface-2) 8px, var(--surface-2) 9px)',
+                  position: 'relative',
                 }}
               >
-                <span
+                <div
                   style={{
-                    fontSize: '72px',
-                    fontWeight: 600,
-                    color: categoryColors[selectedItem.category].text,
-                    opacity: 0.2,
-                    letterSpacing: '-0.02em',
-                    userSelect: 'none',
+                    position: 'absolute',
+                    bottom: '-24px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    backgroundColor: categoryColors[selectedItem.category].bg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '3px solid var(--background)',
                   }}
                 >
-                  {getInitials(selectedItem.name)}
-                </span>
+                  <span
+                    style={{
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      color: categoryColors[selectedItem.category].text,
+                      letterSpacing: '-0.02em',
+                      userSelect: 'none',
+                    }}
+                  >
+                    {getInitials(selectedItem.name)}
+                  </span>
+                </div>
               </div>
 
-              <div style={{ padding: '20px' }}>
+              <div style={{ padding: '20px', marginTop: '24px' }}>
                 <div
                   style={{
                     display: 'flex',
@@ -1030,43 +1068,43 @@ export default function CollectablesPage() {
                     alignItems: 'flex-end',
                     marginBottom: '24px',
                     paddingBottom: '16px',
-                    borderBottom: '1px solid #e5e5e3',
+                    borderBottom: '1px solid var(--border)',
                   }}
                 >
                   <div>
-                    <p style={{ fontSize: '11px', color: '#737373', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Price</p>
+                    <p style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Price</p>
                     <p style={{ fontSize: '28px', fontWeight: 600, letterSpacing: '-0.02em' }}>{formatPrice(selectedItem.price)}</p>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <p style={{ fontSize: '11px', color: '#737373', marginBottom: '4px' }}>{selectedItem.year}</p>
-                    <p style={{ fontSize: '13px', color: '#191919' }}>{selectedItem.rarity}</p>
+                    <p style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '4px' }}>{selectedItem.year}</p>
+                    <p style={{ fontSize: '13px', color: 'var(--foreground)' }}>{selectedItem.rarity}</p>
                   </div>
                 </div>
 
                 <div style={{ marginBottom: '20px' }}>
-                  <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#191919' }}>{selectedItem.description}</p>
+                  <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--foreground)' }}>{selectedItem.description}</p>
                 </div>
 
                 <div style={{ marginBottom: '20px' }}>
-                  <p style={{ fontSize: '11px', color: '#737373', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Provenance</p>
-                  <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#525252' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Provenance</p>
+                  <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--muted)' }}>
                     {selectedItem.provenance}
                   </p>
                 </div>
 
                 <div style={{ marginBottom: '20px' }}>
-                  <p style={{ fontSize: '11px', color: '#737373', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Condition Notes
                   </p>
-                  <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#525252' }}>
+                  <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--muted)' }}>
                     {selectedItem.conditionNotes}
                   </p>
                 </div>
 
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-                    <TrendingUp size={14} strokeWidth={1.5} style={{ color: '#737373' }} />
-                    <p style={{ fontSize: '11px', color: '#737373', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <TrendingUp size={14} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
+                    <p style={{ fontSize: '11px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       Price History
                     </p>
                   </div>
@@ -1080,13 +1118,13 @@ export default function CollectablesPage() {
                           alignItems: 'center',
                           fontSize: '13px',
                           padding: '10px 12px',
-                          backgroundColor: '#f5f5f4',
+                          backgroundColor: 'var(--secondary)',
                           borderRadius: '4px',
                         }}
                       >
                         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                          <span style={{ color: '#737373', fontSize: '12px', fontVariantNumeric: 'tabular-nums' }}>{ph.date}</span>
-                          <span style={{ color: '#a3a3a3', fontSize: '11px' }}>{ph.event}</span>
+                          <span style={{ color: 'var(--muted)', fontSize: '12px', fontVariantNumeric: 'tabular-nums' }}>{ph.date}</span>
+                          <span style={{ color: 'var(--muted)', fontSize: '11px' }}>{ph.event}</span>
                         </div>
                         <span style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{formatPrice(ph.price)}</span>
                       </div>
@@ -1100,7 +1138,7 @@ export default function CollectablesPage() {
                     alignItems: 'center',
                     gap: '8px',
                     padding: '12px',
-                    backgroundColor: '#f5f5f4',
+                    backgroundColor: 'var(--secondary)',
                     borderRadius: '6px',
                     marginBottom: '20px',
                   }}
@@ -1109,21 +1147,21 @@ export default function CollectablesPage() {
                     style={{
                       width: '32px',
                       height: '32px',
-                      backgroundColor: '#e5e5e3',
+                      backgroundColor: 'var(--border)',
                       borderRadius: '50%',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontSize: '12px',
                       fontWeight: 500,
-                      color: '#525252',
+                      color: 'var(--muted)',
                     }}
                   >
                     {getInitials(selectedItem.seller)}
                   </div>
                   <div>
                     <p style={{ fontSize: '13px', fontWeight: 500 }}>{selectedItem.seller}</p>
-                    <p style={{ fontSize: '11px', color: '#737373' }}>Verified Seller</p>
+                    <p style={{ fontSize: '11px', color: 'var(--muted)' }}>Verified Seller</p>
                   </div>
                 </div>
               </div>
@@ -1132,11 +1170,11 @@ export default function CollectablesPage() {
             <div
               style={{
                 padding: '16px 20px',
-                borderTop: '1px solid #e5e5e3',
+                borderTop: '1px solid var(--border)',
                 display: 'flex',
                 gap: '10px',
                 flexShrink: 0,
-                backgroundColor: '#fafaf9',
+                backgroundColor: 'var(--background)',
               }}
             >
               {selectedItem.owned ? (
@@ -1161,8 +1199,8 @@ export default function CollectablesPage() {
                       onClick={() => handleBuy(selectedItem)}
                       style={{
                         flex: 1,
-                        backgroundColor: '#191919',
-                        color: '#fafaf9',
+                        backgroundColor: 'var(--foreground)',
+                        color: 'var(--background)',
                         border: 'none',
                         borderRadius: '6px',
                         padding: '12px 16px',
@@ -1186,8 +1224,8 @@ export default function CollectablesPage() {
                     <button
                       style={{
                         flex: 1,
-                        backgroundColor: '#191919',
-                        color: '#fafaf9',
+                        backgroundColor: 'var(--foreground)',
+                        color: 'var(--background)',
                         border: 'none',
                         borderRadius: '6px',
                         padding: '12px 16px',
@@ -1212,16 +1250,16 @@ export default function CollectablesPage() {
                         flex: selectedItem.status === 'Sold' ? 1 : 0,
                         minWidth: '100px',
                         backgroundColor: 'transparent',
-                        color: '#191919',
-                        border: '1px solid #e5e5e3',
+                        color: 'var(--foreground)',
+                        border: '1px solid var(--border)',
                         borderRadius: '6px',
                         padding: '12px 16px',
                         fontSize: '13px',
                         cursor: 'pointer',
                         transition: 'border-color 150ms ease-out',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#d4d4d2')}
-                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e5e5e3')}
+                      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
                     >
                       Make Offer
                     </button>
@@ -1232,8 +1270,8 @@ export default function CollectablesPage() {
                       width: '44px',
                       height: '44px',
                       backgroundColor: selectedItem.watched ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
-                      color: selectedItem.watched ? 'var(--primary)' : '#737373',
-                      border: `1px solid ${selectedItem.watched ? 'rgba(37, 99, 235, 0.2)' : '#e5e5e3'}`,
+                      color: selectedItem.watched ? 'var(--primary)' : 'var(--muted)',
+                      border: `1px solid ${selectedItem.watched ? 'rgba(37, 99, 235, 0.2)' : 'var(--border)'}`,
                       borderRadius: '6px',
                       cursor: 'pointer',
                       display: 'flex',
@@ -1244,14 +1282,14 @@ export default function CollectablesPage() {
                     }}
                     onMouseEnter={(e) => {
                       if (!selectedItem.watched) {
-                        e.currentTarget.style.borderColor = '#d4d4d2';
-                        e.currentTarget.style.color = '#191919';
+                        e.currentTarget.style.borderColor = 'var(--border)';
+                        e.currentTarget.style.color = 'var(--foreground)';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!selectedItem.watched) {
-                        e.currentTarget.style.borderColor = '#e5e5e3';
-                        e.currentTarget.style.color = '#737373';
+                        e.currentTarget.style.borderColor = 'var(--border)';
+                        e.currentTarget.style.color = 'var(--muted)';
                       }
                     }}
                   >
@@ -1263,6 +1301,7 @@ export default function CollectablesPage() {
           </div>
         </>
       )}
+      {isEmbedded && <div style={{ height: 34, flexShrink: 0, background: 'var(--background)' }} />}
     </div>
   );
 }

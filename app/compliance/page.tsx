@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -460,6 +460,9 @@ const SortIndicator = ({ field, sortField, sortDirection }: { field: string; sor
 };
 
 export default function ComplianceDashboard() {
+  const [isEmbedded, setIsEmbedded] = useState(false);
+  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
+
   const [documents] = useState<Document[]>(() => generateDocuments());
   const [policies] = useState<Policy[]>(() => generatePolicies(documents));
   const [auditLog] = useState<AuditEntry[]>(() => generateAuditLog(documents));
@@ -562,13 +565,16 @@ export default function ComplianceDashboard() {
   };
 
   const selectStyle: React.CSSProperties = {
+    appearance: 'none',
+    WebkitAppearance: 'none',
     background: colors.surface,
     border: `1px solid ${colors.border}`,
-    borderRadius: 4,
-    padding: '6px 12px',
+    borderRadius: 6,
+    padding: '7px 36px 7px 12px',
     color: colors.text,
     fontSize: 13,
     cursor: 'pointer',
+    outline: 'none',
   };
 
   return (
@@ -579,6 +585,7 @@ export default function ComplianceDashboard() {
       display: 'flex',
       flexDirection: 'column',
     }}>
+      {isEmbedded && <div style={{ height: 47, flexShrink: 0, background: colors.bg }} />}
       {/* Header */}
       <header style={{
         padding: '16px 24px',
@@ -589,6 +596,7 @@ export default function ComplianceDashboard() {
       }}>
         <Link
           href="/"
+          onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }}
           style={{
             color: colors.muted,
             textDecoration: 'none',
@@ -607,31 +615,39 @@ export default function ComplianceDashboard() {
 
       {/* Stats */}
       <div style={{
-        padding: '24px',
         borderBottom: `1px solid ${colors.border}`,
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '16px 48px',
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        WebkitOverflowScrolling: 'touch',
+        scrollSnapType: 'x mandatory',
       }}>
-        <div>
-          <div style={{ fontSize: 32, fontWeight: 500, lineHeight: 1 }}>{stats.totalFiles}</div>
-          <div style={{ fontSize: 11, color: colors.muted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Files</div>
-        </div>
-        <div>
-          <div style={{ fontSize: 32, fontWeight: 500, lineHeight: 1, color: colors.success }}>{stats.processedCount}</div>
-          <div style={{ fontSize: 11, color: colors.muted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Processed</div>
-        </div>
-        <div>
-          <div style={{ fontSize: 32, fontWeight: 500, lineHeight: 1 }}>{stats.activePolicies}</div>
-          <div style={{ fontSize: 11, color: colors.muted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Policies</div>
-        </div>
-        <div>
-          <div style={{ fontSize: 32, fontWeight: 500, lineHeight: 1 }}>{stats.totalRedactions.toLocaleString()}</div>
-          <div style={{ fontSize: 11, color: colors.muted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Redactions</div>
-        </div>
-        <div>
-          <div style={{ fontSize: 32, fontWeight: 500, lineHeight: 1, color: stats.pendingReview > 0 ? colors.warning : colors.text }}>{stats.pendingReview}</div>
-          <div style={{ fontSize: 11, color: colors.muted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pending Review</div>
+        <div style={{
+          display: 'flex',
+          gap: 0,
+          padding: '0 24px',
+          minWidth: 'min-content',
+        }}>
+          {[
+            { value: stats.totalFiles, label: 'Total Files' },
+            { value: stats.processedCount, label: 'Processed', color: colors.success },
+            { value: stats.activePolicies, label: 'Active Policies' },
+            { value: stats.totalRedactions.toLocaleString(), label: 'Redactions' },
+            { value: stats.pendingReview, label: 'Pending Review', color: stats.pendingReview > 0 ? colors.warning : undefined },
+          ].map((stat, i) => (
+            <div
+              key={stat.label}
+              style={{
+                padding: '20px 24px 20px 0',
+                scrollSnapAlign: 'start',
+                flexShrink: 0,
+                borderRight: i < 4 ? `1px solid ${colors.border}` : 'none',
+                paddingLeft: i > 0 ? 24 : 0,
+              }}
+            >
+              <div style={{ fontSize: 24, fontWeight: 500, lineHeight: 1, color: stat.color || colors.text }}>{stat.value}</div>
+              <div style={{ fontSize: 11, color: colors.muted, marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{stat.label}</div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -641,6 +657,8 @@ export default function ComplianceDashboard() {
         borderBottom: `1px solid ${colors.border}`,
         display: 'flex',
         gap: 24,
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
       }}>
         {(['documents', 'policies', 'audit'] as const).map(tab => (
           <button
@@ -660,6 +678,8 @@ export default function ComplianceDashboard() {
               borderBottom: activeTab === tab ? `2px solid ${colors.text}` : '2px solid transparent',
               marginBottom: -1,
               textTransform: 'capitalize',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
             }}
           >
             {tab === 'audit' ? 'Audit Log' : tab}
@@ -682,27 +702,36 @@ export default function ComplianceDashboard() {
                 gap: '8px 12px',
                 alignItems: 'center',
               }}>
-                <select value={filterPolicy} onChange={e => setFilterPolicy(e.target.value as PolicyType | 'all')} style={selectStyle}>
-                  <option value="all">All Policies</option>
-                  <option value="FOIA">FOIA</option>
-                  <option value="HIPAA">HIPAA</option>
-                  <option value="FERPA">FERPA</option>
-                  <option value="Custom">Custom</option>
-                </select>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as Status | 'all')} style={selectStyle}>
-                  <option value="all">All Statuses</option>
-                  <option value="Processed">Processed</option>
-                  <option value="Pending">Pending</option>
-                  <option value="In Review">In Review</option>
-                  <option value="Failed">Failed</option>
-                </select>
-                <select value={filterType} onChange={e => setFilterType(e.target.value as FileType | 'all')} style={selectStyle}>
-                  <option value="all">All Types</option>
-                  <option value="PDF">PDF</option>
-                  <option value="Video">Video</option>
-                  <option value="Audio">Audio</option>
-                  <option value="Image">Image</option>
-                </select>
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <select value={filterPolicy} onChange={e => setFilterPolicy(e.target.value as PolicyType | 'all')} style={selectStyle}>
+                    <option value="all">All Policies</option>
+                    <option value="FOIA">FOIA</option>
+                    <option value="HIPAA">HIPAA</option>
+                    <option value="FERPA">FERPA</option>
+                    <option value="Custom">Custom</option>
+                  </select>
+                  <ChevronDown size={14} strokeWidth={1.5} style={{ position: 'absolute', right: 12, pointerEvents: 'none', color: colors.muted }} />
+                </div>
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as Status | 'all')} style={selectStyle}>
+                    <option value="all">All Statuses</option>
+                    <option value="Processed">Processed</option>
+                    <option value="Pending">Pending</option>
+                    <option value="In Review">In Review</option>
+                    <option value="Failed">Failed</option>
+                  </select>
+                  <ChevronDown size={14} strokeWidth={1.5} style={{ position: 'absolute', right: 12, pointerEvents: 'none', color: colors.muted }} />
+                </div>
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <select value={filterType} onChange={e => setFilterType(e.target.value as FileType | 'all')} style={selectStyle}>
+                    <option value="all">All Types</option>
+                    <option value="PDF">PDF</option>
+                    <option value="Video">Video</option>
+                    <option value="Audio">Audio</option>
+                    <option value="Image">Image</option>
+                  </select>
+                  <ChevronDown size={14} strokeWidth={1.5} style={{ position: 'absolute', right: 12, pointerEvents: 'none', color: colors.muted }} />
+                </div>
                 <span style={{ fontSize: 11, color: colors.muted, marginLeft: 'auto' }}>
                   {filteredDocuments.length} of {documents.length} documents
                 </span>
@@ -710,23 +739,23 @@ export default function ComplianceDashboard() {
 
               {/* Table */}
               <div style={{ flex: 1, overflow: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600 }}>
                   <thead>
                     <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
-                      <th onClick={() => handleSort('fileName')} style={{ ...thStyle, paddingLeft: 24 }}>
+                      <th onClick={() => handleSort('fileName')} style={{ ...thStyle, paddingLeft: 24, whiteSpace: 'nowrap' }}>
                         File Name<SortIndicator field="fileName" sortField={sortField} sortDirection={sortDirection} />
                       </th>
-                      <th onClick={() => handleSort('fileType')} style={thStyle}>
+                      <th onClick={() => handleSort('fileType')} style={{ ...thStyle, whiteSpace: 'nowrap' }}>
                         Type<SortIndicator field="fileType" sortField={sortField} sortDirection={sortDirection} />
                       </th>
-                      <th style={{ ...thStyle, cursor: 'default' }}>Policy</th>
-                      <th onClick={() => handleSort('status')} style={thStyle}>
+                      <th style={{ ...thStyle, cursor: 'default', whiteSpace: 'nowrap' }}>Policy</th>
+                      <th onClick={() => handleSort('status')} style={{ ...thStyle, whiteSpace: 'nowrap' }}>
                         Status<SortIndicator field="status" sortField={sortField} sortDirection={sortDirection} />
                       </th>
-                      <th onClick={() => handleSort('redactionsFound')} style={{ ...thStyle, textAlign: 'right' }}>
+                      <th onClick={() => handleSort('redactionsFound')} style={{ ...thStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>
                         Redactions<SortIndicator field="redactionsFound" sortField={sortField} sortDirection={sortDirection} />
                       </th>
-                      <th onClick={() => handleSort('dateProcessed')} style={{ ...thStyle, textAlign: 'right', paddingRight: 24 }}>
+                      <th onClick={() => handleSort('dateProcessed')} style={{ ...thStyle, textAlign: 'right', paddingRight: 24, whiteSpace: 'nowrap' }}>
                         Date<SortIndicator field="dateProcessed" sortField={sortField} sortDirection={sortDirection} />
                       </th>
                     </tr>
@@ -750,11 +779,11 @@ export default function ComplianceDashboard() {
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.fileName}</span>
                           </div>
                         </td>
-                        <td style={{ ...tdStyle, color: colors.muted }}>{doc.fileType}</td>
-                        <td style={tdStyle}><PolicyBadge policy={doc.policy} /></td>
-                        <td style={tdStyle}><StatusBadge status={doc.status} /></td>
-                        <td style={{ ...tdStyle, textAlign: 'right' }}>{doc.redactionsFound}</td>
-                        <td style={{ ...tdStyle, textAlign: 'right', paddingRight: 24, color: colors.muted }}>{formatDate(doc.dateProcessed)}</td>
+                        <td style={{ ...tdStyle, color: colors.muted, whiteSpace: 'nowrap' }}>{doc.fileType}</td>
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><PolicyBadge policy={doc.policy} /></td>
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><StatusBadge status={doc.status} /></td>
+                        <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>{doc.redactionsFound}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', paddingRight: 24, color: colors.muted, whiteSpace: 'nowrap' }}>{formatDate(doc.dateProcessed)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -868,22 +897,28 @@ export default function ComplianceDashboard() {
                 gap: '8px 12px',
                 alignItems: 'center',
               }}>
-                <select value={auditFilterAction} onChange={e => setAuditFilterAction(e.target.value as AuditEntry['action'] | 'all')} style={selectStyle}>
-                  <option value="all">All Actions</option>
-                  <option value="Viewed">Viewed</option>
-                  <option value="Downloaded">Downloaded</option>
-                  <option value="Processed">Processed</option>
-                  <option value="Shared">Shared</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Rejected">Rejected</option>
-                  <option value="Modified">Modified</option>
-                </select>
-                <select value={auditFilterUser} onChange={e => setAuditFilterUser(e.target.value)} style={selectStyle}>
-                  <option value="all">All Users</option>
-                  {auditUsers.map(user => (
-                    <option key={user} value={user}>{user}</option>
-                  ))}
-                </select>
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <select value={auditFilterAction} onChange={e => setAuditFilterAction(e.target.value as AuditEntry['action'] | 'all')} style={selectStyle}>
+                    <option value="all">All Actions</option>
+                    <option value="Viewed">Viewed</option>
+                    <option value="Downloaded">Downloaded</option>
+                    <option value="Processed">Processed</option>
+                    <option value="Shared">Shared</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="Modified">Modified</option>
+                  </select>
+                  <ChevronDown size={14} strokeWidth={1.5} style={{ position: 'absolute', right: 12, pointerEvents: 'none', color: colors.muted }} />
+                </div>
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <select value={auditFilterUser} onChange={e => setAuditFilterUser(e.target.value)} style={selectStyle}>
+                    <option value="all">All Users</option>
+                    {auditUsers.map(user => (
+                      <option key={user} value={user}>{user}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} strokeWidth={1.5} style={{ position: 'absolute', right: 12, pointerEvents: 'none', color: colors.muted }} />
+                </div>
                 <span style={{ fontSize: 11, color: colors.muted, marginLeft: 'auto' }}>
                   {filteredAuditLog.length} entries
                 </span>
@@ -891,15 +926,15 @@ export default function ComplianceDashboard() {
 
               {/* Audit Table */}
               <div style={{ flex: 1, overflow: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600 }}>
                   <thead>
                     <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
-                      <th style={{ ...thStyle, paddingLeft: 24, cursor: 'default' }}>Timestamp</th>
-                      <th style={{ ...thStyle, cursor: 'default' }}>User</th>
-                      <th style={{ ...thStyle, cursor: 'default' }}>Action</th>
-                      <th style={{ ...thStyle, cursor: 'default' }}>File</th>
-                      <th style={{ ...thStyle, cursor: 'default' }}>Policy</th>
-                      <th style={{ ...thStyle, paddingRight: 24, cursor: 'default' }}>Details</th>
+                      <th style={{ ...thStyle, paddingLeft: 24, cursor: 'default', whiteSpace: 'nowrap' }}>Timestamp</th>
+                      <th style={{ ...thStyle, cursor: 'default', whiteSpace: 'nowrap' }}>User</th>
+                      <th style={{ ...thStyle, cursor: 'default', whiteSpace: 'nowrap' }}>Action</th>
+                      <th style={{ ...thStyle, cursor: 'default', whiteSpace: 'nowrap' }}>File</th>
+                      <th style={{ ...thStyle, cursor: 'default', whiteSpace: 'nowrap' }}>Policy</th>
+                      <th style={{ ...thStyle, paddingRight: 24, cursor: 'default', whiteSpace: 'nowrap' }}>Details</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -908,13 +943,13 @@ export default function ComplianceDashboard() {
                         <td style={{ ...tdStyle, paddingLeft: 24, color: colors.muted, whiteSpace: 'nowrap' }}>
                           {formatDateTime(entry.timestamp)}
                         </td>
-                        <td style={tdStyle}>{entry.user}</td>
-                        <td style={tdStyle}><ActionBadge action={entry.action} /></td>
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{entry.user}</td>
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><ActionBadge action={entry.action} /></td>
                         <td style={{ ...tdStyle, maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {entry.fileName}
                         </td>
-                        <td style={tdStyle}><PolicyBadge policy={entry.policy} /></td>
-                        <td style={{ ...tdStyle, paddingRight: 24, color: colors.muted, fontSize: 12 }}>
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><PolicyBadge policy={entry.policy} /></td>
+                        <td style={{ ...tdStyle, paddingRight: 24, color: colors.muted, fontSize: 12, whiteSpace: 'nowrap' }}>
                           {entry.details || '—'}
                         </td>
                       </tr>
@@ -1235,6 +1270,7 @@ export default function ComplianceDashboard() {
           </div>
         )}
       </div>
+      {isEmbedded && <div style={{ height: 34, flexShrink: 0, background: colors.bg }} />}
     </div>
   );
 }

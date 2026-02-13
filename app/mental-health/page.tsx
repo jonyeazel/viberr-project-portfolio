@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   LineChart,
@@ -559,6 +559,9 @@ function getEventColor(type: EventType): string {
 }
 
 export default function MentalHealthDashboard() {
+  const [isEmbedded, setIsEmbedded] = useState(false);
+  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
+
   const [selectedPatientIndex, setSelectedPatientIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'patterns' | 'resources' | 'timeline'>('overview');
 
@@ -592,20 +595,24 @@ export default function MentalHealthDashboard() {
         overflow: 'hidden',
       }}
     >
+      {isEmbedded && <div style={{ height: 47, flexShrink: 0, background: colors.bg }} />}
       <div
         style={{
-          backgroundColor: colors.surface,
+          backgroundColor: colors.bg,
           borderBottom: `1px solid ${colors.border}`,
-          padding: '10px 24px',
+          padding: '12px 16px',
           display: 'flex',
+          flexWrap: 'wrap',
           justifyContent: 'space-between',
           alignItems: 'center',
+          gap: '8px 16px',
           flexShrink: 0,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <Link
             href="/"
+            onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }}
             style={{
               color: colors.muted,
               textDecoration: 'none',
@@ -613,14 +620,17 @@ export default function MentalHealthDashboard() {
               alignItems: 'center',
               gap: 6,
               fontSize: 13,
+              flexShrink: 0,
             }}
           >
             <ArrowLeft size={16} />
             Back
           </Link>
+          <div style={{ width: 1, height: 16, backgroundColor: colors.border }} />
+          <span style={{ fontSize: 15, fontWeight: 500 }}>Clinical Monitoring</span>
           {needsAttention > 0 && (
             <span style={{ fontSize: 13, color: colors.muted }}>
-              <span style={{ color: colors.amber, fontWeight: 500 }}>{needsAttention}</span> patients need attention
+              <span style={{ color: colors.amber, fontWeight: 500 }}>{needsAttention}</span> need attention
               {criticalCount > 0 && (
                 <span style={{ marginLeft: 8 }}>
                   (<span style={{ color: colors.red, fontWeight: 500 }}>{criticalCount}</span> critical)
@@ -629,7 +639,7 @@ export default function MentalHealthDashboard() {
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Shield size={14} style={{ color: colors.green }} />
             <span style={{ fontSize: 11, color: colors.muted, letterSpacing: '0.03em' }}>HIPAA COMPLIANT</span>
@@ -743,8 +753,10 @@ export default function MentalHealthDashboard() {
               display: 'flex',
               gap: 0,
               borderBottom: `1px solid ${colors.border}`,
-              padding: '0 32px',
+              padding: '0 24px',
               flexShrink: 0,
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
             }}
           >
             {tabs.map((tab) => (
@@ -752,13 +764,15 @@ export default function MentalHealthDashboard() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 style={{
-                  padding: '12px 16px',
+                  padding: '12px 12px',
                   fontSize: 13,
                   color: activeTab === tab.id ? colors.text : colors.muted,
                   backgroundColor: 'transparent',
                   border: 'none',
                   borderBottom: activeTab === tab.id ? `2px solid ${colors.blue}` : '2px solid transparent',
                   cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                 }}
               >
                 {tab.label}
@@ -1054,6 +1068,7 @@ export default function MentalHealthDashboard() {
           </div>
         </div>
       </div>
+      {isEmbedded && <div style={{ height: 34, flexShrink: 0, background: colors.bg }} />}
     </div>
   );
 }

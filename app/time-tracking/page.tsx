@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Upload, Check, AlertCircle, ChevronLeft } from 'lucide-react';
 import {
@@ -232,6 +232,9 @@ const getStatusColor = (status: 'on-track' | 'behind' | 'over'): string => {
 };
 
 export default function TimeTrackingPage() {
+  const [isEmbedded, setIsEmbedded] = useState(false);
+  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
+
   const employees = useMemo(() => generateEmployees(), []);
   const importHistory = useMemo(() => generateImportHistory(), []);
 
@@ -278,19 +281,23 @@ export default function TimeTrackingPage() {
 
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: colors.bg, color: colors.text }}>
+      {isEmbedded && <div className="flex-shrink-0" style={{ height: 47, background: colors.bg }} />}
       <header
-        className="flex items-center justify-between px-6 py-3 flex-shrink-0"
+        className="flex flex-wrap items-center justify-between gap-2 px-6 py-3 flex-shrink-0"
         style={{ borderBottom: `1px solid ${colors.border}` }}
       >
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70"
+            onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }}
+            className="flex items-center gap-2 text-[13px] transition-opacity hover:opacity-70"
             style={{ color: colors.muted }}
           >
             <ArrowLeft size={16} />
+            Back
           </Link>
-          <span className="text-base font-medium">Time Tracking</span>
+          <div className="w-px h-4" style={{ backgroundColor: colors.border }} />
+          <span className="text-[15px] font-medium whitespace-nowrap">Time Tracking</span>
         </div>
         <div className="flex items-center gap-4 md:gap-8 text-sm flex-wrap">
           <div className="flex items-center gap-2">
@@ -354,7 +361,7 @@ export default function TimeTrackingPage() {
         </aside>
 
         <main className={`flex-1 flex flex-col overflow-hidden ${selectedEmployeeId !== null ? 'block' : 'hidden md:block'}`}>
-          <div className="flex gap-6 px-6 pt-3 flex-shrink-0" style={{ borderBottom: `1px solid ${colors.border}` }}>
+          <div className="flex gap-0 px-6 pt-3 flex-shrink-0 overflow-x-auto" style={{ borderBottom: `1px solid ${colors.border}`, scrollbarWidth: 'none' }}>
             {[
               { id: 'weekly', label: 'Weekly Overview' },
               { id: 'monthly', label: 'Monthly Report' },
@@ -363,7 +370,7 @@ export default function TimeTrackingPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className="pb-3 text-sm transition-colors relative"
+                className="pb-3 px-3 text-sm transition-colors relative whitespace-nowrap shrink-0"
                 style={{ color: activeTab === tab.id ? colors.text : colors.muted }}
               >
                 {tab.label}
@@ -624,8 +631,8 @@ export default function TimeTrackingPage() {
                   </button>
                 </div>
 
-                <div className="rounded overflow-hidden" style={{ border: `1px solid ${colors.border}` }}>
-                  <table className="w-full text-sm">
+                <div className="rounded overflow-x-auto" style={{ border: `1px solid ${colors.border}`, scrollbarWidth: 'none' }}>
+                  <table className="w-full text-sm" style={{ minWidth: 520 }}>
                     <thead>
                       <tr style={{ backgroundColor: colors.surface }}>
                         <th className="text-left p-3 font-medium text-xs w-28" style={{ color: colors.muted }}>Date</th>
@@ -673,6 +680,7 @@ export default function TimeTrackingPage() {
           </div>
         </main>
       </div>
+      {isEmbedded && <div className="flex-shrink-0" style={{ height: 34, background: colors.bg }} />}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -334,7 +334,7 @@ function WorkflowVisualization({ steps }: { steps: WorkflowStep[] }) {
                 <div
                   className="w-px flex-1 min-h-[32px]"
                   style={{
-                    backgroundColor: steps[i + 1].status === 'completed' ? 'var(--success)' : '#e5e5e3',
+                    backgroundColor: steps[i + 1].status === 'completed' ? 'var(--success)' : 'var(--border)',
                   }}
                 />
               )}
@@ -343,7 +343,7 @@ function WorkflowVisualization({ steps }: { steps: WorkflowStep[] }) {
             {/* Content */}
             <div className={`flex-1 ${isLast ? 'pb-0' : 'pb-3'}`}>
               <div className="flex items-center justify-between">
-                <span className="text-[13px] text-[#191919]">{step.name}</span>
+                <span className="text-[13px] text-foreground">{step.name}</span>
                 {step.status === 'completed' && (
                   <Check size={14} strokeWidth={2} style={{ color }} />
                 )}
@@ -354,7 +354,7 @@ function WorkflowVisualization({ steps }: { steps: WorkflowStep[] }) {
                   <AlertCircle size={14} strokeWidth={1.5} style={{ color }} />
                 )}
               </div>
-              <span className="text-[11px] text-[#737373]">
+              <span className="text-[11px] text-muted">
                 {step.timestamp
                   ? formatTimestamp(step.timestamp)
                   : step.status === 'pending'
@@ -378,16 +378,16 @@ function ActivityItem({ event }: { event: ActivityEvent }) {
   };
 
   return (
-    <div className="px-4 py-3 border-b border-[#e5e5e3] last:border-b-0">
+    <div className="px-4 py-3 border-b border-border last:border-b-0">
       <div className="flex items-start gap-3">
         <div
           className="w-1.5 h-1.5 rounded-full mt-[7px] flex-shrink-0"
           style={{ backgroundColor: typeColors[event.type] }}
         />
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] text-[#191919] truncate">{event.donorName}</p>
-          <p className="text-[12px] text-[#737373]">{event.action}</p>
-          <p className="text-[11px] text-[#a3a3a3] mt-0.5">{formatDate(event.timestamp)}</p>
+          <p className="text-[13px] text-foreground truncate">{event.donorName}</p>
+          <p className="text-[12px] text-muted">{event.action}</p>
+          <p className="text-[11px] text-muted mt-0.5">{formatDate(event.timestamp)}</p>
         </div>
       </div>
     </div>
@@ -395,6 +395,9 @@ function ActivityItem({ event }: { event: ActivityEvent }) {
 }
 
 export default function DonationWorkflowPage() {
+  const [isEmbedded, setIsEmbedded] = useState(false);
+  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
+
   const [selectedDonation, setSelectedDonation] = useState<Donation | null>(null);
   const [receiptFilter, setReceiptFilter] = useState<'all' | ReceiptStatus>('all');
   const [accountingFilter, setAccountingFilter] = useState<'all' | AccountingStatus>('all');
@@ -445,47 +448,45 @@ export default function DonationWorkflowPage() {
   };
 
   return (
-    <div className="h-screen bg-[#fafaf9] text-[#191919] flex flex-col overflow-hidden">
+    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
+      {isEmbedded && <div className="flex-shrink-0" style={{ height: 47, background: 'var(--background)' }} />}
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-[#e5e5e3] px-6 h-14 flex items-center">
+      <header className="flex-shrink-0 border-b border-border px-6 h-14 flex items-center gap-4">
         <Link
           href="/"
-          className="text-[#737373] hover:text-[#191919] transition-colors duration-150 mr-4"
+          onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }}
+          className="flex items-center gap-2 text-[13px] text-muted hover:text-foreground transition-colors duration-150"
         >
-          <ArrowLeft size={20} strokeWidth={1.5} />
+          <ArrowLeft size={16} strokeWidth={1.5} />
+          Back
         </Link>
+        <div className="w-px h-4 bg-border" />
         <span className="text-[15px] font-medium">Donation Workflow</span>
       </header>
 
       {/* Stats Row */}
-      <div className="flex-shrink-0 border-b border-[#e5e5e3] px-6 py-5 bg-[#f5f5f4]">
-        <div className="flex flex-wrap gap-x-8 gap-y-4 md:gap-16">
-          <div>
-            <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-1">
-              Total Donations
-            </p>
-            <p className="text-[28px] font-semibold tracking-tight">{stats.total}</p>
-          </div>
-          <div>
-            <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-1">Total Amount</p>
-            <p className="text-[28px] font-semibold tracking-tight">
-              {formatCurrency(stats.totalAmount)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-1">
-              Receipts Sent
-            </p>
-            <p className="text-[28px] font-semibold tracking-tight">{stats.receiptsSent}</p>
-          </div>
-          <div>
-            <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-1">
-              Pending Actions
-            </p>
-            <p className="text-[28px] font-semibold tracking-tight text-warning">
-              {stats.pending}
-            </p>
-          </div>
+      <div className="flex-shrink-0 border-b border-border" style={{ overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory' }}>
+        <div className="flex px-6" style={{ minWidth: 'min-content' }}>
+          {[
+            { label: 'Total Donations', value: stats.total },
+            { label: 'Total Amount', value: formatCurrency(stats.totalAmount) },
+            { label: 'Receipts Sent', value: stats.receiptsSent },
+            { label: 'Pending Actions', value: stats.pending, warning: true },
+          ].map((stat, i, arr) => (
+            <div
+              key={stat.label}
+              className="flex-shrink-0"
+              style={{
+                padding: '20px 24px 20px 0',
+                paddingLeft: i > 0 ? 24 : 0,
+                scrollSnapAlign: 'start',
+                borderRight: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
+              }}
+            >
+              <p className={`text-[24px] font-semibold tracking-tight ${stat.warning ? 'text-warning' : ''}`}>{stat.value}</p>
+              <p className="text-[11px] text-muted uppercase tracking-wider mt-1.5 whitespace-nowrap">{stat.label}</p>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -494,7 +495,7 @@ export default function DonationWorkflowPage() {
         {/* Donations Table */}
         <div className={`flex-1 flex flex-col overflow-hidden ${selectedDonation ? 'hidden md:flex' : 'flex'}`}>
           {/* Filter Bar */}
-          <div className="flex-shrink-0 px-6 py-3 border-b border-[#e5e5e3] flex items-center gap-6">
+          <div className="flex-shrink-0 px-6 py-3 border-b border-border flex items-center gap-6">
             {/* Receipt Filter */}
             <div className="relative">
               <button
@@ -502,10 +503,10 @@ export default function DonationWorkflowPage() {
                   setReceiptDropdownOpen(!receiptDropdownOpen);
                   setAccountingDropdownOpen(false);
                 }}
-                className="flex items-center gap-1.5 text-[13px] text-[#737373] hover:text-[#191919] transition-colors duration-150"
+                className="flex items-center gap-1.5 text-[13px] text-muted hover:text-foreground transition-colors duration-150"
               >
                 <span>Receipt:</span>
-                <span className="text-[#191919]">
+                <span className="text-foreground">
                   {receiptFilter === 'all'
                     ? 'All'
                     : receiptFilter.charAt(0).toUpperCase() + receiptFilter.slice(1)}
@@ -513,7 +514,7 @@ export default function DonationWorkflowPage() {
                 <ChevronDown size={14} strokeWidth={1.5} />
               </button>
               {receiptDropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 bg-[#fafaf9] border border-[#e5e5e3] rounded py-1 z-20 min-w-[100px] shadow-sm">
+                <div className="absolute top-full left-0 mt-1 bg-background border border-border rounded py-1 z-20 min-w-[100px] shadow-sm">
                   {(['all', 'sent', 'pending', 'failed'] as const).map((status) => (
                     <button
                       key={status}
@@ -521,8 +522,8 @@ export default function DonationWorkflowPage() {
                         setReceiptFilter(status);
                         setReceiptDropdownOpen(false);
                       }}
-                      className={`block w-full text-left px-3 py-1.5 text-[13px] hover:bg-[#eeeeec] transition-colors duration-150 ${
-                        receiptFilter === status ? 'text-[#191919]' : 'text-[#737373]'
+                      className={`block w-full text-left px-3 py-1.5 text-[13px] hover:bg-surface-2 transition-colors duration-150 ${
+                        receiptFilter === status ? 'text-foreground' : 'text-muted'
                       }`}
                     >
                       {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
@@ -539,10 +540,10 @@ export default function DonationWorkflowPage() {
                   setAccountingDropdownOpen(!accountingDropdownOpen);
                   setReceiptDropdownOpen(false);
                 }}
-                className="flex items-center gap-1.5 text-[13px] text-[#737373] hover:text-[#191919] transition-colors duration-150"
+                className="flex items-center gap-1.5 text-[13px] text-muted hover:text-foreground transition-colors duration-150"
               >
                 <span>Accounting:</span>
-                <span className="text-[#191919]">
+                <span className="text-foreground">
                   {accountingFilter === 'all'
                     ? 'All'
                     : accountingFilter.charAt(0).toUpperCase() + accountingFilter.slice(1)}
@@ -550,7 +551,7 @@ export default function DonationWorkflowPage() {
                 <ChevronDown size={14} strokeWidth={1.5} />
               </button>
               {accountingDropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 bg-[#fafaf9] border border-[#e5e5e3] rounded py-1 z-20 min-w-[100px] shadow-sm">
+                <div className="absolute top-full left-0 mt-1 bg-background border border-border rounded py-1 z-20 min-w-[100px] shadow-sm">
                   {(['all', 'logged', 'pending'] as const).map((status) => (
                     <button
                       key={status}
@@ -558,8 +559,8 @@ export default function DonationWorkflowPage() {
                         setAccountingFilter(status);
                         setAccountingDropdownOpen(false);
                       }}
-                      className={`block w-full text-left px-3 py-1.5 text-[13px] hover:bg-[#eeeeec] transition-colors duration-150 ${
-                        accountingFilter === status ? 'text-[#191919]' : 'text-[#737373]'
+                      className={`block w-full text-left px-3 py-1.5 text-[13px] hover:bg-surface-2 transition-colors duration-150 ${
+                        accountingFilter === status ? 'text-foreground' : 'text-muted'
                       }`}
                     >
                       {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
@@ -570,58 +571,60 @@ export default function DonationWorkflowPage() {
             </div>
 
             <div className="flex-1" />
-            <span className="text-[13px] text-[#737373]">
+            <span className="text-[13px] text-muted">
               {filteredDonations.length} donation{filteredDonations.length !== 1 ? 's' : ''}
             </span>
           </div>
 
           {/* Table Header */}
-          <div className="flex-shrink-0 px-6 py-2.5 border-b border-[#e5e5e3] bg-[#f5f5f4] overflow-x-auto">
-            <div className="grid grid-cols-[90px_1fr_1.2fr_100px_80px_80px_90px] gap-4 text-[11px] text-[#737373] uppercase tracking-wider min-w-[700px]">
+          <div className="flex-shrink-0 px-6 py-2.5 border-b border-border bg-secondary" style={{ overflowX: 'auto' }}>
+            <div className="grid grid-cols-[90px_1fr_1.2fr_100px_80px_80px_90px] gap-4 text-[11px] text-muted uppercase tracking-wider" style={{ minWidth: 700 }}>
               <button
                 onClick={() => handleSort('date')}
-                className="text-left hover:text-[#191919] transition-colors duration-150 flex items-center gap-1"
+                className="text-left hover:text-foreground transition-colors duration-150 flex items-center gap-1"
+                style={{ whiteSpace: 'nowrap' }}
               >
                 Date
                 {sortField === 'date' && (
-                  <span className="text-[#191919]">{sortDir === 'desc' ? '↓' : '↑'}</span>
+                  <span className="text-foreground">{sortDir === 'desc' ? '↓' : '↑'}</span>
                 )}
               </button>
-              <span>Donor</span>
-              <span>Email</span>
+              <span style={{ whiteSpace: 'nowrap' }}>Donor</span>
+              <span style={{ whiteSpace: 'nowrap' }}>Email</span>
               <button
                 onClick={() => handleSort('amount')}
-                className="text-right hover:text-[#191919] transition-colors duration-150 flex items-center justify-end gap-1"
+                className="text-right hover:text-foreground transition-colors duration-150 flex items-center justify-end gap-1"
+                style={{ whiteSpace: 'nowrap' }}
               >
                 Amount
                 {sortField === 'amount' && (
-                  <span className="text-[#191919]">{sortDir === 'desc' ? '↓' : '↑'}</span>
+                  <span className="text-foreground">{sortDir === 'desc' ? '↓' : '↑'}</span>
                 )}
               </button>
-              <span>Method</span>
-              <span>Receipt</span>
-              <span>Accounting</span>
+              <span style={{ whiteSpace: 'nowrap' }}>Method</span>
+              <span style={{ whiteSpace: 'nowrap' }}>Receipt</span>
+              <span style={{ whiteSpace: 'nowrap' }}>Accounting</span>
             </div>
           </div>
 
           {/* Table Body */}
-          <div className="flex-1 overflow-y-auto overflow-x-auto">
+          <div className="flex-1 overflow-y-auto" style={{ overflowX: 'auto' }}>
             {filteredDonations.map((donation) => (
               <button
                 key={donation.id}
                 onClick={() => setSelectedDonation(donation)}
-                className={`w-full px-6 py-3 border-b border-[#e5e5e3] text-left transition-colors duration-150 ${
+                className={`w-full px-6 py-3 border-b border-border text-left transition-colors duration-150 ${
                   selectedDonation?.id === donation.id
-                    ? 'bg-[#eeeeec]'
-                    : 'hover:bg-[#f5f5f4]'
+                    ? 'bg-surface-2'
+                    : 'hover:bg-secondary'
                 }`}
               >
-                <div className="grid grid-cols-[90px_1fr_1.2fr_100px_80px_80px_90px] gap-4 text-[13px] items-center min-w-[700px]">
-                  <span className="text-[#737373]">{formatDate(donation.date)}</span>
+                <div className="grid grid-cols-[90px_1fr_1.2fr_100px_80px_80px_90px] gap-4 text-[13px] items-center" style={{ minWidth: 700 }}>
+                  <span className="text-muted" style={{ whiteSpace: 'nowrap' }}>{formatDate(donation.date)}</span>
                   <span className="truncate font-medium">{donation.donorName}</span>
-                  <span className="truncate text-[#737373]">{donation.email}</span>
-                  <span className="text-right tabular-nums">{formatCurrency(donation.amount)}</span>
-                  <span className="text-[#737373]">{donation.paymentMethod}</span>
+                  <span className="truncate text-muted">{donation.email}</span>
+                  <span className="text-right tabular-nums" style={{ whiteSpace: 'nowrap' }}>{formatCurrency(donation.amount)}</span>
+                  <span className="text-muted" style={{ whiteSpace: 'nowrap' }}>{donation.paymentMethod}</span>
                   <StatusBadge status={donation.receiptStatus} />
                   <StatusBadge status={donation.accountingStatus} />
                 </div>
@@ -631,15 +634,15 @@ export default function DonationWorkflowPage() {
         </div>
 
         {/* Right Panel */}
-        <div className={`w-full md:w-[380px] flex-shrink-0 md:border-l border-[#e5e5e3] flex flex-col overflow-hidden bg-[#f5f5f4] ${selectedDonation ? 'flex' : 'hidden md:flex'}`}>
+        <div className={`w-full md:w-[380px] flex-shrink-0 md:border-l border-border flex flex-col overflow-hidden bg-secondary ${selectedDonation ? 'flex' : 'hidden md:flex'}`}>
           {selectedDonation ? (
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Panel Header */}
-              <div className="flex-shrink-0 px-4 py-3 border-b border-[#e5e5e3] flex items-center justify-between bg-[#fafaf9]">
+              <div className="flex-shrink-0 px-4 py-3 border-b border-border flex items-center justify-between bg-background">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setSelectedDonation(null)}
-                    className="md:hidden p-1 -ml-1 text-[#737373] hover:text-[#191919] transition-colors duration-150"
+                    className="md:hidden p-1 -ml-1 text-muted hover:text-foreground transition-colors duration-150"
                   >
                     <ArrowLeft size={18} strokeWidth={1.5} />
                   </button>
@@ -647,7 +650,7 @@ export default function DonationWorkflowPage() {
                 </div>
                 <button
                   onClick={() => setSelectedDonation(null)}
-                  className="hidden md:block text-[#737373] hover:text-[#191919] transition-colors duration-150 p-1"
+                  className="hidden md:block text-muted hover:text-foreground transition-colors duration-150 p-1"
                 >
                   <X size={16} strokeWidth={1.5} />
                 </button>
@@ -655,64 +658,64 @@ export default function DonationWorkflowPage() {
 
               <div className="flex-1 overflow-y-auto">
                 {/* Donor Info */}
-                <div className="p-4 border-b border-[#e5e5e3] bg-[#fafaf9]">
-                  <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-2">Donor</p>
+                <div className="p-4 border-b border-border bg-background">
+                  <p className="text-[11px] text-muted uppercase tracking-wider mb-2">Donor</p>
                   <p className="text-[15px] font-medium mb-1">{selectedDonation.donorName}</p>
-                  <p className="text-[13px] text-[#737373] mb-0.5">{selectedDonation.email}</p>
-                  <p className="text-[13px] text-[#737373]">{selectedDonation.address}</p>
+                  <p className="text-[13px] text-muted mb-0.5">{selectedDonation.email}</p>
+                  <p className="text-[13px] text-muted">{selectedDonation.address}</p>
                 </div>
 
                 {/* Payment Details */}
-                <div className="p-4 border-b border-[#e5e5e3] bg-[#fafaf9]">
-                  <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-3">
+                <div className="p-4 border-b border-border bg-background">
+                  <p className="text-[11px] text-muted uppercase tracking-wider mb-3">
                     Payment Details
                   </p>
                   <div className="space-y-2">
                     <div className="flex justify-between text-[13px]">
-                      <span className="text-[#737373]">Amount</span>
+                      <span className="text-muted">Amount</span>
                       <span className="font-medium">{formatCurrency(selectedDonation.amount)}</span>
                     </div>
                     <div className="flex justify-between text-[13px]">
-                      <span className="text-[#737373]">Method</span>
+                      <span className="text-muted">Method</span>
                       <span>{selectedDonation.paymentMethod}</span>
                     </div>
                     <div className="flex justify-between text-[13px]">
-                      <span className="text-[#737373]">Transaction ID</span>
-                      <span className="text-[12px] text-[#737373]">
+                      <span className="text-muted">Transaction ID</span>
+                      <span className="text-[12px] text-muted">
                         {selectedDonation.transactionId}
                       </span>
                     </div>
                     <div className="flex justify-between text-[13px]">
-                      <span className="text-[#737373]">Timestamp</span>
+                      <span className="text-muted">Timestamp</span>
                       <span>{formatTimestamp(selectedDonation.date)}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Workflow */}
-                <div className="p-4 border-b border-[#e5e5e3] bg-[#fafaf9]">
-                  <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-4">
+                <div className="p-4 border-b border-border bg-background">
+                  <p className="text-[11px] text-muted uppercase tracking-wider mb-4">
                     Workflow Status
                   </p>
                   <WorkflowVisualization steps={selectedDonation.workflow} />
                 </div>
 
                 {/* Actions */}
-                <div className="p-4 bg-[#fafaf9]">
-                  <p className="text-[11px] text-[#737373] uppercase tracking-wider mb-3">
+                <div className="p-4 bg-background">
+                  <p className="text-[11px] text-muted uppercase tracking-wider mb-3">
                     Actions
                   </p>
-                  <div className="flex gap-2">
-                    <button className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-[13px] bg-[#eeeeec] hover:bg-[#e5e5e3] rounded transition-colors duration-150">
+                  <div className="flex flex-wrap gap-2">
+                    <button className="flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-3 text-[13px] bg-surface-2 hover:bg-border rounded transition-colors duration-150">
                       <RefreshCw size={14} strokeWidth={1.5} />
                       Resend Receipt
                     </button>
-                    <button className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-[13px] bg-[#eeeeec] hover:bg-[#e5e5e3] rounded transition-colors duration-150">
+                    <button className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-[13px] bg-surface-2 hover:bg-border rounded transition-colors duration-150">
                       <FileText size={14} strokeWidth={1.5} />
                       Manual Log
                     </button>
                   </div>
-                  <button className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 px-3 text-[13px] text-destructive bg-[#eeeeec] hover:bg-[#e5e5e3] rounded transition-colors duration-150">
+                  <button className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 px-3 text-[13px] text-destructive bg-surface-2 hover:bg-border rounded transition-colors duration-150">
                     <Flag size={14} strokeWidth={1.5} />
                     Flag Issue
                   </button>
@@ -722,14 +725,14 @@ export default function DonationWorkflowPage() {
           ) : (
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Activity Header */}
-              <div className="flex-shrink-0 px-4 py-3 border-b border-[#e5e5e3] bg-[#fafaf9]">
-                <p className="text-[11px] text-[#737373] uppercase tracking-wider">
+              <div className="flex-shrink-0 px-4 py-3 border-b border-border bg-background">
+                <p className="text-[11px] text-muted uppercase tracking-wider">
                   Recent Activity
                 </p>
               </div>
 
               {/* Activity Feed */}
-              <div className="flex-1 overflow-y-auto bg-[#fafaf9]">
+              <div className="flex-1 overflow-y-auto bg-background">
                 {activityEvents.map((event) => (
                   <ActivityItem key={event.id} event={event} />
                 ))}
@@ -738,6 +741,7 @@ export default function DonationWorkflowPage() {
           )}
         </div>
       </div>
+      {isEmbedded && <div className="flex-shrink-0" style={{ height: 34, background: 'var(--background)' }} />}
     </div>
   );
 }

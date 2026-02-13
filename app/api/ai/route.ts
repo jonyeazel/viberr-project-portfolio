@@ -1,22 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
-
-const DATA_DIR = path.join(process.cwd(), ".data", "chat");
-
-async function ensureDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-}
 
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
 };
 
+// Simple in-memory rate limiter (resets on cold start, good enough for demo protection)
+const rateMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 20; // requests per window
+const RATE_WINDOW = 60_000; // 1 minute
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW });
+    return false;
+  }
+  entry.count++;
+  return entry.count > RATE_LIMIT;
+}
+
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit by IP
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    if (isRateLimited(ip)) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again in a minute." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
-    const { slug, message, projectName } = body;
+    const { slug, message, projectName, history: clientHistory } = body;
 
     if (!slug || !message) {
       return NextResponse.json(
@@ -33,22 +50,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Load conversation history
-    await ensureDir();
-    const filePath = path.join(DATA_DIR, `${slug}-ai.json`);
-    let history: ChatMessage[] = [];
-
-    try {
-      const existing = await fs.readFile(filePath, "utf-8");
-      history = JSON.parse(existing);
-    } catch {
-      // No history yet
+    // Build message history from client-provided context
+    const messages: ChatMessage[] = [];
+    if (Array.isArray(clientHistory)) {
+      for (const msg of clientHistory) {
+        if (msg.role && msg.content) {
+          messages.push({ role: msg.role, content: msg.content });
+        }
+      }
     }
+    messages.push({ role: "user", content: message });
 
-    // Add user message
-    history.push({ role: "user", content: message });
+    // Cap history to last 20 messages to control token usage
+    const trimmed = messages.length > 20 ? messages.slice(-20) : messages;
 
-    // Call Claude Opus 4.6
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -64,7 +79,7 @@ export async function POST(req: NextRequest) {
 Be concise, direct, and helpful. Keep responses under 3 sentences unless the customer asks for detail. You know the project inside and out — answer questions about features, suggest improvements, and help them get to launch. Never be generic. Always reference the specific project context.
 
 If they ask to modify something, describe exactly what would change. If they ask about status, give a clear answer. If they have a question about a feature, explain it in plain language.`,
-        messages: history,
+        messages: trimmed,
       }),
     });
 
@@ -81,15 +96,8 @@ If they ask to modify something, describe exactly what would change. If they ask
     const assistantMessage =
       data.content?.[0]?.text || "I couldn't generate a response.";
 
-    // Add assistant response to history
-    history.push({ role: "assistant", content: assistantMessage });
-
-    // Persist conversation
-    await fs.writeFile(filePath, JSON.stringify(history, null, 2));
-
     return NextResponse.json({
       response: assistantMessage,
-      messageCount: history.length,
     });
   } catch (err) {
     console.error("AI chat error:", err);

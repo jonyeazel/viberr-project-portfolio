@@ -2,26 +2,26 @@
 
 :root {
   --background: #fafaf9;
-  --foreground: #191919;
+  --foreground: #1a1a1a;
   --card: #ffffff;
-  --card-foreground: #191919;
-  --primary: #635bff;
+  --card-foreground: #1a1a1a;
+  --primary: #4f46e5;
   --primary-foreground: #ffffff;
   --secondary: #f5f5f4;
-  --secondary-foreground: #3f3f3e;
-  --muted: #6e6e6e;
-  --muted-foreground: #6e6e6e;
+  --secondary-foreground: #363636;
+  --muted: #525252;
+  --muted-foreground: #525252;
   --accent: #f5f5f4;
-  --accent-foreground: #191919;
-  --destructive: #ef4444;
+  --accent-foreground: #1a1a1a;
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --success: #00d4aa;
-  --warning: #f59e0b;
-  --border: #e7e7e5;
-  --input: #d4d4d2;
-  --ring: #635bff;
+  --success: #059669;
+  --warning: #d97706;
+  --border: #d6d3d1;
+  --input: #a8a29e;
+  --ring: #4f46e5;
   --surface: #f5f5f4;
-  --surface-2: #eeeeec;
+  --surface-2: #e7e5e4;
 }
 
 @theme inline {
@@ -68,7 +68,45 @@ body {
   color: white;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 0.3; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes logoBreath {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+  50% { box-shadow: 0 0 8px 2px rgba(79, 70, 229, 0.15); }
+}
+
+@keyframes statusFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes coachFadeIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes coachFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; transform: translateX(-12px); }
+}
+
+@keyframes drawerGlow {
+  0% { transform: scaleY(0.96) scaleX(0.98); opacity: 0.45; }
+  33% { transform: scaleY(1.06) scaleX(1.01); opacity: 0.9; }
+  66% { transform: scaleY(1.0) scaleX(1.04); opacity: 0.65; }
+  100% { transform: scaleY(0.96) scaleX(0.98); opacity: 0.45; }
 }

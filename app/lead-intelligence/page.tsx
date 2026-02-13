@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ChevronDown, ChevronUp, ChevronLeft, X, Mail, Phone } from 'lucide-react';
 import {
@@ -278,6 +278,9 @@ function getSignalColor(type: SignalType): string {
 }
 
 export default function LeadIntelligencePage() {
+  const [isEmbedded, setIsEmbedded] = useState(false);
+  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
+
   const [locationFilter, setLocationFilter] = useState<Location[]>([]);
   const [industryFilter, setIndustryFilter] = useState<Industry[]>([]);
   const [signalFilter, setSignalFilter] = useState<SignalType[]>([]);
@@ -348,14 +351,15 @@ export default function LeadIntelligencePage() {
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: colors.bg, color: colors.text, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      {isEmbedded && <div style={{ height: 47, flexShrink: 0, background: colors.bg }} />}
       <header style={{ padding: '16px 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, color: colors.muted, textDecoration: 'none', fontSize: 13 }}>
+          <Link href="/" onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }} style={{ display: 'flex', alignItems: 'center', gap: 8, color: colors.muted, textDecoration: 'none', fontSize: 13 }}>
             <ArrowLeft size={16} />
             Back
           </Link>
-          <span style={{ color: colors.border }}>|</span>
-          <span style={{ fontSize: 18, fontWeight: 500 }}>Lead Scout</span>
+          <div style={{ width: 1, height: 16, backgroundColor: colors.border }} />
+          <span style={{ fontSize: 15, fontWeight: 500 }}>Lead Scout</span>
         </div>
         <span style={{ fontSize: 13, color: colors.muted }}>{filtered.length} companies</span>
       </header>
@@ -363,9 +367,9 @@ export default function LeadIntelligencePage() {
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <div style={{ flex: 1, flexDirection: 'column', overflow: 'hidden' }} className={`${selected ? 'hidden md:flex' : 'flex'}`}>
           <div style={{ padding: '16px 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Location</span>
-              <div style={{ display: 'flex', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', maxWidth: '100%' }}>
+              <span style={{ fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>Location</span>
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                 {locations.map((loc) => {
                   const active = locationFilter.includes(loc);
                   return (
@@ -390,9 +394,9 @@ export default function LeadIntelligencePage() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Industry</span>
-              <div style={{ display: 'flex', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', maxWidth: '100%' }}>
+              <span style={{ fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>Industry</span>
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                 {industries.map((ind) => {
                   const active = industryFilter.includes(ind);
                   return (
@@ -417,9 +421,9 @@ export default function LeadIntelligencePage() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Signal</span>
-              <div style={{ display: 'flex', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', maxWidth: '100%' }}>
+              <span style={{ fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>Signal</span>
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                 {signalTypes.map((sig) => {
                   const active = signalFilter.includes(sig);
                   return (
@@ -490,6 +494,7 @@ export default function LeadIntelligencePage() {
                         fontSize: 12,
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
+                        whiteSpace: 'nowrap',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -520,17 +525,17 @@ export default function LeadIntelligencePage() {
                       if (selected?.id !== company.id) e.currentTarget.style.background = 'transparent';
                     }}
                   >
-                    <td style={{ padding: '12px 16px', fontWeight: 500 }}>{company.name}</td>
-                    <td style={{ padding: '12px 16px', color: colors.muted }}>{company.industry}</td>
-                    <td style={{ padding: '12px 16px', color: colors.muted }}>{company.location}</td>
-                    <td style={{ padding: '12px 16px', color: colors.muted }}>{company.employees.toLocaleString()}</td>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 500, whiteSpace: 'nowrap' }}>{company.name}</td>
+                    <td style={{ padding: '12px 16px', color: colors.muted, whiteSpace: 'nowrap' }}>{company.industry}</td>
+                    <td style={{ padding: '12px 16px', color: colors.muted, whiteSpace: 'nowrap' }}>{company.location}</td>
+                    <td style={{ padding: '12px 16px', color: colors.muted, whiteSpace: 'nowrap' }}>{company.employees.toLocaleString()}</td>
+                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                       <span style={{ color: getScoreColor(company.score), fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                         {company.score}
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap' }}>
                         {company.signals.slice(0, 3).map((signal, i) => (
                           <span
                             key={i}
@@ -541,17 +546,18 @@ export default function LeadIntelligencePage() {
                               borderRadius: 4,
                               color: getSignalColor(signal.type),
                               fontWeight: 500,
+                              whiteSpace: 'nowrap',
                             }}
                           >
                             {signal.type}
                           </span>
                         ))}
                         {company.signals.length > 3 && (
-                          <span style={{ fontSize: 11, color: colors.muted, padding: '3px 0' }}>+{company.signals.length - 3}</span>
+                          <span style={{ fontSize: 11, color: colors.muted, padding: '3px 0', whiteSpace: 'nowrap' }}>+{company.signals.length - 3}</span>
                         )}
                       </div>
                     </td>
-                    <td style={{ padding: '12px 16px', color: colors.muted }}>{company.updated}</td>
+                    <td style={{ padding: '12px 16px', color: colors.muted, whiteSpace: 'nowrap' }}>{company.updated}</td>
                   </tr>
                 ))}
               </tbody>
@@ -559,15 +565,16 @@ export default function LeadIntelligencePage() {
           </div>
           </div>
 
-          <div style={{ padding: '16px 24px', borderTop: `1px solid ${colors.border}`, background: colors.surface, flexShrink: 0 }}>
+          <div style={{ padding: '16px 24px', borderTop: `1px solid ${colors.border}`, background: colors.surface, flexShrink: 0, overflowX: 'auto', scrollbarWidth: 'none' }}>
             <div style={{ fontSize: 12, color: colors.muted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>This Week&apos;s Top Leads</div>
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 12, minWidth: 'min-content' }}>
               {topLeads.map((lead, i) => (
                 <div
                   key={lead.id}
                   onClick={() => setSelected(lead)}
                   style={{
-                    flex: 1,
+                    minWidth: 140,
+                    flex: '0 0 auto',
                     padding: 12,
                     background: colors.bg,
                     border: `1px solid ${colors.border}`,
@@ -707,6 +714,7 @@ export default function LeadIntelligencePage() {
           </div>
         )}
       </div>
+      {isEmbedded && <div style={{ height: 34, flexShrink: 0, background: colors.bg }} />}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Circle } from 'lucide-react';
 import {
@@ -166,6 +166,9 @@ const generateRevenueByStream = () => {
 type Tab = 'users' | 'streams' | 'buyers' | 'analytics';
 
 export default function SeedDataPage() {
+  const [isEmbedded, setIsEmbedded] = useState(false);
+  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
+
   const [activeTab, setActiveTab] = useState<Tab>('users');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
@@ -233,8 +236,9 @@ export default function SeedDataPage() {
 
   return (
     <div style={{ backgroundColor: colors.bg, color: colors.text, height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {isEmbedded && <div style={{ height: 47, flexShrink: 0, background: colors.bg }} />}
       <header style={{ padding: '12px 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-        <Link href="/" style={{ color: colors.muted, display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontSize: 13 }}>
+        <Link href="/" onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }} style={{ color: colors.muted, display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontSize: 13 }}>
           <ArrowLeft size={14} strokeWidth={1.5} />
           Back
         </Link>
@@ -242,26 +246,32 @@ export default function SeedDataPage() {
         <span style={{ fontSize: 15, fontWeight: 500 }}>Ownet Platform</span>
       </header>
 
-      <div style={{ padding: '20px 24px', borderBottom: `1px solid ${colors.border}`, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '16px 32px', flexShrink: 0 }}>
-        {[
-          { label: 'Active Users', value: stats.activeUsers.toLocaleString() },
-          { label: 'Data Points Collected', value: formatNumber(stats.totalDataPoints) },
-          { label: 'Active Buyers', value: stats.activeBuyers.toString() },
-          { label: 'Monthly Revenue', value: formatCurrency(stats.monthlyRevenue) },
-          { label: 'Avg User Dividend', value: `$${stats.avgDividend.toFixed(2)}` },
-        ].map((stat) => (
-          <div key={stat.label}>
-            <div style={{ fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
-              {stat.label}
+      <div style={{ borderBottom: `1px solid ${colors.border}`, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory', flexShrink: 0 }}>
+        <div style={{ display: 'flex', padding: '0 24px', minWidth: 'min-content' }}>
+          {[
+            { label: 'Active Users', value: stats.activeUsers.toLocaleString() },
+            { label: 'Data Points', value: formatNumber(stats.totalDataPoints) },
+            { label: 'Active Buyers', value: stats.activeBuyers.toString() },
+            { label: 'Monthly Revenue', value: formatCurrency(stats.monthlyRevenue) },
+            { label: 'Avg Dividend', value: `$${stats.avgDividend.toFixed(2)}` },
+          ].map((stat, i, arr) => (
+            <div key={stat.label} style={{
+              padding: '20px 24px 20px 0',
+              paddingLeft: i > 0 ? 24 : 0,
+              scrollSnapAlign: 'start',
+              flexShrink: 0,
+              borderRight: i < arr.length - 1 ? `1px solid ${colors.border}` : 'none',
+            }}>
+              <div style={{ fontSize: 24, fontWeight: 500, letterSpacing: '-0.02em' }}>{stat.value}</div>
+              <div style={{ fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 6, whiteSpace: 'nowrap' }}>{stat.label}</div>
             </div>
-            <div style={{ fontSize: 24, fontWeight: 500, letterSpacing: '-0.02em' }}>{stat.value}</div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0, position: 'relative' }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-          <div style={{ padding: '0 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', gap: 32, flexShrink: 0 }}>
+          <div style={{ padding: '0 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', gap: 24, flexShrink: 0, overflowX: 'auto', scrollbarWidth: 'none' }}>
             {(['users', 'streams', 'buyers', 'analytics'] as Tab[]).map((tab) => (
               <button
                 key={tab}
@@ -275,6 +285,8 @@ export default function SeedDataPage() {
                   borderBottom: `2px solid ${activeTab === tab ? colors.text : 'transparent'}`,
                   cursor: 'pointer',
                   transition: 'color 150ms ease-out',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                 }}
               >
                 {tab === 'streams' ? 'Data Streams' : tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -284,11 +296,12 @@ export default function SeedDataPage() {
 
           <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
             {activeTab === 'users' && (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600 }}>
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
                     {['User ID', 'Data Points', 'Streams', 'Monthly Dividend', 'Consent', 'Last Active'].map((h) => (
-                      <th key={h} style={{ textAlign: 'left', padding: '10px 16px', color: colors.muted, fontWeight: 400, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <th key={h} style={{ textAlign: 'left', padding: '10px 16px', color: colors.muted, fontWeight: 400, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
                         {h}
                       </th>
                     ))}
@@ -308,21 +321,22 @@ export default function SeedDataPage() {
                       onMouseEnter={(e) => { if (selectedUserId !== user.id) e.currentTarget.style.backgroundColor = colors.surface; }}
                       onMouseLeave={(e) => { if (selectedUserId !== user.id) e.currentTarget.style.backgroundColor = 'transparent'; }}
                     >
-                      <td style={{ padding: '10px 16px', fontFamily: 'system-ui', fontSize: 13, fontWeight: 500, color: colors.text }}>{user.id}</td>
-                      <td style={{ padding: '10px 16px' }}>{formatNumber(user.dataPoints)}</td>
-                      <td style={{ padding: '10px 16px' }}>{user.activeStreams}</td>
-                      <td style={{ padding: '10px 16px' }}>${user.monthlyDividend.toFixed(2)}</td>
-                      <td style={{ padding: '10px 16px' }}>
+                      <td style={{ padding: '10px 16px', fontFamily: 'system-ui', fontSize: 13, fontWeight: 500, color: colors.text, whiteSpace: 'nowrap' }}>{user.id}</td>
+                      <td style={{ padding: '10px 16px', whiteSpace: 'nowrap' }}>{formatNumber(user.dataPoints)}</td>
+                      <td style={{ padding: '10px 16px', whiteSpace: 'nowrap' }}>{user.activeStreams}</td>
+                      <td style={{ padding: '10px 16px', whiteSpace: 'nowrap' }}>${user.monthlyDividend.toFixed(2)}</td>
+                      <td style={{ padding: '10px 16px', whiteSpace: 'nowrap' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           <Circle size={6} fill={getStatusColor(user.consentStatus)} stroke="none" />
                           {user.consentStatus}
                         </span>
                       </td>
-                      <td style={{ padding: '10px 16px', color: colors.muted }}>{getTimeAgo(user.lastActive)}</td>
+                      <td style={{ padding: '10px 16px', color: colors.muted, whiteSpace: 'nowrap' }}>{getTimeAgo(user.lastActive)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
 
             {activeTab === 'streams' && (
@@ -367,11 +381,12 @@ export default function SeedDataPage() {
             )}
 
             {activeTab === 'buyers' && (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600 }}>
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
                     {['Company', 'Streams Purchased', 'Monthly Spend', 'Records Consumed', 'Contract Status'].map((h) => (
-                      <th key={h} style={{ textAlign: 'left', padding: '10px 16px', color: colors.muted, fontWeight: 400, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <th key={h} style={{ textAlign: 'left', padding: '10px 16px', color: colors.muted, fontWeight: 400, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
                         {h}
                       </th>
                     ))}
@@ -380,11 +395,11 @@ export default function SeedDataPage() {
                 <tbody>
                   {buyers.map((buyer) => (
                     <tr key={buyer.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
-                      <td style={{ padding: '12px 16px', fontWeight: 500 }}>{buyer.name}</td>
+                      <td style={{ padding: '12px 16px', fontWeight: 500, whiteSpace: 'nowrap' }}>{buyer.name}</td>
                       <td style={{ padding: '12px 16px', color: colors.muted }}>{buyer.streams.join(', ')}</td>
-                      <td style={{ padding: '12px 16px' }}>{formatCurrency(buyer.monthlySpend)}</td>
-                      <td style={{ padding: '12px 16px' }}>{formatNumber(buyer.recordsConsumed)}</td>
-                      <td style={{ padding: '12px 16px' }}>
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>{formatCurrency(buyer.monthlySpend)}</td>
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>{formatNumber(buyer.recordsConsumed)}</td>
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           <Circle size={6} fill={getStatusColor(buyer.status)} stroke="none" />
                           {buyer.status}
@@ -395,6 +410,7 @@ export default function SeedDataPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
 
             {activeTab === 'analytics' && (
@@ -406,8 +422,8 @@ export default function SeedDataPage() {
                       <AreaChart data={timeSeriesData}>
                         <defs>
                           <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#2563eb" stopOpacity={0.1} />
-                            <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
+                            <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.1} />
+                            <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke={colors.border} vertical={false} />
@@ -435,7 +451,7 @@ export default function SeedDataPage() {
                         <Area
                           type="monotone"
                           dataKey="volume"
-                          stroke="#2563eb"
+                          stroke="var(--primary)"
                           strokeWidth={1.5}
                           fill="url(#volumeGradient)"
                         />
@@ -474,7 +490,7 @@ export default function SeedDataPage() {
                         />
                         <Bar dataKey="revenue" radius={[0, 2, 2, 0]}>
                           {revenueByStream.map((entry, index) => (
-                            <Cell key={index} fill={index === 0 ? '#2563eb' : '#93c5fd'} fillOpacity={index < 3 ? 1 : 0.5} />
+                            <Cell key={index} fill={index === 0 ? 'var(--primary)' : '#93c5fd'} fillOpacity={index < 3 ? 1 : 0.5} />
                           ))}
                         </Bar>
                       </BarChart>
@@ -501,8 +517,16 @@ export default function SeedDataPage() {
         </div>
 
         {selectedUser && activeTab === 'users' && (
-          <div className="hidden md:block" style={{ width: 'min(340px, 100%)', borderLeft: `1px solid ${colors.border}`, overflow: 'auto', backgroundColor: colors.surface, flexShrink: 0 }}>
+          <div style={{ width: 'min(340px, 100%)', borderLeft: `1px solid ${colors.border}`, overflow: 'auto', backgroundColor: colors.surface, flexShrink: 0, position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 10 }}>
             <div style={{ padding: 24 }}>
+              <button
+                onClick={() => setSelectedUserId(null)}
+                className="md:hidden"
+                style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'transparent', border: 'none', color: colors.muted, cursor: 'pointer', padding: 0, marginBottom: 16, fontSize: 13 }}
+              >
+                <ArrowLeft size={16} />
+                Back
+              </button>
               <div style={{ fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>User</div>
               <div style={{ fontSize: 18, fontWeight: 500, marginBottom: 24 }}>{selectedUser.id}</div>
 
@@ -568,7 +592,7 @@ export default function SeedDataPage() {
                         contentStyle={{ backgroundColor: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 4, fontSize: 12 }}
                         formatter={(value: number) => [`$${value.toFixed(2)}`, '']}
                       />
-                      <Line type="monotone" dataKey="amount" stroke="#2563eb" strokeWidth={1.5} dot={false} />
+                      <Line type="monotone" dataKey="amount" stroke="var(--primary)" strokeWidth={1.5} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -581,6 +605,7 @@ export default function SeedDataPage() {
           </div>
         )}
       </div>
+      {isEmbedded && <div style={{ height: 34, flexShrink: 0, background: colors.bg }} />}
     </div>
   );
 }

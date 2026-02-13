@@ -8,17 +8,17 @@ import {
   Layers,
   Upload,
   Check,
-  Circle,
   ChevronLeft,
   ChevronRight,
   X,
   SendHorizontal,
   Monitor,
   Smartphone,
-  ArrowLeft,
   Maximize2,
   Mic,
   Square,
+  Zap,
+  Lock,
 } from "lucide-react";
 
 type StepType = "upload" | "input" | "choice" | "confirm";
@@ -33,6 +33,8 @@ interface Step {
 
 const REPO_BASE =
   "https://github.com/jonyeazel/viberr-project-portfolio/blob/main/app";
+
+const SITE_DOMAIN = "swift-bear-260.vercel.app";
 
 const projects: Array<{
   slug: string;
@@ -203,8 +205,9 @@ const projects: Array<{
     ],
     steps: [
       {
-        label: "Stripe account",
+        label: "Connect Stripe account",
         type: "confirm",
+        placeholder: "stripe-credentials",
       },
       {
         label: "Organization details for tax receipts",
@@ -482,23 +485,18 @@ function initProjectState(): ProjectState {
   return state;
 }
 
-const TOTAL_VALUE = projects.reduce((sum, p) => sum + p.estimate, 0);
-const TOTAL_PAYOUT = Math.round(TOTAL_VALUE / 2);
-
 // Preview modes: null = card view, "mobile" = phone frame, "desktop" = expanded, "fullscreen" = overlay
 type PreviewMode = null | "mobile" | "desktop" | "fullscreen";
 
 // Card dimensions per mode
 const CARD_W = 380;
 const CARD_H = Math.round(CARD_W * (4 / 3)); // 507
-const MOBILE_FRAME_W = 380;
-const MOBILE_FRAME_H = 720; // iPhone-like proportions
+const MOBILE_FRAME_W = 323;
+const MOBILE_FRAME_H = 612; // iPhone proportions, 85% of 380×720
 const MOBILE_IFRAME_W = 375;
 const MOBILE_IFRAME_H = 812;
-const DESKTOP_FRAME_W = 920;
-const DESKTOP_FRAME_H = 580;
-const DESKTOP_IFRAME_W = 1280;
-const DESKTOP_IFRAME_H = 2000;
+const DESKTOP_IFRAME_W = 1920;
+const DESKTOP_IFRAME_H = 3000;
 
 // Simple inline markdown → React nodes (bold, italic, inline code)
 function renderMarkdown(text: string): React.ReactNode[] {
@@ -544,6 +542,19 @@ function renderMarkdown(text: string): React.ReactNode[] {
   return parts;
 }
 
+// localStorage helpers
+const STORAGE_KEY = "viberr-state";
+function loadPersistedState(): { state?: ProjectState; submitted?: Record<string, boolean> } {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+function persistState(state: ProjectState, submitted: Record<string, boolean>) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, submitted })); } catch {}
+}
+
 export default function Home() {
   const [state, setState] = useState<ProjectState>(initProjectState);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -552,23 +563,85 @@ export default function Home() {
   const [openDrawer, setOpenDrawer] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [chatValue, setChatValue] = useState("");
-  const [chatMessages, setChatMessages] = useState<
-    Array<{ from: "user" | "assistant"; text: string }>
-  >([]);
+  const [chatBySlug, setChatBySlug] = useState<
+    Record<string, Array<{ from: "user" | "assistant"; text: string }>>
+  >({});
   const [chatLoading, setChatLoading] = useState(false);
   const [previewSlug, setPreviewSlug] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<PreviewMode>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [logoExpanded, setLogoExpanded] = useState(false);
   const [windowH, setWindowH] = useState(800);
+  const [windowW, setWindowW] = useState(1280);
+  const [showHint, setShowHint] = useState(false);
+  const [showTiltHint, setShowTiltHint] = useState(false);
+  const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
+  const [keyNav, setKeyNav] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const prevFocusRef = useRef(0);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mouseRef = useRef({ x: -9999, y: -9999 });
 
-  // Measure viewport height
+  const focusedProject = projects[focusedIndex];
+  const chatMessagesAll = chatBySlug[focusedProject?.slug ?? ""] || [];
+  const isStatusMsg = (t: string) => t.startsWith("Step completed") || /^All \d+ steps complete/.test(t);
+  const statusMessages = chatMessagesAll.filter((m) => m.from === "assistant" && isStatusMsg(m.text));
+  const chatMessages = chatMessagesAll.filter((m) => !(m.from === "assistant" && isStatusMsg(m.text)));
+  const chatActive = chatMessages.length > 0 || chatLoading;
+
+  // Restore persisted state + handle URL deep links
   useEffect(() => {
-    const update = () => setWindowH(window.innerHeight);
+    const persisted = loadPersistedState();
+    if (persisted.state) setState(persisted.state);
+    if (persisted.submitted) setSubmitted(persisted.submitted);
+
+    // Deep link: ?project=slug
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get("project");
+    if (target) {
+      const idx = projects.findIndex((p) => p.slug === target);
+      if (idx >= 0) {
+        setFocusedIndex(idx);
+        requestAnimationFrame(() => {
+          const el = scrollRef.current;
+          if (el?.children[idx]) {
+            (el.children[idx] as HTMLElement).scrollIntoView({ behavior: "smooth", inline: "center" });
+          }
+        });
+      }
+    }
+
+    // First-visit hint
+    if (!localStorage.getItem("viberr-visited")) {
+      setShowHint(true);
+      localStorage.setItem("viberr-visited", "1");
+    }
+  }, []);
+
+  // Persist state changes
+  useEffect(() => {
+    persistState(state, submitted);
+  }, [state, submitted]);
+
+  // Dismiss hint on scroll or click
+  useEffect(() => {
+    if (!showHint) return;
+    const dismiss = () => setShowHint(false);
+    window.addEventListener("scroll", dismiss, { once: true, capture: true });
+    window.addEventListener("click", dismiss, { once: true });
+    return () => { window.removeEventListener("scroll", dismiss, true); window.removeEventListener("click", dismiss); };
+  }, [showHint]);
+
+  // Measure viewport
+  useEffect(() => {
+    const update = () => {
+      setWindowH(window.innerHeight);
+      setWindowW(window.innerWidth);
+    };
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
@@ -601,13 +674,70 @@ export default function Home() {
   const updateStep = useCallback(
     (slug: string, stepIndex: number, update: Partial<StepState>) => {
       setState((prev) => {
+        if (prev[slug]?.[stepIndex]?.completed) return prev;
         const steps = [...prev[slug]];
         steps[stepIndex] = { ...steps[stepIndex], ...update, completed: true };
         return { ...prev, [slug]: steps };
       });
+      // Signal completion to gut (outside setState to avoid strict-mode double-fire)
+      const project = projects.find(p => p.slug === slug);
+      if (project) {
+        const label = project.steps[stepIndex]?.label ?? "Step";
+        const detail = update.fileName || update.value || update.choice || "";
+        const summary = detail ? `${label}: ${detail}` : label;
+        setChatBySlug((prev) => {
+          const existing = prev[slug] || [];
+          const steps = state[slug] || [];
+          const completedNow = steps.filter((s, i) => s.completed || i === stepIndex).length;
+          const total = project.steps.length;
+          return {
+            ...prev,
+            [slug]: [...existing, {
+              from: "assistant" as const,
+              text: completedNow === total
+                ? `All ${total} steps complete for ${project.name}. Ready to submit.`
+                : `Step completed — ${summary} (${completedNow}/${total})`,
+            }],
+          };
+        });
+      }
     },
-    []
+    [state]
   );
+
+  /* Confetti micro-burst — fires from a DOM element's position */
+  const fireConfetti = useCallback((target: HTMLElement, big = false) => {
+    const rect = target.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const container = document.createElement("div");
+    container.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:9999;overflow:hidden";
+    document.body.appendChild(container);
+    const colors = big
+      ? ["#059669", "#4f46e5", "#f59e0b", "#059669", "#4f46e5"]
+      : ["#059669", "#4f46e5", "#a8a29e"];
+    const count = big ? 24 : 12;
+    const radius = big ? 36 : 22;
+    const dur = big ? 500 : 380;
+    for (let p = 0; p < count; p++) {
+      const dot = document.createElement("div");
+      const angle = (Math.PI * 2 * p) / count + (Math.random() - 0.5) * 0.4;
+      const upBias = -0.3 - Math.random() * 0.3;
+      const dist = radius * (0.7 + Math.random() * 0.6);
+      const size = big ? (2.5 + Math.random() * 2) : (2 + Math.random() * 1.5);
+      dot.style.cssText = `position:absolute;left:${cx}px;top:${cy}px;width:${size}px;height:${size}px;border-radius:50%;background:${colors[p % colors.length]};opacity:1;transition:all ${dur}ms cubic-bezier(0.16,1,0.3,1);transform:translate(-50%,-50%) scale(1)`;
+      container.appendChild(dot);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          dot.style.left = `${cx + Math.cos(angle) * dist}px`;
+          dot.style.top = `${cy + Math.sin(angle) * dist + upBias * dist}px`;
+          dot.style.opacity = "0";
+          dot.style.transform = `translate(-50%,-50%) scale(0.2)`;
+        });
+      });
+    }
+    setTimeout(() => container.remove(), dur + 150);
+  }, []);
 
   const getProgress = (slug: string) => {
     const steps = state[slug];
@@ -633,46 +763,54 @@ export default function Home() {
       const msg = (messageOverride || chatValue).trim();
       if (!msg || chatLoading) return;
       const focused = projects[focusedIndex];
-      setChatMessages((prev) => [...prev, { from: "user", text: msg }]);
+      const slug = focused.slug;
+      setChatBySlug((prev) => ({
+        ...prev,
+        [slug]: [...(prev[slug] || []), { from: "user" as const, text: msg }],
+      }));
       setChatValue("");
       setChatLoading(true);
 
       try {
+        // Build conversation history for server context
+        const existing = chatBySlug[slug] || [];
+        const history = existing
+          .filter((m) => !isStatusMsg(m.text))
+          .map((m) => ({ role: m.from === "user" ? "user" : "assistant", content: m.text }));
+
         const res = await fetch("/api/ai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            slug: focused.slug,
+            slug,
             message: msg,
             projectName: focused.name,
+            history,
           }),
         });
 
         if (res.ok) {
           const data = await res.json();
-          setChatMessages((prev) => [
+          setChatBySlug((prev) => ({
             ...prev,
-            { from: "assistant", text: data.response },
-          ]);
+            [slug]: [...(prev[slug] || []), { from: "assistant" as const, text: data.response }],
+          }));
         } else {
-          setChatMessages((prev) => [
+          setChatBySlug((prev) => ({
             ...prev,
-            {
-              from: "assistant",
-              text: "Something went wrong. Try again.",
-            },
-          ]);
+            [slug]: [...(prev[slug] || []), { from: "assistant" as const, text: "Something went wrong. Try again." }],
+          }));
         }
       } catch {
-        setChatMessages((prev) => [
+        setChatBySlug((prev) => ({
           ...prev,
-          { from: "assistant", text: "Connection failed. Try again." },
-        ]);
+          [slug]: [...(prev[slug] || []), { from: "assistant" as const, text: "Connection failed. Try again." }],
+        }));
       }
 
       setChatLoading(false);
     },
-    [chatValue, focusedIndex, chatLoading]
+    [chatValue, focusedIndex, chatLoading, chatBySlug]
   );
 
   // Voice recording
@@ -739,6 +877,12 @@ export default function Home() {
   // Keyboard handlers
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // ⌘K / Ctrl+K to focus chat input
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        chatInputRef.current?.focus();
+        return;
+      }
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === "Escape") {
@@ -755,20 +899,215 @@ export default function Home() {
         return;
       }
       if (!previewSlug) {
-        if (e.key === "ArrowRight") scrollBy(1);
-        if (e.key === "ArrowLeft") scrollBy(-1);
+        if (e.key === "ArrowRight") { setKeyNav(true); scrollBy(1); }
+        if (e.key === "ArrowLeft") { setKeyNav(true); scrollBy(-1); }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [scrollBy, previewSlug, previewMode]);
 
-  const focusedProject = projects[focusedIndex];
+  // Listen for close-preview messages from iframes
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data === "close-preview") {
+        setPreviewSlug(null);
+        setPreviewMode(null);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
 
-  // Max card height that fits the viewport (header ~56px, bottom bar ~90px, padding 40px)
-  const maxCardH = Math.max(400, windowH - 186);
+  // Visual viewport offset for mobile keyboard
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const onResize = () => {
+      const offset = window.innerHeight - vv.height;
+      setKeyboardOffset(offset > 50 ? offset : 0);
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
+
+  // Responsive layout
+  const isMobile = windowW < 640;
+  const cardW = isMobile ? Math.round(windowW * 0.8) : CARD_W;
+  const cardH = isMobile ? Math.min(Math.round(cardW * (4 / 3)), windowH - 200) : CARD_H;
+
+  // Context card — persistent left panel
+  const leftSpace = windowW / 2 - cardW / 2;
+  const showContextCard = !isMobile && leftSpace >= 240;
+  const focusedCompleted = state[focusedProject?.slug ?? '']?.filter(s => s.completed).length ?? 0;
+  const focusedTotal = focusedProject?.steps.length ?? 0;
+  const focusedSubmitted = submitted[focusedProject?.slug ?? ''];
+  const FocusedTypeIcon = focusedProject ? typeConfig[focusedProject.type].icon : Workflow;
+
+  // Haptic feedback on card snap (mobile)
+  useEffect(() => {
+    if (!isMobile) return;
+    if (focusedIndex !== prevFocusRef.current) {
+      prevFocusRef.current = focusedIndex;
+      try { navigator.vibrate(6); } catch {}
+    }
+  }, [focusedIndex, isMobile]);
+
+  // Tilt-to-browse — gyroscope-driven card navigation (mobile only)
+  useEffect(() => {
+    if (!isMobile || openDrawer || previewSlug) return;
+    if (!('DeviceOrientationEvent' in window)) return;
+
+    let lastNav = 0;
+
+    const handler = (e: DeviceOrientationEvent) => {
+      const gamma = e.gamma;
+      if (gamma === null || Math.abs(gamma) < 22) return;
+      const now = Date.now();
+      if (now - lastNav < 600) return;
+      lastNav = now;
+      scrollBy(gamma > 0 ? 1 : -1);
+      try { navigator.vibrate(8); } catch {}
+      if (!localStorage.getItem('viberr-tilt-seen')) {
+        localStorage.setItem('viberr-tilt-seen', '1');
+        setShowTiltHint(true);
+        setTimeout(() => setShowTiltHint(false), 2500);
+      }
+    };
+
+    const start = () => window.addEventListener('deviceorientation', handler);
+
+    // iOS 13+ needs permission from user gesture
+    const DOE = DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> };
+    if (typeof DOE.requestPermission === 'function') {
+      const onTouch = async () => {
+        try {
+          const p = await DOE.requestPermission!();
+          if (p === 'granted') start();
+        } catch {}
+      };
+      window.addEventListener('touchstart', onTouch, { once: true });
+      return () => {
+        window.removeEventListener('touchstart', onTouch);
+        window.removeEventListener('deviceorientation', handler);
+      };
+    }
+
+    start();
+    return () => window.removeEventListener('deviceorientation', handler);
+  }, [isMobile, scrollBy, openDrawer, previewSlug]);
+
+  // Gravitational dot field — canvas replaces CSS dot grid
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const SPACING = 18;
+    const BASE_R = 0.5;
+    const INFLUENCE = 260;
+    const MAX_PULL = 16;
+    const LERP = 0.12;
+
+    let dpr = window.devicePixelRatio || 1;
+    let w = 0, h = 0;
+    let cols = 0, rows = 0;
+    let posX: Float32Array = new Float32Array(0);
+    let posY: Float32Array = new Float32Array(0);
+
+    const resize = () => {
+      dpr = window.devicePixelRatio || 1;
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cols = Math.ceil(w / SPACING) + 1;
+      rows = Math.ceil(h / SPACING) + 1;
+      const n = cols * rows;
+      posX = new Float32Array(n);
+      posY = new Float32Array(n);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const i = r * cols + c;
+          posX[i] = c * SPACING;
+          posY[i] = r * SPACING;
+        }
+      }
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const onMove = (e: MouseEvent) => {
+      mouseRef.current.x = e.clientX;
+      mouseRef.current.y = e.clientY;
+    };
+    const onLeave = () => {
+      mouseRef.current.x = -9999;
+      mouseRef.current.y = -9999;
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseleave', onLeave);
+
+    let animId: number;
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h);
+      const mx = mouseRef.current.x;
+      const my = mouseRef.current.y;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const i = r * cols + c;
+          const gx = c * SPACING;
+          const gy = r * SPACING;
+
+          let tx = gx;
+          let ty = gy;
+          let proximity = 0;
+
+          const dx = mx - gx;
+          const dy = my - gy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < INFLUENCE && dist > 0.5) {
+            const t = 1 - dist / INFLUENCE;
+            const ease = t * t * t;
+            proximity = ease;
+            const pull = MAX_PULL * ease;
+            tx = gx + (dx / dist) * pull;
+            ty = gy + (dy / dist) * pull;
+          }
+
+          posX[i] += (tx - posX[i]) * LERP;
+          posY[i] += (ty - posY[i]) * LERP;
+
+          const sz = BASE_R + proximity * 0.6;
+          const alpha = 0.8 + proximity * 0.15;
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = 'rgb(168, 162, 158)';
+          ctx.fillRect(posX[i] - sz, posY[i] - sz, sz * 2, sz * 2);
+        }
+      }
+
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseleave', onLeave);
+    };
+  }, []);
+
+  // Max card height that fits the viewport (bottom bar ~140px, padding 40px)
+  const maxCardH = Math.max(400, windowH - 218);
   const mobileH = Math.min(MOBILE_FRAME_H, maxCardH);
-  const desktopH = Math.min(DESKTOP_FRAME_H, maxCardH);
+  const desktopW = isMobile ? windowW - 24 : Math.min(Math.round(windowW * 0.8), 1200);
+  const desktopH = Math.min(Math.round(desktopW * 0.45), maxCardH, windowH - 180);
 
   const SPRING = "cubic-bezier(0.32, 0.72, 0, 1)";
   const T = `width 300ms ${SPRING}, height 300ms ${SPRING}, border-radius 300ms ${SPRING}, transform 150ms ease-out, opacity 150ms ease-out`;
@@ -776,78 +1115,127 @@ export default function Home() {
   // Calculate card dimensions based on preview mode for the active card
   const getCardStyle = (
     isPreviewing: boolean,
-    isFocused: boolean
+    isFocused: boolean,
+    hasActiveChat: boolean
   ): React.CSSProperties => {
     if (isPreviewing && previewMode === "mobile") {
       return {
-        width: MOBILE_FRAME_W,
-        height: mobileH,
+        width: isMobile ? cardW : MOBILE_FRAME_W,
+        height: isMobile ? cardH : mobileH,
         borderRadius: 36,
         transform: "scale(1)",
         opacity: 1,
         transition: T,
-        border: "1px solid #e7e7e5",
+        border: "1px solid #d6d3d1",
         boxShadow:
           "0 0 0 1px rgba(99,91,255,0.06), 0 20px 60px rgba(0,0,0,0.12)",
       };
     }
     if (isPreviewing && previewMode === "desktop") {
       return {
-        width: DESKTOP_FRAME_W,
+        width: desktopW,
         height: desktopH,
         borderRadius: 12,
         transform: "scale(1)",
         opacity: 1,
         transition: T,
-        border: "1px solid #e7e7e5",
+        border: "1px solid #d6d3d1",
         boxShadow:
-          "0 0 0 1px rgba(99,91,255,0.06), 0 20px 60px rgba(0,0,0,0.12)",
+          "0 0 0 1px rgba(99,91,255,0.04), 0 2px 12px rgba(0,0,0,0.04)",
       };
     }
     // Default card
+    const isConnected = isFocused && hasActiveChat;
     return {
-      width: CARD_W,
-      height: CARD_H,
+      width: cardW,
+      height: cardH,
       borderRadius: 16,
-      transform: isFocused ? "scale(1)" : "scale(0.95)",
-      opacity: isFocused ? 1 : 0.4,
+      transform: isFocused ? "scale(1)" : isMobile ? "scale(0.92)" : "scale(0.95)",
+      opacity: isFocused ? 1 : isMobile ? 0.4 : 0.6,
       transition: T,
-      border: isFocused ? "1px solid #e7e7e5" : "1px solid #eeeeec",
-      boxShadow: isFocused
-        ? "0 0 0 1px rgba(99,91,255,0.06), 0 8px 40px rgba(0,0,0,0.06)"
-        : "none",
+      border: isConnected
+        ? "1px solid rgba(79,70,229,0.3)"
+        : isFocused
+          ? "1px solid #d6d3d1"
+          : "1px solid #e7e5e4",
+      boxShadow: isConnected
+        ? "0 0 0 1px rgba(79,70,229,0.08), 0 8px 40px rgba(79,70,229,0.06)"
+        : isFocused
+          ? "0 0 0 1px rgba(99,91,255,0.06), 0 8px 40px rgba(0,0,0,0.06)"
+          : "none",
     };
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background">
-      {/* Header */}
-      <header className="flex items-center justify-between px-8 py-4 flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-6 h-6 rounded-[6px] bg-primary flex items-center justify-center flex-shrink-0 ring-1 ring-foreground/10">
-            <span className="text-[11px] font-semibold text-white">V</span>
-          </div>
-          <span className="text-[14px] font-medium text-foreground/90 tracking-[-0.01em]">
-            Viberr
-          </span>
-        </div>
-        <div className="flex items-center gap-5 text-[12px] text-muted">
-          <span>{projects.length} projects</span>
-          <span className="tabular-nums">
-            ${TOTAL_PAYOUT.toLocaleString()}
-          </span>
-        </div>
-      </header>
+    <div className="flex flex-col overflow-hidden relative isolate" style={{ height: '100dvh' }}>
+      {/* Background atmosphere */}
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        {/* Warm ambient glow — tracks focused card */}
+        <div
+          style={{
+            position: 'absolute',
+            width: '60%',
+            height: '60%',
+            top: '5%',
+            left: `${10 + (focusedIndex / Math.max(projects.length - 1, 1)) * 30}%`,
+            background: 'radial-gradient(ellipse at center, rgba(245,195,150,0.15) 0%, rgba(245,195,150,0.04) 50%, transparent 75%)',
+            transition: 'left 1200ms cubic-bezier(0.16, 1, 0.3, 1)',
+            filter: 'blur(60px)',
+          }}
+        />
+        {/* Cool indigo accent — bottom right */}
+        <div
+          style={{
+            position: 'absolute',
+            width: '45%',
+            height: '50%',
+            bottom: '-5%',
+            right: '0%',
+            background: 'radial-gradient(ellipse at center, rgba(79,70,229,0.06) 0%, transparent 70%)',
+            filter: 'blur(80px)',
+          }}
+        />
+        {/* Soft sage wash — top left */}
+        <div
+          style={{
+            position: 'absolute',
+            width: '40%',
+            height: '40%',
+            top: '-10%',
+            left: '-5%',
+            background: 'radial-gradient(ellipse at center, rgba(167,215,180,0.07) 0%, transparent 70%)',
+            filter: 'blur(80px)',
+          }}
+        />
+        {/* Dot grid — gravitational field */}
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0"
+          style={{ width: '100%', height: '100%' }}
+        />
+        {/* Grain texture */}
+        <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.04 }}>
+          <filter id="bg-grain">
+            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+          </filter>
+          <rect width="100%" height="100%" filter="url(#bg-grain)" />
+        </svg>
+      </div>
 
       {/* Card slideshow */}
       <div
         ref={scrollRef}
-        className="flex-1 flex items-center gap-5 overflow-x-auto snap-x snap-mandatory"
+        className="flex-1 flex items-center overflow-x-auto snap-x snap-mandatory"
+        onPointerDown={() => setKeyNav(false)}
         style={{
           scrollbarWidth: "none",
-          scrollBehavior: "smooth",
-          paddingLeft: "calc(50vw - 190px)",
-          paddingRight: "calc(50vw - 190px)",
+          WebkitOverflowScrolling: 'touch' as never,
+          gap: isMobile ? 16 : 20,
+          paddingLeft: `calc(50vw - ${cardW / 2}px)`,
+          paddingRight: `calc(50vw - ${cardW / 2}px)`,
+          transform: chatActive ? (isMobile ? 'scale(0.98) translateY(-4px)' : 'scale(0.94) translateY(-12px)') : 'scale(1) translateY(0)',
+          transformOrigin: 'center center',
+          transition: 'transform 400ms cubic-bezier(0.32, 0.72, 0, 1)',
           ...(previewSlug
             ? { overflow: "hidden", touchAction: "none" }
             : {}),
@@ -863,12 +1251,45 @@ export default function Home() {
           const isFocused = idx === focusedIndex;
           const isPreviewing = previewSlug === project.slug;
 
+          const cardStyle = getCardStyle(isPreviewing, isFocused, (chatBySlug[project.slug]?.length ?? 0) > 0);
           return (
             <div
               key={project.slug}
-              className="flex-shrink-0 relative overflow-hidden bg-card snap-center"
-              style={getCardStyle(isPreviewing, isFocused)}
+              className="flex-shrink-0 relative snap-center"
+              style={{
+                width: cardStyle.width,
+                height: cardStyle.height,
+                transform: cardStyle.transform,
+                opacity: cardStyle.opacity,
+                transition: cardStyle.transition,
+                transitionDelay: `${Math.abs(idx - focusedIndex) * 30}ms`,
+                willChange: 'transform, opacity',
+                outline: keyNav && isFocused ? '2px solid #4f46e5' : 'none',
+                outlineOffset: 4,
+              }}
             >
+              {/* Drawer glow — alive whisper, bleeds outside card bounds */}
+              <div
+                className="absolute pointer-events-none"
+                style={{
+                  inset: -32,
+                  borderRadius: ((cardStyle.borderRadius as number) || 16) + 32,
+                  opacity: isDrawerOpen ? 1 : 0,
+                  transition: 'opacity 600ms ease-out',
+                  background: 'radial-gradient(ellipse 140% 80% at 50% 15%, rgba(79,70,229,0.38) 0%, rgba(79,70,229,0.14) 35%, transparent 68%)',
+                  animation: isDrawerOpen ? 'drawerGlow 5s ease-in-out infinite' : 'none',
+                  transformOrigin: 'top center',
+                }}
+              />
+              <div
+                className="absolute inset-0 overflow-hidden bg-card"
+                style={{
+                  borderRadius: cardStyle.borderRadius,
+                  border: cardStyle.border,
+                  boxShadow: cardStyle.boxShadow,
+                  transition: cardStyle.transition,
+                }}
+              >
               {/* Card face — static content */}
               <div
                 className="absolute inset-0 flex flex-col p-6"
@@ -880,70 +1301,122 @@ export default function Home() {
                     : "opacity 200ms ease-out 150ms",
                 }}
               >
-                {/* Type badge + code */}
+                {/* Type badge + code + activity dot */}
                 <div className="flex items-center gap-2">
                   <TypeIcon
-                    size={12}
+                    size={isMobile ? 14 : 12}
                     strokeWidth={1.5}
-                    className="text-muted/60"
+                    className="text-muted"
                   />
-                  <span className="text-[11px] text-muted/70 tracking-[0.05em] uppercase">
+                  <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'} text-muted tracking-[0.05em] uppercase`}>
                     {project.type}
                   </span>
-                  <span className="text-[11px] text-muted/30 tabular-nums ml-auto font-mono">
+                  <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'} text-muted tabular-nums ml-auto`}>
                     {project.code}
                   </span>
+                  {(chatBySlug[project.slug]?.length ?? 0) > 0 && (
+                    <div
+                      className="w-[5px] h-[5px] rounded-full"
+                      style={{ background: '#4f46e5' }}
+                    />
+                  )}
                 </div>
 
                 {/* Title + description */}
-                <h2 className="text-[20px] font-medium text-foreground mt-5 leading-[1.25] tracking-[-0.01em]">
+                <h2 className={`${isMobile ? 'text-[22px]' : 'text-[20px]'} font-medium text-foreground mt-4 leading-[1.25] tracking-[-0.01em]`}>
                   {project.name}
                 </h2>
-                <p className="text-[13px] text-muted/80 leading-[1.6] mt-2">
+                <p className={`${isMobile ? 'text-[15px]' : 'text-[13px]'} text-secondary-foreground leading-[1.6] mt-1.5`}>
                   {project.description}
                 </p>
 
-                {/* Deliverables */}
-                <ul className="mt-5 space-y-2.5">
+                {/* Deliverables — clickable, sends prompt to control panel */}
+                <ul className="mt-4 space-y-0.5">
                   {project.deliverables.map((d, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-2.5 text-[12px] leading-[1.5] text-foreground/60"
-                    >
-                      <span className="w-1 h-1 rounded-full bg-primary/40 mt-[7px] flex-shrink-0" />
-                      {d}
+                    <li key={i}>
+                      <button
+                        onClick={() => {
+                          if (isFocused && !chatLoading) {
+                            const prompt = project.type === "Workflow"
+                              ? `How would we implement "${d}" in the ${project.name} workflow? What systems and integrations does it touch?`
+                              : `What's the user experience for "${d}" in ${project.name}? How should it work end-to-end?`;
+                            sendChat(prompt);
+                          }
+                        }}
+                        disabled={!isFocused || chatLoading}
+                        className={`group/deliv flex items-start gap-2.5 ${isMobile ? 'text-[14px]' : 'text-[12px]'} leading-[1.5] text-muted text-left w-full py-1 rounded-[4px] transition-colors duration-150`}
+                        onMouseEnter={(e) => { if (isFocused) e.currentTarget.style.color = '#1a1a1a'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = ''; }}
+                        style={{ cursor: isFocused && !chatLoading ? 'pointer' : 'default' }}
+                      >
+                        <span className="w-1 h-1 rounded-full bg-primary mt-[7px] flex-shrink-0" />
+                        <span className="flex-1">{d}</span>
+                        <Zap size={10} strokeWidth={2} className="flex-shrink-0 mt-[5px] opacity-0 group-hover/deliv:opacity-40 transition-opacity duration-150" style={{ color: '#4f46e5' }} />
+                      </button>
                     </li>
                   ))}
                 </ul>
 
-                <div className="flex-1" />
+                {/* Activity — last AI response preview */}
+                <div className="flex-1 flex flex-col justify-end pb-2">
+                  {(() => {
+                    const projectMessages = chatBySlug[project.slug] || [];
+                    const lastAssistant = [...projectMessages].reverse().find(m => m.from === 'assistant');
+                    if (!lastAssistant) return null;
+                    const clean = lastAssistant.text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').replace(/^#+\s*/gm, '').replace(/^-\s*/gm, '');
+                    return (
+                      <p
+                        className={`${isMobile ? 'text-[13px]' : 'text-[11px]'} leading-[1.5] text-muted`}
+                        style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', opacity: isFocused ? 0.7 : 0.4, transition: 'opacity 150ms ease-out' }}
+                      >
+                        {clean.slice(0, 140)}
+                      </p>
+                    );
+                  })()}
+                </div>
 
                 {/* Price + progress */}
-                <div className="border-t border-border pt-4 mt-4">
+                <div className="border-t border-border pt-3 mt-3">
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-[22px] font-medium tabular-nums text-foreground leading-none tracking-[-0.02em]">
+                    <span className={`${isMobile ? 'text-[20px]' : 'text-[18px]'} font-medium tabular-nums text-foreground leading-none tracking-[-0.02em]`}>
                       ${(project.estimate / 2).toLocaleString()}
                     </span>
-                    <span className="text-[11px] text-muted/50">
+                    <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'} text-muted`}>
                       / ${project.estimate.toLocaleString()}
                     </span>
                   </div>
 
-                  {/* Progress bar */}
-                  <div className="mt-3 flex items-center gap-2">
-                    <div className="flex-1 h-[3px] rounded-full bg-surface-2 overflow-hidden">
+                  {/* Step dots + progress track */}
+                  <div className="mt-3 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        {project.steps.map((_step, stepIdx) => {
+                          const isDone = state[project.slug]?.[stepIdx]?.completed;
+                          return (
+                            <div
+                              key={stepIdx}
+                              className="w-[5px] h-[5px] rounded-full transition-all duration-150"
+                              style={{
+                                background: isDone ? '#059669' : 'transparent',
+                                border: isDone ? 'none' : '1px solid #c4c0bc',
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                      <span className={`${isMobile ? 'text-[12px]' : 'text-[10px]'} tabular-nums text-muted`}>
+                        {completedCount}/{project.steps.length}
+                      </span>
+                    </div>
+                    <div className="w-full h-[2px] rounded-full overflow-hidden" style={{ background: '#e7e5e4' }}>
                       <div
-                        className="h-full rounded-full transition-all duration-150 ease-out"
+                        className="h-full rounded-full transition-all duration-300"
                         style={{
-                          width: `${progress}%`,
-                          backgroundColor:
-                            progress === 100 ? "#00d4aa" : "#635bff",
+                          width: `${(completedCount / project.steps.length) * 100}%`,
+                          background: completedCount === project.steps.length ? '#059669' : '#4f46e5',
                         }}
                       />
                     </div>
-                    <span className="text-[10px] tabular-nums text-muted/50">
-                      {completedCount}/{project.steps.length}
-                    </span>
                   </div>
 
                   {/* Action row */}
@@ -951,27 +1424,27 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setPreviewSlug(project.slug);
-                        setPreviewMode("mobile");
+                        setPreviewMode(isMobile ? "fullscreen" : "desktop");
                       }}
-                      className="flex-1 h-9 flex items-center justify-center rounded-[8px] bg-primary text-white text-[12px] font-medium hover:brightness-110 transition-all duration-150"
+                      className={`flex-1 ${isMobile ? 'h-11' : 'h-9'} flex items-center justify-center rounded-[8px] bg-primary text-white ${isMobile ? 'text-[14px]' : 'text-[12px]'} font-medium hover:brightness-110 transition-all duration-150`}
                     >
                       View project
                     </button>
                     {isSubmitted ? (
-                      <div className="h-9 px-3.5 flex items-center justify-center gap-1.5 rounded-[8px] bg-[#00d4aa]/10">
+                      <div className={`${isMobile ? 'h-11' : 'h-9'} px-3.5 flex items-center justify-center gap-1.5 rounded-[8px] bg-[#059669]/10`}>
                         <Check
-                          size={12}
+                          size={isMobile ? 14 : 12}
                           strokeWidth={2}
-                          className="text-[#00d4aa]"
+                          className="text-[#059669]"
                         />
-                        <span className="text-[12px] text-[#00d4aa] font-medium">
+                        <span className={`${isMobile ? 'text-[14px]' : 'text-[12px]'} text-[#059669] font-medium`}>
                           Submitted
                         </span>
                       </div>
                     ) : (
                       <button
                         onClick={() => setOpenDrawer(project.slug)}
-                        className="h-9 px-3.5 flex items-center justify-center rounded-[8px] border border-border text-[12px] text-muted hover:text-foreground hover:border-foreground/20 transition-colors duration-150"
+                        className={`${isMobile ? 'h-11' : 'h-9'} px-3.5 flex items-center justify-center rounded-[8px] border border-border ${isMobile ? 'text-[14px]' : 'text-[12px]'} text-muted hover:text-foreground hover:border-muted transition-colors duration-150`}
                       >
                         Next steps
                       </button>
@@ -980,7 +1453,7 @@ export default function Home() {
                       href={`${REPO_BASE}/${project.slug}/page.tsx`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center w-9 h-9 rounded-[8px] border border-border text-muted hover:text-foreground hover:border-foreground/20 transition-colors duration-150"
+                      className={`flex items-center justify-center ${isMobile ? 'w-11 h-11' : 'w-9 h-9'} rounded-[8px] border border-border text-muted hover:text-foreground hover:border-muted transition-colors duration-150`}
                     >
                       <Github size={14} strokeWidth={1.5} />
                     </a>
@@ -999,47 +1472,103 @@ export default function Home() {
                     : "opacity 100ms ease-out",
                 }}
               >
+                {/* Browser chrome — address bar at top */}
+                <div
+                  className="flex items-center gap-2 px-3 flex-shrink-0"
+                  style={{
+                    height: 32,
+                    background: '#f5f5f4',
+                    borderBottom: '1px solid #e7e5e4',
+                    borderRadius: previewMode === "mobile"
+                      ? '35px 35px 0 0'
+                      : previewMode === "desktop"
+                        ? '11px 11px 0 0'
+                        : '0',
+                    transition: 'border-radius 300ms cubic-bezier(0.32, 0.72, 0, 1)',
+                  }}
+                >
+                  {/* Close dot */}
+                  <button
+                    onClick={() => { setPreviewSlug(null); setPreviewMode(null); }}
+                    className="w-3 h-3 rounded-full flex-shrink-0 transition-opacity duration-150 hover:opacity-80"
+                    style={{ background: '#dc2626' }}
+                  />
+
+                  {/* Address bar */}
+                  <a
+                    href={`https://${SITE_DOMAIN}/${project.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-1.5 h-[22px] rounded-[4px] min-w-0 transition-colors duration-150 hover:bg-[#e7e5e4]"
+                    style={{ background: '#eceae9' }}
+                  >
+                    <Lock size={9} strokeWidth={2} style={{ color: '#a8a29e', flexShrink: 0 }} />
+                    <span className="text-[11px] truncate" style={{ color: '#78716c' }}>
+                      {SITE_DOMAIN}/{project.slug}
+                    </span>
+                  </a>
+
+                  {/* Mode toggle */}
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <button
+                      onClick={() => setPreviewMode("mobile")}
+                      className={`w-6 h-6 rounded-[4px] flex items-center justify-center transition-all duration-150 ${
+                        previewMode === "mobile"
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted hover:text-foreground"
+                      }`}
+                    >
+                      <Smartphone size={11} strokeWidth={1.5} />
+                    </button>
+                    <button
+                      onClick={() => setPreviewMode("desktop")}
+                      className={`w-6 h-6 rounded-[4px] flex items-center justify-center transition-all duration-150 ${
+                        previewMode === "desktop"
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted hover:text-foreground"
+                      }`}
+                    >
+                      <Monitor size={11} strokeWidth={1.5} />
+                    </button>
+                  </div>
+
+                  {/* Fullscreen */}
+                  <button
+                    onClick={() => setPreviewMode("fullscreen")}
+                    className="w-6 h-6 rounded-[4px] flex items-center justify-center text-muted hover:text-foreground transition-all duration-150 flex-shrink-0"
+                  >
+                    <Maximize2 size={11} strokeWidth={1.5} />
+                  </button>
+                </div>
+
                 {/* Iframe viewport */}
                 <div
                   className="flex-1 relative overflow-hidden"
-                  style={{
-                    borderRadius:
-                      previewMode === "mobile"
-                        ? "35px 35px 0 0"
-                        : previewMode === "desktop"
-                          ? "11px 11px 0 0"
-                          : "0",
-                    transition: "border-radius 300ms cubic-bezier(0.32, 0.72, 0, 1)",
-                  }}
                 >
                   {isPreviewing && (
                     <>
+                      {/* Loading skeleton */}
+                      {!iframeLoaded[project.slug] && (
+                        <div className="absolute inset-0 flex flex-col gap-3 p-5" style={{ background: '#ffffff' }}>
+                          <div className="h-3 rounded" style={{ width: '60%', background: '#e7e5e4', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                          <div className="h-3 rounded" style={{ width: '80%', background: '#e7e5e4', animation: 'pulse 1.5s ease-in-out 0.1s infinite' }} />
+                          <div className="h-3 rounded" style={{ width: '45%', background: '#e7e5e4', animation: 'pulse 1.5s ease-in-out 0.2s infinite' }} />
+                          <div className="h-24 rounded mt-2" style={{ background: '#f5f5f4', animation: 'pulse 1.5s ease-in-out 0.3s infinite' }} />
+                          <div className="h-3 rounded" style={{ width: '70%', background: '#e7e5e4', animation: 'pulse 1.5s ease-in-out 0.4s infinite' }} />
+                        </div>
+                      )}
                       {/* Mobile iframe — 640px scaled to fit */}
                       <div
                         style={{
                           position: "absolute",
                           inset: 0,
                           overflow: "hidden",
-                          opacity: previewMode === "mobile" ? 1 : 0,
+                          opacity: previewMode === "mobile" && iframeLoaded[project.slug] ? 1 : 0,
                           pointerEvents:
                             previewMode === "mobile" ? "auto" : "none",
                           transition: "opacity 150ms ease-out",
                         }}
                       >
-                        {/* Dynamic Island notch */}
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 10,
-                            left: "50%",
-                            transform: "translateX(-50%)",
-                            width: 90,
-                            height: 24,
-                            borderRadius: 12,
-                            background: "#191919",
-                            zIndex: 10,
-                          }}
-                        />
                         <div
                           style={{
                             position: "absolute",
@@ -1056,332 +1585,358 @@ export default function Home() {
                             className="w-full h-full border-none"
                             style={{ background: "#fff" }}
                             title={`${project.name} — mobile`}
+                            onLoad={() => setIframeLoaded(prev => ({ ...prev, [project.slug]: true }))}
                           />
                         </div>
                       </div>
-                      {/* Desktop iframe — 1280px scaled */}
+                      {/* Desktop iframe — rendered at actual card size */}
                       <div
                         style={{
                           position: "absolute",
                           inset: 0,
-                          overflow: "hidden",
-                          opacity: previewMode === "desktop" ? 1 : 0,
+                          opacity: previewMode === "desktop" && iframeLoaded[project.slug] ? 1 : 0,
                           pointerEvents:
                             previewMode === "desktop" ? "auto" : "none",
                           transition: "opacity 150ms ease-out",
                         }}
                       >
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            width: DESKTOP_IFRAME_W,
-                            height: DESKTOP_IFRAME_H,
-                            transform: `scale(${DESKTOP_FRAME_W / DESKTOP_IFRAME_W})`,
-                            transformOrigin: "top left",
-                          }}
-                        >
-                          <iframe
-                            src={`/${project.slug}`}
-                            className="w-full h-full border-none"
-                            style={{ background: "#fff" }}
-                            title={`${project.name} — desktop`}
-                          />
-                        </div>
+                        <iframe
+                          src={`/${project.slug}`}
+                          style={{ width: "100%", height: "100%", border: "none", background: "#fff" }}
+                          title={`${project.name} — desktop`}
+                          onLoad={() => setIframeLoaded(prev => ({ ...prev, [project.slug]: true }))}
+                        />
                       </div>
                     </>
                   )}
                 </div>
-
-                {/* Preview toolbar */}
-                <div
-                  className="flex items-center justify-center gap-1 px-3 flex-shrink-0"
-                  style={{
-                    height: 40,
-                    borderTop: "1px solid #e7e7e5",
-                    background: "#fff",
-                  }}
-                >
-                  <button
-                    onClick={() => {
-                      setPreviewSlug(null);
-                      setPreviewMode(null);
-                    }}
-                    className="w-7 h-7 rounded-[6px] flex items-center justify-center text-muted/50 hover:text-foreground hover:bg-surface transition-all duration-150"
-                  >
-                    <X size={13} strokeWidth={1.5} />
-                  </button>
-
-                  <div className="w-px h-4 bg-border mx-1" />
-
-                  <div className="flex items-center gap-0.5 bg-surface rounded-[6px] p-0.5">
-                    <button
-                      onClick={() => setPreviewMode("mobile")}
-                      className={`w-7 h-6 rounded-[5px] flex items-center justify-center transition-all duration-150 ${
-                        previewMode === "mobile"
-                          ? "bg-card text-foreground shadow-sm"
-                          : "text-muted/40 hover:text-muted"
-                      }`}
-                    >
-                      <Smartphone size={12} strokeWidth={1.5} />
-                    </button>
-                    <button
-                      onClick={() => setPreviewMode("desktop")}
-                      className={`w-7 h-6 rounded-[5px] flex items-center justify-center transition-all duration-150 ${
-                        previewMode === "desktop"
-                          ? "bg-card text-foreground shadow-sm"
-                          : "text-muted/40 hover:text-muted"
-                      }`}
-                    >
-                      <Monitor size={12} strokeWidth={1.5} />
-                    </button>
-                  </div>
-
-                  <div className="w-px h-4 bg-border mx-1" />
-
-                  <button
-                    onClick={() => setPreviewMode("fullscreen")}
-                    className="w-7 h-7 rounded-[6px] flex items-center justify-center text-muted/40 hover:text-muted hover:bg-surface transition-all duration-150"
-                  >
-                    <Maximize2 size={12} strokeWidth={1.5} />
-                  </button>
-                </div>
               </div>
+
+              {/* Drawer backdrop — click outside to close */}
+              {isDrawerOpen && (
+                <div
+                  className="absolute inset-0 z-10"
+                  onClick={() => setOpenDrawer(null)}
+                />
+              )}
 
               {/* Inset drawer */}
               <div
-                className="absolute bg-card flex flex-col"
+                className="absolute bg-card flex flex-col z-20"
                 style={{
-                  inset: 3,
-                  borderRadius: "inherit",
+                  left: 3,
+                  right: 3,
+                  bottom: 3,
+                  maxHeight: cardH - 54,
+                  borderRadius: 13,
                   transform: isDrawerOpen
                     ? "translateY(0)"
                     : "translateY(105%)",
-                  transition: "transform 150ms ease-out",
+                  transition: "transform 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out",
                   boxShadow: isDrawerOpen
-                    ? "0 -4px 32px rgba(0,0,0,0.08)"
+                    ? (chatBySlug[project.slug]?.length ?? 0) > 0
+                      ? "0 0 0 1px rgba(79,70,229,0.08), 0 -4px 32px rgba(0,0,0,0.06)"
+                      : "0 -4px 32px rgba(0,0,0,0.08)"
                     : "none",
                   pointerEvents: isDrawerOpen ? "auto" : "none",
-                  border: "1px solid #e7e7e5",
+                  border: isDrawerOpen && (chatBySlug[project.slug]?.length ?? 0) > 0
+                    ? "1px solid rgba(79,70,229,0.25)"
+                    : "1px solid #d6d3d1",
                 }}
               >
                 {/* Drawer header */}
-                <div className="px-5 pt-4 pb-3 flex items-center justify-between flex-shrink-0">
-                  <div>
-                    <span className="text-[11px] text-muted/70 tracking-[0.05em] uppercase">
-                      What we need
+                <div className="px-4 pt-4 pb-3 flex items-center justify-between flex-shrink-0">
+                  <div className="min-w-0 flex-1 flex items-center gap-2.5">
+                    <span className={`${isMobile ? 'text-[15px]' : 'text-[13px]'} font-medium text-foreground truncate`}>
+                      {project.name}
                     </span>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <div className="w-24 h-[3px] rounded-full bg-surface-2 overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-150 ease-out"
-                          style={{
-                            width: `${progress}%`,
-                            backgroundColor:
-                              progress === 100 ? "#00d4aa" : "#635bff",
-                          }}
-                        />
-                      </div>
-                      <span className="text-[10px] tabular-nums text-muted/50">
-                        {completedCount}/{project.steps.length}
-                      </span>
+                    <div className="flex items-center gap-1">
+                      {project.steps.map((_s, si) => {
+                        const done = state[project.slug]?.[si]?.completed;
+                        return (
+                          <div
+                            key={si}
+                            className="w-1.5 h-1.5 rounded-full transition-all duration-150"
+                            style={{
+                              background: done ? '#059669' : 'transparent',
+                              border: done ? 'none' : '1px solid #c4c0bc',
+                            }}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
                   <button
                     onClick={() => setOpenDrawer(null)}
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-muted/50 hover:text-foreground transition-colors duration-150"
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-muted hover:text-foreground transition-colors duration-150 flex-shrink-0 ml-3"
                   >
                     <X size={14} strokeWidth={1.5} />
                   </button>
                 </div>
 
                 {/* Drawer content */}
-                <div className="flex-1 overflow-y-auto px-5 pb-5">
-                  <div className="space-y-3.5">
+                <div className="flex flex-col px-4 pt-0.5 pb-4 overflow-y-auto min-h-0" style={{ scrollbarWidth: 'none', maskImage: 'linear-gradient(to bottom, transparent 0px, black 8px, black calc(100% - 16px), transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, transparent 0px, black 8px, black calc(100% - 16px), transparent 100%)' }}>
+                  <div className="flex flex-col space-y-2.5">
                     {project.steps.map((step, i) => {
                       const stepState = state[project.slug]?.[i];
                       const done = stepState?.completed;
+                      const isStripeConnect = step.type === "confirm" && step.placeholder === "stripe-credentials";
+
+                      /* Contextual question for Zap */
+                      const askQ = step.type === "upload"
+                        ? `What file format and content should I provide for "${step.label}" in ${project.name}?`
+                        : step.type === "choice"
+                        ? `Help me decide — what are the tradeoffs for each option in "${step.label}" for ${project.name}?`
+                        : step.type === "input"
+                        ? `What should I enter for "${step.label}" in ${project.name}? What format or details are expected?`
+                        : `What does "${step.label}" involve for ${project.name}?`;
+
+                      /* Radio circle — shared between complete and incomplete states */
+                      const radioCircle = (
+                        <div
+                          className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-150"
+                          data-radio={`${project.slug}-${i}`}
+                          style={done
+                            ? { background: '#059669' }
+                            : { border: '1.5px solid #d6d3d1' }
+                          }
+                        >
+                          {done && <Check size={9} strokeWidth={2.5} className="text-white" />}
+                        </div>
+                      );
+
+                      /* Shared label row with radio on right */
+                      const labelRow = (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                            <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'} text-muted truncate`}>{step.label}</span>
+                            <button
+                              onClick={() => { if (!chatLoading) sendChat(askQ); }}
+                              disabled={chatLoading}
+                              className="w-4 h-4 rounded flex items-center justify-center transition-all duration-150 flex-shrink-0 opacity-0 group-hover/step:opacity-100"
+                              style={{ color: '#a8a29e' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = '#4f46e5'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = '#a8a29e'; }}
+                            >
+                              <Zap size={9} strokeWidth={2} />
+                            </button>
+                          </div>
+                          {radioCircle}
+                        </div>
+                      );
+
+                      /* Complete a step + fire confetti from the radio */
+                      const completeWithConfetti = (slug: string, idx: number, update: Partial<typeof stepState & Record<string, unknown>>) => {
+                        updateStep(slug, idx, update);
+                        const radio = document.querySelector(`[data-radio="${slug}-${idx}"]`);
+                        if (radio) {
+                          requestAnimationFrame(() => fireConfetti(radio as HTMLElement));
+                        }
+                      };
 
                       return (
-                        <div key={i} className="flex gap-2.5">
-                          <div className="flex-shrink-0 mt-0.5">
-                            {done ? (
-                              <div className="w-[18px] h-[18px] rounded-full bg-[#00d4aa] flex items-center justify-center">
-                                <Check
-                                  size={10}
-                                  strokeWidth={2.5}
-                                  className="text-white"
-                                />
+                        <div
+                          key={i}
+                          className="group/step rounded-[8px] transition-all duration-150"
+                          style={{
+                            background: done ? 'rgba(5,150,105,0.04)' : '#f5f5f4',
+                          }}
+                          onMouseEnter={(e) => { if (!done) e.currentTarget.style.background = '#efedec'; }}
+                          onMouseLeave={(e) => { if (!done) e.currentTarget.style.background = '#f5f5f4'; }}
+                        >
+                          {/* Completed state */}
+                          {done ? (
+                            <div className="flex items-center justify-between px-3.5 py-3">
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'} text-muted line-through truncate`}>
+                                  {step.label}
+                                </span>
+                                {(stepState?.value || stepState?.choice || stepState?.fileName || isStripeConnect) && (
+                                  <span className="text-[10px]" style={{ color: '#c4c0bc' }}>&middot;</span>
+                                )}
+                                {stepState?.value && !isStripeConnect && <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'} truncate max-w-[100px]`} style={{ color: '#78716c' }}>{stepState.value}</span>}
+                                {stepState?.choice && <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'}`} style={{ color: '#78716c' }}>{stepState.choice}</span>}
+                                {stepState?.fileName && <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'} truncate max-w-[100px]`} style={{ color: '#78716c' }}>{stepState.fileName}</span>}
+                                {isStripeConnect && <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'}`} style={{ color: '#78716c' }}>Connected</span>}
                               </div>
-                            ) : (
-                              <Circle
-                                size={18}
-                                strokeWidth={1.5}
-                                className="text-border"
-                              />
-                            )}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <span
-                              className={`text-[13px] leading-[1.4] block ${
-                                done
-                                  ? "text-muted line-through"
-                                  : "text-foreground"
-                              }`}
-                            >
-                              {step.label}
-                            </span>
-
-                            {step.type === "upload" && !done && (
-                              <label className="mt-1.5 flex items-center gap-2 px-3 py-2 rounded-[6px] border border-dashed border-border hover:border-foreground/20 cursor-pointer transition-colors duration-150 bg-surface/40">
-                                <Upload
-                                  size={12}
-                                  strokeWidth={1.5}
-                                  className="text-muted/50 flex-shrink-0"
-                                />
-                                <span className="text-[10px] text-muted/60 truncate">
-                                  {step.placeholder}
-                                </span>
-                                <input
-                                  type="file"
-                                  accept={step.accept}
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      updateStep(project.slug, i, {
-                                        fileName: file.name,
-                                      });
-                                      const fd = new FormData();
-                                      fd.append("file", file);
-                                      fd.append("slug", project.slug);
-                                      fd.append("stepLabel", step.label);
-                                      fetch("/api/upload", {
-                                        method: "POST",
-                                        body: fd,
-                                      }).catch(() => {});
-                                    }
-                                  }}
-                                />
-                              </label>
-                            )}
-                            {step.type === "upload" &&
-                              done &&
-                              stepState?.fileName && (
-                                <span className="text-[10px] text-muted mt-0.5 block truncate">
-                                  {stepState.fileName}
-                                </span>
-                              )}
-
-                            {step.type === "input" && !done && (
-                              <input
-                                type="text"
-                                placeholder={step.placeholder}
-                                className="mt-1.5 w-full h-7 px-2.5 rounded-[6px] border border-border bg-surface/40 text-[11px] text-foreground placeholder:text-muted/40 focus:outline-none focus:border-primary/40 transition-colors duration-150"
-                                onKeyDown={(e) => {
-                                  if (
-                                    e.key === "Enter" &&
-                                    e.currentTarget.value.trim()
-                                  ) {
-                                    updateStep(project.slug, i, {
-                                      value: e.currentTarget.value.trim(),
-                                    });
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  if (e.currentTarget.value.trim()) {
-                                    updateStep(project.slug, i, {
-                                      value: e.currentTarget.value.trim(),
-                                    });
-                                  }
-                                }}
-                              />
-                            )}
-                            {step.type === "input" &&
-                              done &&
-                              stepState?.value && (
-                                <span className="text-[10px] text-muted mt-0.5 block truncate">
-                                  {stepState.value}
-                                </span>
-                              )}
-
-                            {step.type === "choice" &&
-                              !done &&
-                              step.options && (
-                                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                                  {step.options.map((option) => (
+                              {radioCircle}
+                            </div>
+                          ) : (
+                            <div className="px-3.5 py-3">
+                              {/* Stripe credentials — inline connect */}
+                              {isStripeConnect && (
+                                <>
+                                  {labelRow}
+                                  <div className="mt-2.5 space-y-1.5">
+                                    <input
+                                      type="text"
+                                      placeholder="Email or API key"
+                                      className={`w-full ${isMobile ? 'h-10' : 'h-8'} px-3 rounded-[6px] ${isMobile ? 'text-[14px]' : 'text-[12px]'} text-foreground placeholder:text-muted focus:outline-none transition-colors duration-150`}
+                                      style={{ background: '#ffffff', border: '1px solid #e7e5e4' }}
+                                      onFocus={(e) => { e.currentTarget.style.borderColor = '#4f46e5'; }}
+                                      onBlur={(e) => { e.currentTarget.style.borderColor = '#e7e5e4'; }}
+                                    />
+                                    <div className="relative">
+                                      <input
+                                        type="password"
+                                        placeholder="Secret key"
+                                        className={`w-full ${isMobile ? 'h-10' : 'h-8'} px-3 pr-8 rounded-[6px] ${isMobile ? 'text-[14px]' : 'text-[12px]'} text-foreground placeholder:text-muted focus:outline-none transition-colors duration-150`}
+                                        style={{ background: '#ffffff', border: '1px solid #e7e5e4' }}
+                                        onFocus={(e) => { e.currentTarget.style.borderColor = '#4f46e5'; }}
+                                        onBlur={(e) => { e.currentTarget.style.borderColor = '#e7e5e4'; }}
+                                      />
+                                      <Lock size={12} strokeWidth={1.5} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+                                    </div>
                                     <button
-                                      key={option}
-                                      onClick={() =>
-                                        updateStep(project.slug, i, {
-                                          choice: option,
-                                        })
-                                      }
-                                      className="h-6 px-2.5 rounded-[6px] border border-border bg-surface/40 text-[10px] text-foreground/80 hover:border-primary/40 hover:text-foreground transition-colors duration-150"
+                                      onClick={() => completeWithConfetti(project.slug, i, { value: "Connected" })}
+                                      className={`w-full ${isMobile ? 'h-10' : 'h-8'} rounded-[6px] flex items-center justify-center ${isMobile ? 'text-[14px]' : 'text-[12px]'} text-foreground transition-colors duration-150`}
+                                      style={{ background: '#ffffff', border: '1px solid #e7e5e4' }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#4f46e5'; e.currentTarget.style.color = '#4f46e5'; }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e7e5e4'; e.currentTarget.style.color = '#1a1a1a'; }}
                                     >
-                                      {option}
+                                      Connect
                                     </button>
-                                  ))}
-                                </div>
-                              )}
-                            {step.type === "choice" &&
-                              done &&
-                              stepState?.choice && (
-                                <span className="text-[10px] text-muted mt-0.5 block">
-                                  {stepState.choice}
-                                </span>
+                                  </div>
+                                  <p className={`mt-1.5 ${isMobile ? 'text-[12px]' : 'text-[10px]'} leading-[1.4] flex items-center gap-1`} style={{ color: '#a8a29e' }}>
+                                    <Lock size={9} strokeWidth={1.5} className="flex-shrink-0" />
+                                    Encrypted end-to-end
+                                  </p>
+                                </>
                               )}
 
-                            {step.type === "confirm" && !done && (
-                              <button
-                                onClick={() =>
-                                  updateStep(project.slug, i, {})
-                                }
-                                className="mt-1.5 h-6 px-2.5 rounded-[6px] border border-border bg-surface/40 text-[10px] text-foreground/80 hover:border-primary/40 hover:text-foreground transition-colors duration-150"
-                              >
-                                Done
-                              </button>
-                            )}
-                          </div>
+                              {/* Confirm — generic (non-Stripe) */}
+                              {step.type === "confirm" && !isStripeConnect && (
+                                <>
+                                  {labelRow}
+                                  <button
+                                    onClick={() => completeWithConfetti(project.slug, i, {})}
+                                    className={`mt-2 w-full ${isMobile ? 'h-10' : 'h-8'} rounded-[6px] flex items-center justify-center ${isMobile ? 'text-[14px]' : 'text-[12px]'} text-foreground transition-colors duration-150`}
+                                    style={{ background: '#ffffff', border: '1px solid #e7e5e4' }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#4f46e5'; e.currentTarget.style.color = '#4f46e5'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e7e5e4'; e.currentTarget.style.color = '#1a1a1a'; }}
+                                  >
+                                    Mark as done
+                                  </button>
+                                </>
+                              )}
+
+                              {/* Input — label + text field */}
+                              {step.type === "input" && (
+                                <>
+                                  {labelRow}
+                                  <input
+                                    type="text"
+                                    placeholder={step.placeholder}
+                                    className={`mt-2 w-full ${isMobile ? 'h-10' : 'h-8'} px-3 rounded-[6px] ${isMobile ? 'text-[14px]' : 'text-[12px]'} text-foreground placeholder:text-muted focus:outline-none transition-colors duration-150`}
+                                    style={{ background: '#ffffff', border: '1px solid #e7e5e4' }}
+                                    onFocus={(e) => { e.currentTarget.style.borderColor = '#4f46e5'; }}
+                                    onBlur={(e) => {
+                                      e.currentTarget.style.borderColor = '#e7e5e4';
+                                      if (e.currentTarget.value.trim()) {
+                                        completeWithConfetti(project.slug, i, { value: e.currentTarget.value.trim() });
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                                        completeWithConfetti(project.slug, i, { value: e.currentTarget.value.trim() });
+                                      }
+                                    }}
+                                  />
+                                </>
+                              )}
+
+                              {/* Upload — label + drop zone */}
+                              {step.type === "upload" && (
+                                <>
+                                  {labelRow}
+                                  <label
+                                    className={`mt-2 flex items-center gap-2 px-3 ${isMobile ? 'h-10' : 'h-8'} rounded-[6px] cursor-pointer transition-colors duration-150`}
+                                    style={{ border: '1px dashed #d6d3d1' }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#4f46e5'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#d6d3d1'; }}
+                                  >
+                                    <Upload size={12} strokeWidth={1.5} className="text-muted flex-shrink-0" />
+                                    <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'} text-muted truncate`}>{step.placeholder}</span>
+                                    <input
+                                      type="file"
+                                      accept={step.accept}
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          completeWithConfetti(project.slug, i, { fileName: file.name });
+                                          const fd = new FormData();
+                                          fd.append("file", file);
+                                          fd.append("slug", project.slug);
+                                          fd.append("stepLabel", step.label);
+                                          fetch("/api/upload", { method: "POST", body: fd }).catch(() => {});
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </>
+                              )}
+
+                              {/* Choice — label + pill group */}
+                              {step.type === "choice" && step.options && (
+                                <>
+                                  {labelRow}
+                                  <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {step.options.map((option) => (
+                                      <button
+                                        key={option}
+                                        onClick={() => completeWithConfetti(project.slug, i, { choice: option })}
+                                        className={`${isMobile ? 'h-10' : 'h-8'} px-3.5 rounded-[6px] ${isMobile ? 'text-[14px]' : 'text-[12px]'} text-foreground transition-colors duration-150`}
+                                        style={{ background: '#ffffff', border: '1px solid #e7e5e4' }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#4f46e5'; e.currentTarget.style.color = '#4f46e5'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e7e5e4'; e.currentTarget.style.color = '#1a1a1a'; }}
+                                      >
+                                        {option}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* Notes */}
-                  <div className="mt-3 pt-3 border-t border-border">
-                    <textarea
-                      placeholder="Anything else we should know?"
-                      rows={2}
-                      value={notes[project.slug] || ""}
-                      onChange={(e) =>
-                        setNotes((prev) => ({
-                          ...prev,
-                          [project.slug]: e.target.value,
-                        }))
-                      }
-                      className="w-full px-2.5 py-2 rounded-[6px] border border-border bg-surface/40 text-[11px] text-foreground placeholder:text-muted/40 focus:outline-none focus:border-primary/40 transition-colors duration-150 resize-none"
-                    />
-                  </div>
+                  {/* Notes field */}
+                  {!isSubmitted && (
+                    <div className="mt-2">
+                      <textarea
+                        placeholder="Add notes (optional)"
+                        value={notes[project.slug] || ''}
+                        onChange={(e) => setNotes(prev => ({ ...prev, [project.slug]: e.target.value }))}
+                        rows={2}
+                        className={`w-full px-3 py-2 rounded-[6px] ${isMobile ? 'text-[14px]' : 'text-[12px]'} text-foreground placeholder:text-muted resize-none focus:outline-none transition-colors duration-150`}
+                        style={{ background: '#f5f5f4', border: '1px solid transparent', scrollbarWidth: 'none' }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = '#4f46e5'; e.currentTarget.style.background = '#ffffff'; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = '#f5f5f4'; }}
+                      />
+                    </div>
+                  )}
 
-                  {/* Submit */}
+                  {/* Submit — only when actionable */}
                   {isSubmitted ? (
-                    <div className="mt-2.5 flex items-center gap-1.5 justify-center py-2">
+                    <div className="flex items-center gap-1.5 justify-center py-2 flex-shrink-0">
                       <Check
                         size={12}
-                        strokeWidth={2}
-                        className="text-[#00d4aa]"
+                        strokeWidth={2.5}
+                        className="text-[#059669]"
                       />
-                      <span className="text-[12px] text-[#00d4aa] font-medium">
+                      <span className={`${isMobile ? 'text-[14px]' : 'text-[12px]'} text-[#059669] font-medium`}>
                         Submitted
                       </span>
                     </div>
-                  ) : (
+                  ) : allDone(project.slug) ? (
                     <button
-                      onClick={async () => {
+                      onClick={async (e) => {
                         if (submitting[project.slug]) return;
+                        fireConfetti(e.currentTarget, true);
                         setSubmitting((prev) => ({
                           ...prev,
                           [project.slug]: true,
@@ -1436,188 +1991,505 @@ export default function Home() {
                           [project.slug]: true,
                         }));
                       }}
-                      disabled={
-                        !allDone(project.slug) || submitting[project.slug]
-                      }
-                      className={`mt-2.5 w-full h-8 rounded-[8px] text-[12px] font-medium transition-all duration-150 ${
-                        allDone(project.slug) && !submitting[project.slug]
-                          ? "bg-primary text-white hover:brightness-110"
-                          : "bg-surface-2 text-muted/40 cursor-not-allowed"
-                      }`}
+                      disabled={submitting[project.slug]}
+                      className={`mt-3 w-full ${isMobile ? 'h-11' : 'h-9'} rounded-[8px] ${isMobile ? 'text-[14px]' : 'text-[12px]'} font-medium transition-all duration-150 bg-primary text-white hover:brightness-110 flex-shrink-0`}
                     >
-                      {submitting[project.slug]
-                        ? "Submitting..."
-                        : allDone(project.slug)
-                          ? "Submit everything"
-                          : `${project.steps.length - completedCount} remaining`}
+                      {submitting[project.slug] ? "Submitting..." : "Submit"}
                     </button>
-                  )}
+                  ) : null}
                 </div>
+              </div>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Bottom — unified command bar */}
-      <div className="flex-shrink-0 px-6 pb-5 pt-3">
-        <div className="max-w-[720px] mx-auto">
-          <div className="rounded-[16px] border border-border bg-card overflow-hidden">
-            {/* Chat messages — flows upward from input */}
-            {(chatMessages.length > 0 || chatLoading) && (
-              <div
-                ref={chatScrollRef}
-                className="max-h-[200px] overflow-y-auto px-5 pt-4 pb-3 space-y-3"
-                style={{ scrollbarWidth: "none" }}
-              >
-                {chatMessages.map((msg, i) => (
-                  <div key={i} className="flex gap-3">
+      {/* Floating status layer — step completions float between cards and control panel */}
+      <div className="flex-shrink-0 relative" style={{ height: 0 }}>
+        <div
+          className="absolute bottom-1 left-0 right-0 flex flex-col items-center gap-0.5 pointer-events-none"
+          style={{ transition: 'opacity 150ms ease-out', opacity: statusMessages.length > 0 ? 1 : 0 }}
+        >
+          {statusMessages.slice(-3).map((msg, i) => (
+            <div
+              key={`${focusedProject?.slug}-${i}`}
+              className="flex items-center gap-1.5"
+              style={{
+                animation: 'statusFadeIn 300ms ease-out both',
+                animationDelay: `${i * 50}ms`,
+              }}
+            >
+              <Check size={10} strokeWidth={2} style={{ color: 'rgba(5,150,105,0.45)' }} />
+              <span className="text-[11px] leading-[1.6]" style={{ color: 'rgba(120,113,108,0.45)' }}>
+                {msg.text}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* First-visit hint — mobile bottom text */}
+      {showHint && isMobile && (
+        <div
+          className="flex-shrink-0 flex justify-center pointer-events-none"
+          style={{
+            animation: 'statusFadeIn 400ms ease-out both',
+            opacity: 0.5,
+            transition: 'opacity 300ms ease-out',
+          }}
+        >
+          <span className="text-[11px]" style={{ color: '#a8a29e' }}>
+            Swipe to browse {'\u00b7'} Tap to explore
+          </span>
+        </div>
+      )}
+
+      {/* Context card — persistent left panel (desktop only) */}
+      {showContextCard && (
+        <div
+          className="fixed z-10 pointer-events-none"
+          style={{
+            left: 48,
+            top: '50%',
+            transform: 'translateY(-52%)',
+            width: leftSpace - 72,
+            maxWidth: 280,
+          }}
+        >
+          <div
+            className="rounded-[12px] overflow-hidden"
+            style={{ background: '#ffffff', border: '1px solid #e7e5e4' }}
+          >
+            {showHint ? (
+              /* Welcome / onboarding state */
+              <div key="welcome" className="p-5" style={{ animation: 'coachFadeIn 500ms ease-out both', animationDelay: '200ms' }}>
+                <div className="text-[24px] font-medium tracking-[-0.03em] leading-[1.15]" style={{ color: '#1a1a1a' }}>
+                  Viberr
+                </div>
+                <p className="text-[12px] leading-[1.6] mt-2" style={{ color: '#78716c' }}>
+                  12 projects built and ready to ship.
+                </p>
+
+                <div className="mt-5" style={{ height: 1, background: '#e7e5e4' }} />
+
+                <div className="mt-5 flex flex-col gap-4">
+                  {[
+                    { num: '01', label: 'Browse', desc: 'Scroll or arrow keys' },
+                    { num: '02', label: 'Preview', desc: 'Live interactive demos' },
+                    { num: '03', label: 'Customize', desc: 'Configure and submit' },
+                    { num: '04', label: 'Ask', desc: '\u2318K for AI assistance' },
+                  ].map((step, i) => (
                     <div
-                      className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
-                      style={{
-                        background:
-                          msg.from === "user" ? "#635bff" : "#f5f5f4",
-                      }}
+                      key={step.num}
+                      className="flex items-start gap-2.5"
+                      style={{ animation: 'coachFadeIn 400ms ease-out both', animationDelay: `${400 + i * 100}ms` }}
                     >
-                      {msg.from === "user" ? (
-                        <span className="text-[9px] font-semibold text-white">
-                          Y
-                        </span>
-                      ) : (
-                        <span className="text-[9px] font-semibold text-muted">
-                          V
-                        </span>
-                      )}
-                    </div>
-                    <div
-                      className={`flex-1 text-[13px] leading-[1.6] min-w-0 ${
-                        msg.from === "user"
-                          ? "text-foreground"
-                          : "text-foreground/70"
-                      }`}
-                    >
-                      {msg.from === "user"
-                        ? msg.text
-                        : msg.text.split("\n").map((line, li) => (
-                            <span key={li}>
-                              {renderMarkdown(line)}
-                              {li < msg.text.split("\n").length - 1 && <br />}
-                            </span>
-                          ))}
-                    </div>
-                  </div>
-                ))}
-                {chatLoading && (
-                  <div className="flex gap-3">
-                    <div
-                      className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
-                      style={{ background: "#f5f5f4" }}
-                    >
-                      <span className="text-[9px] font-semibold text-muted">
-                        V
+                      <span className="text-[10px] tabular-nums leading-none flex-shrink-0" style={{ color: '#d6d3d1', marginTop: 2 }}>
+                        {step.num}
                       </span>
+                      <div>
+                        <span className="text-[12px] font-medium leading-none" style={{ color: '#1a1a1a' }}>{step.label}</span>
+                        <p className="text-[11px] leading-[1.4] mt-0.5" style={{ color: '#a8a29e' }}>{step.desc}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 pt-1.5">
-                      <div
-                        className="w-1 h-1 rounded-full bg-muted/40"
-                        style={{
-                          animation: "pulse 1s ease-in-out infinite",
-                        }}
-                      />
-                      <div
-                        className="w-1 h-1 rounded-full bg-muted/40"
-                        style={{
-                          animation: "pulse 1s ease-in-out 0.15s infinite",
-                        }}
-                      />
-                      <div
-                        className="w-1 h-1 rounded-full bg-muted/40"
-                        style={{
-                          animation: "pulse 1s ease-in-out 0.3s infinite",
-                        }}
-                      />
-                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : focusedProject ? (
+              /* Per-project context state */
+              <div key={focusedProject.slug} className="p-5" style={{ animation: 'coachFadeIn 250ms ease-out both' }}>
+                {/* Type + code */}
+                <div className="flex items-center gap-2">
+                  <FocusedTypeIcon size={12} strokeWidth={1.5} style={{ color: '#a8a29e' }} />
+                  <span className="text-[10px] tracking-[0.05em] uppercase" style={{ color: '#a8a29e' }}>
+                    {focusedProject.type}
+                  </span>
+                  <span className="text-[10px] tabular-nums ml-auto" style={{ color: '#d6d3d1' }}>
+                    {focusedProject.code}
+                  </span>
+                </div>
+
+                {/* Description */}
+                <p className="text-[11px] leading-[1.5] mt-2.5" style={{ color: '#78716c' }}>
+                  {focusedProject.description}
+                </p>
+
+                {/* What you'll need — step preview with type tags */}
+                <div className="mt-4">
+                  <span className="text-[10px] tracking-[0.05em] uppercase" style={{ color: '#a8a29e' }}>
+                    What you{'\u2019'}ll need
+                  </span>
+                  <ul className="mt-2.5 space-y-2">
+                    {focusedProject.steps.map((step, i) => {
+                      const done = state[focusedProject.slug]?.[i]?.completed;
+                      const typeLabel = step.type === 'upload' ? 'file' : step.type === 'choice' ? 'select' : step.type === 'input' ? 'text' : '';
+                      return (
+                        <li key={i} className="flex items-start gap-2">
+                          {done ? (
+                            <Check size={10} strokeWidth={2.5} className="flex-shrink-0 mt-[2px]" style={{ color: '#059669' }} />
+                          ) : (
+                            <span className="w-1 h-1 rounded-full flex-shrink-0 mt-[5px]" style={{ background: '#d6d3d1' }} />
+                          )}
+                          <span className="flex-1 min-w-0 flex items-baseline gap-1.5">
+                            <span
+                              className={`text-[12px] leading-[1.4] ${done ? 'line-through' : ''}`}
+                              style={{ color: done ? '#a8a29e' : '#525252' }}
+                            >
+                              {step.label}
+                            </span>
+                            {!done && typeLabel && (
+                              <span className="text-[9px] flex-shrink-0" style={{ color: '#d6d3d1' }}>
+                                {typeLabel}
+                              </span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+
+                {/* Divider */}
+                <div className="mt-4 mb-3" style={{ height: 1, background: '#e7e5e4' }} />
+
+                {/* Status + estimate */}
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px]" style={{ color: focusedSubmitted ? '#059669' : focusedCompleted === focusedTotal ? '#4f46e5' : '#a8a29e' }}>
+                    {focusedSubmitted
+                      ? 'Submitted'
+                      : focusedCompleted === focusedTotal
+                        ? 'Ready to submit'
+                        : `${focusedCompleted}/${focusedTotal} configured`}
+                  </span>
+                  <span className="text-[11px] tabular-nums" style={{ color: '#d6d3d1' }}>
+                    ${focusedProject.estimate.toLocaleString()}
+                  </span>
+                </div>
+
+                {/* Chat thread indicator */}
+                {(chatBySlug[focusedProject.slug]?.length ?? 0) > 0 && (
+                  <div className="flex items-center gap-1.5 mt-2.5">
+                    <div className="w-1 h-1 rounded-full" style={{ background: '#4f46e5' }} />
+                    <span className="text-[10px]" style={{ color: '#a8a29e' }}>
+                      {chatBySlug[focusedProject.slug].filter(m => !isStatusMsg(m.text)).length} messages
+                    </span>
                   </div>
                 )}
+
+                {/* Start button — interactive */}
+                {!focusedSubmitted && (
+                  <button
+                    onClick={() => setOpenDrawer(focusedProject.slug)}
+                    className="mt-3 w-full h-8 rounded-[6px] flex items-center justify-center text-[11px] font-medium transition-colors duration-150 pointer-events-auto"
+                    style={{
+                      color: focusedCompleted === focusedTotal ? '#ffffff' : '#525252',
+                      background: focusedCompleted === focusedTotal ? '#4f46e5' : '#f5f5f4',
+                      border: focusedCompleted === focusedTotal ? 'none' : '1px solid #e7e5e4',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (focusedCompleted !== focusedTotal) {
+                        e.currentTarget.style.borderColor = '#4f46e5';
+                        e.currentTarget.style.color = '#4f46e5';
+                      } else {
+                        e.currentTarget.style.filter = 'brightness(1.1)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (focusedCompleted !== focusedTotal) {
+                        e.currentTarget.style.borderColor = '#e7e5e4';
+                        e.currentTarget.style.color = '#525252';
+                      } else {
+                        e.currentTarget.style.filter = 'none';
+                      }
+                    }}
+                  >
+                    {focusedCompleted === focusedTotal ? 'Submit' : focusedCompleted > 0 ? 'Continue' : 'Start'}
+                  </button>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Tilt-to-browse discovery toast */}
+      {showTiltHint && (
+        <div
+          className="fixed top-12 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-[8px]"
+          style={{
+            background: 'rgba(25,25,25,0.85)',
+            animation: 'statusFadeIn 300ms ease-out both',
+          }}
+        >
+          <span className="text-[12px] text-white/90 whitespace-nowrap">Tilt to browse</span>
+        </div>
+      )}
+
+      {/* Bottom — Viberr control panel */}
+      <div className="flex-shrink-0 pt-2" style={{ padding: isMobile ? '8px 12px calc(12px + env(safe-area-inset-bottom, 0px))' : '8px 16px 16px', transform: keyboardOffset > 0 ? `translateY(-${keyboardOffset}px)` : 'none', transition: 'transform 150ms ease-out' }}>
+        <div style={isMobile ? { width: '100%' } : { width: '50vw', minWidth: 360, maxWidth: 800, margin: '0 auto' }}>
+          <div className="rounded-[8px] overflow-hidden" style={{ border: '1px solid #e7e5e4', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+
+            {/* Chat messages — expands above when active */}
+            {(chatMessages.length > 0 || chatLoading) && (
+              <div style={{ background: '#ffffff', borderBottom: '1px solid #e7e5e4' }}>
+                <div
+                  ref={chatScrollRef}
+                  className="overflow-y-auto px-4 pt-3 pb-2.5 space-y-2.5"
+                  style={{ maxHeight: 'min(200px, 30vh)', scrollbarWidth: 'none' }}
+                >
+                  {chatMessages.map((msg, i) => (
+                    <div key={i} className="flex gap-2.5">
+                      <div
+                        className={`flex-shrink-0 ${isMobile ? 'w-[20px] h-[20px]' : 'w-[18px] h-[18px]'} rounded-full flex items-center justify-center mt-0.5`}
+                        style={{ background: msg.from === "user" ? "#4f46e5" : "#e7e5e4" }}
+                      >
+                        {msg.from === "user" ? (
+                          <span className={`${isMobile ? 'text-[10px]' : 'text-[8px]'} font-semibold text-white`}>Y</span>
+                        ) : (
+                          <span className={`${isMobile ? 'text-[10px]' : 'text-[8px]'} font-semibold`} style={{ color: '#78716c' }}>V</span>
+                        )}
+                      </div>
+                      <div
+                        className={`flex-1 ${isMobile ? 'text-[15px]' : 'text-[13px]'} leading-[1.55] min-w-0 ${
+                          msg.from === "user" ? "text-foreground" : "text-secondary-foreground"
+                        }`}
+                      >
+                        {msg.from === "user"
+                          ? msg.text
+                          : msg.text.split("\n").map((line, li) => (
+                              <span key={li}>
+                                {renderMarkdown(line)}
+                                {li < msg.text.split("\n").length - 1 && <br />}
+                              </span>
+                            ))}
+                      </div>
+                    </div>
+                  ))}
+                  {chatLoading && (
+                    <div className="flex gap-2.5">
+                      <div
+                        className={`flex-shrink-0 ${isMobile ? 'w-[20px] h-[20px]' : 'w-[18px] h-[18px]'} rounded-full flex items-center justify-center`}
+                        style={{ background: "#e7e5e4" }}
+                      >
+                        <span className={`${isMobile ? 'text-[10px]' : 'text-[8px]'} font-semibold`} style={{ color: '#78716c' }}>V</span>
+                      </div>
+                      <div className="flex items-center gap-[3px] pt-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#c4c0bc', animation: "pulse 1s ease-in-out infinite" }} />
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#c4c0bc', animation: "pulse 1s ease-in-out 0.15s infinite" }} />
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#c4c0bc', animation: "pulse 1s ease-in-out 0.3s infinite" }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Divider between messages and input */}
-            {(chatMessages.length > 0 || chatLoading) && (
-              <div className="mx-5 border-t border-border" />
-            )}
-
-            {/* Input row — nav + textarea + actions */}
-            <div className="flex items-end gap-2 px-3 py-2.5">
-              {/* Nav cluster */}
-              <div className="flex items-center flex-shrink-0 self-center">
-                <button
-                  onClick={() => scrollBy(-1)}
-                  className="w-7 h-7 rounded-[6px] flex items-center justify-center text-muted/40 hover:text-foreground hover:bg-surface transition-all duration-150"
+            {/* Input row — logo + textarea + actions */}
+            <div
+              className="flex items-center gap-2 px-3"
+              style={{ background: '#ffffff', minHeight: 50 }}
+            >
+              {/* Living brand mark */}
+              <div
+                className="flex-shrink-0 relative cursor-pointer"
+                onMouseEnter={() => setLogoExpanded(true)}
+                onMouseLeave={() => setLogoExpanded(false)}
+                onClick={() => setLogoExpanded((p) => !p)}
+              >
+                <div
+                  className="flex items-center overflow-hidden"
+                  style={{
+                    height: 24,
+                    width: logoExpanded ? 64 : 24,
+                    borderRadius: 12,
+                    background: '#4f46e5',
+                    paddingRight: logoExpanded ? 8 : 0,
+                    transition: 'width 280ms cubic-bezier(0.175, 0.885, 0.32, 1.275), padding 280ms cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    animation: 'logoBreath 4s ease-in-out infinite',
+                  }}
                 >
-                  <ChevronLeft size={14} strokeWidth={1.5} />
-                </button>
-                <span className="text-[10px] tabular-nums text-muted/40 w-8 text-center select-none">
-                  {focusedIndex + 1}/{projects.length}
-                </span>
-                <button
-                  onClick={() => scrollBy(1)}
-                  className="w-7 h-7 rounded-[6px] flex items-center justify-center text-muted/40 hover:text-foreground hover:bg-surface transition-all duration-150"
-                >
-                  <ChevronRight size={14} strokeWidth={1.5} />
-                </button>
+                  <div className="flex items-center justify-center flex-shrink-0" style={{ width: 24, height: 24 }}>
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                      <path d="M3 3L8 13L13 3" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: 'rgba(255,255,255,0.9)',
+                      letterSpacing: '0.02em',
+                      whiteSpace: 'nowrap',
+                      opacity: logoExpanded ? 1 : 0,
+                      transition: 'opacity 180ms ease-out',
+                      marginLeft: -2,
+                    }}
+                  >
+                    viberr
+                  </span>
+                </div>
+                <div style={{ position: 'absolute', bottom: -1, right: -1, width: 6, height: 6, borderRadius: '50%', background: '#059669', border: '1.5px solid #ffffff', transition: 'right 280ms cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
               </div>
 
               {/* Divider */}
-              <div className="w-px h-5 bg-border flex-shrink-0 self-center" />
+              <div className="w-px self-stretch my-2.5" style={{ background: '#e7e5e4' }} />
 
               {/* Textarea */}
-              <div className="flex-1 flex items-end gap-2 min-w-0 py-0.5">
-                <textarea
-                  ref={chatInputRef}
-                  value={chatValue}
-                  onChange={(e) => {
-                    setChatValue(e.target.value);
-                    e.target.style.height = "auto";
-                    e.target.style.height =
-                      Math.min(e.target.scrollHeight, 120) + "px";
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      sendChat();
-                    }
-                  }}
-                  placeholder={`Ask about ${focusedProject?.name ?? "this project"}...`}
-                  rows={1}
-                  className="flex-1 text-[13px] text-foreground placeholder:text-muted/30 bg-transparent focus:outline-none resize-none leading-[1.5] min-w-0"
-                  style={{ minHeight: 22, maxHeight: 120 }}
-                />
+              <textarea
+                ref={chatInputRef}
+                value={chatValue}
+                onChange={(e) => {
+                  setChatValue(e.target.value);
+                  e.target.style.height = "auto";
+                  e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendChat();
+                  }
+                }}
+                placeholder={`Ask about ${focusedProject?.name ?? "this project"}...`}
+                rows={1}
+                className={`flex-1 ${isMobile ? 'text-[15px]' : 'text-[13px]'} resize-none leading-[1.5] min-w-0 py-3`}
+                style={{
+                  minHeight: 20,
+                  maxHeight: 120,
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: '#1a1a1a',
+                }}
+              />
+
+              {/* Mic */}
+              <button
+                onClick={toggleRecording}
+                className="w-7 h-7 rounded-[5px] flex items-center justify-center flex-shrink-0 transition-all duration-150"
+                style={{
+                  color: isRecording ? '#ffffff' : '#c4c0bc',
+                  background: isRecording ? '#dc2626' : 'transparent',
+                }}
+                onMouseEnter={(e) => { if (!isRecording) e.currentTarget.style.color = '#1a1a1a'; }}
+                onMouseLeave={(e) => { if (!isRecording) e.currentTarget.style.color = '#c4c0bc'; }}
+              >
+                {isRecording ? (
+                  <Square size={10} strokeWidth={2} />
+                ) : (
+                  <Mic size={14} strokeWidth={1.5} />
+                )}
+              </button>
+
+              {/* Send */}
+              <button
+                onClick={() => sendChat()}
+                disabled={!chatValue.trim() || chatLoading}
+                className="w-7 h-7 rounded-[5px] flex items-center justify-center text-white flex-shrink-0 transition-all duration-150"
+                style={{
+                  background: '#4f46e5',
+                  opacity: (!chatValue.trim() || chatLoading) ? 0.15 : 1,
+                }}
+              >
+                <SendHorizontal size={13} strokeWidth={2} />
+              </button>
+            </div>
+
+            {/* Chrome — chips/meta + nav + shortcut */}
+            <div
+              className="flex items-center justify-between px-3"
+              style={{ background: '#f0efee', height: 37, borderTop: '1px solid #e7e5e4' }}
+            >
+              {/* Left — smart chips or project meta */}
+              <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                {chatMessages.length === 0 && !chatLoading ? (
+                  <>
+                    {(focusedProject?.type === "Workflow"
+                      ? [
+                          { label: "Summarize", prompt: `Give me a concise summary of the ${focusedProject.name} workflow — what it does, who it's for, and the key automation steps.` },
+                          { label: "Integrations", prompt: `What third-party integrations and APIs would ${focusedProject.name} need? List each with its purpose.` },
+                          { label: "Scope", prompt: `Break down the $${focusedProject.estimate.toLocaleString()} estimate for ${focusedProject.name} into line items with rough cost allocation.` },
+                        ]
+                      : [
+                          { label: "Features", prompt: `List the core features of ${focusedProject.name} and explain what each one does for the end user.` },
+                          { label: "UX", prompt: `Describe the ideal user experience for ${focusedProject.name} — from first visit to key actions.` },
+                          { label: "Scope", prompt: `Break down the $${focusedProject.estimate.toLocaleString()} estimate for ${focusedProject.name} into line items with rough cost allocation.` },
+                        ]
+                    ).map((action) => (
+                      <button
+                        key={action.label}
+                        onClick={() => sendChat(action.prompt)}
+                        className={`${isMobile ? 'text-[12px]' : 'text-[10px]'} px-2 py-0.5 rounded flex items-center gap-1 flex-shrink-0 transition-all duration-150`}
+                        style={{ color: '#78716c', background: 'transparent' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#e7e5e4'; e.currentTarget.style.color = '#1a1a1a'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#78716c'; }}
+                      >
+                        <Zap size={9} strokeWidth={1.5} />
+                        {action.label}
+                      </button>
+                    ))}
+                  </>
+                ) : (
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className={`${isMobile ? 'text-[12px]' : 'text-[10px]'} truncate`} style={{ color: '#a8a29e' }}>
+                      {focusedProject?.type} · ${focusedProject?.estimate.toLocaleString()} · {focusedProject?.name}
+                    </span>
+                    <button
+                      onClick={() => {
+                        if (focusedProject) {
+                          setChatBySlug(prev => ({ ...prev, [focusedProject.slug]: [] }));
+                        }
+                      }}
+                      className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors duration-150"
+                      style={{ color: '#c4c0bc' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = '#1a1a1a'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = '#c4c0bc'; }}
+                    >
+                      <X size={10} strokeWidth={2} />
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Action buttons */}
-              <div className="flex items-center gap-1 flex-shrink-0 self-center">
-                <button
-                  onClick={toggleRecording}
-                  className={`w-7 h-7 rounded-[6px] flex items-center justify-center transition-all duration-150 ${
-                    isRecording
-                      ? "bg-destructive text-white"
-                      : "text-muted/30 hover:text-muted hover:bg-surface"
-                  }`}
-                >
-                  {isRecording ? (
-                    <Square size={10} strokeWidth={2} />
-                  ) : (
-                    <Mic size={14} strokeWidth={1.5} />
-                  )}
-                </button>
-                <button
-                  onClick={() => sendChat()}
-                  disabled={!chatValue.trim() || chatLoading}
-                  className="w-7 h-7 rounded-[6px] bg-primary flex items-center justify-center text-white disabled:opacity-15 hover:brightness-110 transition-all duration-150"
-                >
-                  <SendHorizontal size={13} strokeWidth={2} />
-                </button>
+              {/* Right — nav + shortcut */}
+              <div className="flex items-center gap-0.5 flex-shrink-0 ml-2">
+                {!isMobile && (
+                  <>
+                    <button
+                      onClick={() => scrollBy(-1)}
+                      className="w-6 h-6 rounded flex items-center justify-center transition-all duration-150"
+                      style={{ color: '#a8a29e' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#1a1a1a')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = '#a8a29e')}
+                    >
+                      <ChevronLeft size={13} strokeWidth={1.5} />
+                    </button>
+                    <button
+                      onClick={() => scrollBy(1)}
+                      className="w-6 h-6 rounded flex items-center justify-center transition-all duration-150"
+                      style={{ color: '#a8a29e' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#1a1a1a')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = '#a8a29e')}
+                    >
+                      <ChevronRight size={13} strokeWidth={1.5} />
+                    </button>
+                  </>
+                )}
+                <span className={`${isMobile ? 'text-[12px]' : 'text-[10px]'} tabular-nums select-none ml-0.5`} style={{ color: '#c4c0bc' }}>
+                  {focusedIndex + 1}/{projects.length}
+                </span>
+                {!isMobile && (
+                  <button
+                    onClick={() => chatInputRef.current?.focus()}
+                    className="text-[9px] px-1 py-px rounded select-none transition-all duration-150 ml-1.5"
+                    style={{ color: '#c4c0bc', border: '1px solid #ddd8d4' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = '#78716c'; e.currentTarget.style.borderColor = '#c4c0bc'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = '#c4c0bc'; e.currentTarget.style.borderColor = '#ddd8d4'; }}
+                  >
+                    ⌘K
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1630,30 +2502,43 @@ export default function Home() {
           className="fixed inset-0 z-50 flex flex-col"
           style={{ background: "rgba(25, 25, 25, 0.96)" }}
         >
-          {/* Fullscreen header */}
-          <div className="flex items-center justify-between px-6 py-3 flex-shrink-0">
+          {/* Fullscreen browser chrome */}
+          <div className="flex items-center gap-2 px-4 flex-shrink-0" style={{ height: 40, background: 'rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <button
-              onClick={() => setPreviewMode("desktop")}
-              className="flex items-center gap-1.5 text-[12px] text-white/60 hover:text-white transition-colors duration-150"
+              onClick={() => {
+                if (isMobile) { setPreviewSlug(null); setPreviewMode(null); }
+                else setPreviewMode("desktop");
+              }}
+              className="w-3 h-3 rounded-full flex-shrink-0 transition-opacity duration-150 hover:opacity-80"
+              style={{ background: '#dc2626' }}
+            />
+            <a
+              href={`https://${SITE_DOMAIN}/${previewSlug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 h-[24px] rounded-[4px] min-w-0 transition-colors duration-150 hover:bg-white/10"
+              style={{ background: 'rgba(255,255,255,0.06)' }}
             >
-              <ArrowLeft size={14} strokeWidth={1.5} />
-              Back
-            </button>
-            <span className="text-[12px] text-white/40">
-              {projects.find((p) => p.slug === previewSlug)?.name}
-            </span>
+              <Lock size={9} strokeWidth={2} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+              <span className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                {SITE_DOMAIN}/{previewSlug}
+              </span>
+            </a>
             <a
               href={`/${previewSlug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[12px] text-white/40 hover:text-white/60 transition-colors duration-150"
+              className="text-[11px] flex-shrink-0 transition-colors duration-150"
+              style={{ color: 'rgba(255,255,255,0.4)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; }}
             >
               Open
             </a>
           </div>
 
           {/* Fullscreen iframe */}
-          <div className="flex-1 mx-6 mb-6 rounded-[8px] overflow-hidden">
+          <div className="flex-1 overflow-hidden" style={isMobile ? { borderRadius: 0 } : { margin: '0 24px 24px', borderRadius: 8 }}>
             <iframe
               src={`/${previewSlug}`}
               className="w-full h-full border-none"

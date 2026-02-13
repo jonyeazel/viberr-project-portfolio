@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 
-const DATA_DIR = path.join(process.cwd(), ".data", "submissions");
+const DATA_DIR = process.env.VERCEL
+  ? path.join("/tmp", "submissions")
+  : path.join(process.cwd(), ".data", "submissions");
 
 async function ensureDir() {
   await fs.mkdir(DATA_DIR, { recursive: true });

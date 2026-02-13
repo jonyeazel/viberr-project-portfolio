@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Search, Send, Check, X, Clock, RefreshCw } from 'lucide-react';
 
@@ -79,7 +79,7 @@ const stageLabels: Record<Contact['dealStage'], string> = {
 };
 
 const stageColors: Record<Contact['dealStage'], string> = {
-  lead: '#737373',
+  lead: 'var(--muted)',
   qualified: 'var(--primary)',
   proposal: 'var(--warning)',
   negotiation: 'var(--warning)',
@@ -212,6 +212,9 @@ function formatCurrency(value: number): string {
 }
 
 export default function OutboundEmailPage() {
+  const [isEmbedded, setIsEmbedded] = useState(false);
+  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
+
   const contacts = useMemo(() => generateContacts(), []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -282,29 +285,32 @@ export default function OutboundEmailPage() {
   };
 
   return (
-    <div className="h-screen w-screen bg-[#fafaf9] text-[#191919] flex flex-col overflow-hidden">
-      <header className="h-12 border-b border-[#e5e5e3] flex items-center px-4 shrink-0 bg-[#fafaf9]">
+    <div className="h-screen w-screen bg-background text-foreground flex flex-col overflow-hidden">
+      {isEmbedded && <div className="flex-shrink-0" style={{ height: 47, background: 'var(--background)' }} />}
+      <header className="h-12 border-b border-border flex items-center gap-4 px-4 shrink-0 bg-background">
         <Link 
           href="/" 
-          className="flex items-center gap-2 text-[#737373] hover:text-[#191919] transition-colors duration-150"
+          onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }}
+          className="flex items-center gap-2 text-[13px] text-muted hover:text-foreground transition-colors duration-150"
         >
           <ArrowLeft size={16} strokeWidth={1.5} />
-          <span className="text-[13px]">Back</span>
+          Back
         </Link>
-        <span className="ml-6 text-[15px] font-medium">Outbound Email</span>
+        <div className="w-px h-4 bg-border" />
+        <span className="text-[15px] font-medium">Outbound Email</span>
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        <aside className={`w-full md:w-80 border-r border-[#e5e5e3] flex flex-col shrink-0 bg-[#fafaf9] ${selectedId ? 'hidden md:flex' : 'flex'}`}>
-          <div className="p-3 border-b border-[#e5e5e3]">
+        <aside className={`w-full md:w-80 md:shrink-0 border-r border-border flex flex-col bg-background ${selectedId ? 'hidden md:flex' : 'flex'}`}>
+          <div className="p-3 border-b border-border">
             <div className="relative">
-              <Search size={16} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#737373]" />
+              <Search size={16} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 type="text"
                 placeholder="Search contacts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-9 pl-9 pr-3 bg-[#f5f5f4] border border-[#e5e5e3] rounded text-[13px] text-[#191919] placeholder-[#737373] focus:outline-none focus:border-primary transition-colors duration-150"
+                className="w-full h-9 pl-9 pr-3 bg-secondary border border-border rounded text-[13px] text-foreground placeholder-muted focus:outline-none focus:border-primary transition-colors duration-150"
               />
             </div>
           </div>
@@ -316,18 +322,18 @@ export default function OutboundEmailPage() {
                   setSelectedId(contact.id);
                   setActiveTab('context');
                 }}
-                className={`w-full text-left px-4 py-3 border-b border-[#e5e5e3] transition-colors duration-150 ${
+                className={`w-full text-left px-4 py-3 border-b border-border transition-colors duration-150 ${
                   selectedId === contact.id 
-                    ? 'bg-[#eeeeec]' 
-                    : 'hover:bg-[#f5f5f4]'
+                    ? 'bg-surface-2' 
+                    : 'hover:bg-secondary'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="text-[13px] font-medium truncate">{contact.name}</div>
-                    <div className="text-[11px] text-[#737373] truncate mt-0.5">{contact.company}</div>
+                    <div className="text-[11px] text-muted truncate mt-0.5">{contact.company}</div>
                   </div>
-                  <div className="text-[13px] font-medium text-[#191919] shrink-0">
+                  <div className="text-[13px] font-medium text-foreground shrink-0">
                     {formatCurrency(contact.dealValue)}
                   </div>
                 </div>
@@ -336,36 +342,36 @@ export default function OutboundEmailPage() {
                     className="text-[11px] px-1.5 py-0.5 rounded"
                     style={{ 
                       color: stageColors[contact.dealStage],
-                      backgroundColor: `${stageColors[contact.dealStage]}10`
+                      backgroundColor: `${stageColors[contact.dealStage]}14`
                     }}
                   >
                     {stageLabels[contact.dealStage]}
                   </span>
-                  <span className="text-[11px] text-[#737373]">{formatDate(contact.lastActivity)}</span>
+                  <span className="text-[11px] text-muted">{formatDate(contact.lastActivity)}</span>
                 </div>
               </button>
             ))}
           </div>
         </aside>
 
-        <main className={`flex-1 flex flex-col overflow-hidden bg-[#fafaf9] ${selectedId ? 'flex' : 'hidden md:flex'}`}>
+        <main className={`flex-1 flex flex-col overflow-hidden bg-background ${selectedId ? 'flex' : 'hidden md:flex'}`}>
           {selectedContact ? (
             <>
-              <div className="px-4 md:px-6 py-4 border-b border-[#e5e5e3] shrink-0">
+              <div className="px-4 md:px-6 py-4 border-b border-border shrink-0">
                 <div className="flex items-start justify-between">
                   <div>
                     <button
                       onClick={() => setSelectedId(null)}
-                      className="md:hidden flex items-center gap-1.5 text-[13px] text-[#737373] hover:text-[#191919] mb-2 transition-colors duration-150"
+                      className="md:hidden flex items-center gap-1.5 text-[13px] text-muted hover:text-foreground mb-2 transition-colors duration-150"
                     >
                       <ArrowLeft size={14} strokeWidth={1.5} />
                       All contacts
                     </button>
                     <h1 className="text-[18px] font-medium">{selectedContact.name}</h1>
-                    <div className="text-[13px] text-[#737373] mt-1">
+                    <div className="text-[13px] text-muted mt-1">
                       {selectedContact.role} at {selectedContact.company}
                     </div>
-                    <div className="text-[11px] text-[#737373] mt-0.5">
+                    <div className="text-[11px] text-muted mt-0.5">
                       {selectedContact.email}
                     </div>
                   </div>
@@ -375,7 +381,7 @@ export default function OutboundEmailPage() {
                       className="inline-block text-[11px] px-1.5 py-0.5 rounded mt-1"
                       style={{ 
                         color: stageColors[selectedContact.dealStage],
-                        backgroundColor: `${stageColors[selectedContact.dealStage]}10`
+                        backgroundColor: `${stageColors[selectedContact.dealStage]}14`
                       }}
                     >
                       {stageLabels[selectedContact.dealStage]}
@@ -384,15 +390,15 @@ export default function OutboundEmailPage() {
                 </div>
               </div>
 
-              <div className="flex border-b border-[#e5e5e3] shrink-0 px-6">
+              <div className="flex border-b border-border shrink-0 px-6 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
                 {(['context', 'draft', 'review'] as TabType[]).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-3 text-[13px] transition-colors duration-150 border-b-2 -mb-px ${
+                    className={`px-3 py-3 text-[13px] transition-colors duration-150 border-b-2 -mb-px whitespace-nowrap shrink-0 ${
                       activeTab === tab
-                        ? 'text-[#191919] border-[#191919]'
-                        : 'text-[#737373] border-transparent hover:text-[#191919]'
+                        ? 'text-foreground border-foreground'
+                        : 'text-muted border-transparent hover:text-foreground'
                     }`}
                   >
                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -404,50 +410,50 @@ export default function OutboundEmailPage() {
                 {activeTab === 'context' && (
                   <div className="p-6 max-w-3xl">
                     <section className="mb-8">
-                      <div className="text-[11px] text-[#737373] uppercase tracking-wide mb-3">CRM Notes</div>
+                      <div className="text-[11px] text-muted uppercase tracking-wide mb-3">CRM Notes</div>
                       <div className="space-y-4">
                         {selectedContact.notes.map(note => (
-                          <div key={note.id} className="border-l-2 border-[#e5e5e3] pl-4">
+                          <div key={note.id} className="border-l-2 border-border pl-4">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-[13px] font-medium">{note.author}</span>
-                              <span className="text-[11px] text-[#737373]">{formatDateFull(note.date)}</span>
+                              <span className="text-[11px] text-muted">{formatDateFull(note.date)}</span>
                             </div>
-                            <p className="text-[13px] leading-relaxed text-[#191919]">{note.content}</p>
+                            <p className="text-[13px] leading-relaxed text-foreground">{note.content}</p>
                           </div>
                         ))}
                       </div>
                     </section>
 
                     <section className="mb-8">
-                      <div className="text-[11px] text-[#737373] uppercase tracking-wide mb-3">Email History</div>
+                      <div className="text-[11px] text-muted uppercase tracking-wide mb-3">Email History</div>
                       <div className="space-y-3">
                         {selectedContact.priorEmails.map(email => (
-                          <div key={email.id} className="bg-[#f5f5f4] rounded p-3">
+                          <div key={email.id} className="bg-secondary rounded p-3">
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-[13px] font-medium">{email.subject}</span>
-                              <span className="text-[11px] text-[#737373]">{formatDateFull(email.date)}</span>
+                              <span className="text-[11px] text-muted">{formatDateFull(email.date)}</span>
                             </div>
                             <div className="flex items-center gap-2 mb-2">
-                              <span className={`text-[11px] ${email.direction === 'inbound' ? 'text-primary' : 'text-[#737373]'}`}>
+                              <span className={`text-[11px] ${email.direction === 'inbound' ? 'text-primary' : 'text-muted'}`}>
                                 {email.direction === 'inbound' ? 'Received' : 'Sent'}
                               </span>
                             </div>
-                            <p className="text-[13px] text-[#737373] leading-relaxed">{email.snippet}</p>
+                            <p className="text-[13px] text-muted leading-relaxed">{email.snippet}</p>
                           </div>
                         ))}
                       </div>
                     </section>
 
                     <section>
-                      <div className="text-[11px] text-[#737373] uppercase tracking-wide mb-3">Deal History</div>
+                      <div className="text-[11px] text-muted uppercase tracking-wide mb-3">Deal History</div>
                       <div className="space-y-2">
                         {selectedContact.dealHistory.map(event => (
                           <div key={event.id} className="flex items-center gap-3 text-[13px]">
-                            <span className="text-[11px] text-[#737373] w-24 shrink-0">{formatDateFull(event.date)}</span>
-                            <span className="text-[#737373]">{event.fromStage}</span>
-                            <span className="text-[#737373]">→</span>
+                            <span className="text-[11px] text-muted w-24 shrink-0">{formatDateFull(event.date)}</span>
+                            <span className="text-muted">{event.fromStage}</span>
+                            <span className="text-muted">→</span>
                             <span className="font-medium">{event.toStage}</span>
-                            {event.note && <span className="text-[#737373]">· {event.note}</span>}
+                            {event.note && <span className="text-muted">· {event.note}</span>}
                           </div>
                         ))}
                       </div>
@@ -458,23 +464,23 @@ export default function OutboundEmailPage() {
                 {activeTab === 'draft' && (
                   <div className="p-6 h-full flex flex-col max-w-3xl">
                     <div className="flex items-center justify-between mb-3">
-                      <div className="text-[11px] text-[#737373] uppercase tracking-wide">AI-Generated Draft</div>
+                      <div className="text-[11px] text-muted uppercase tracking-wide">AI-Generated Draft</div>
                       <button
                         onClick={handleRegenerate}
-                        className="flex items-center gap-1.5 text-[13px] text-[#737373] hover:text-[#191919] transition-colors duration-150"
+                        className="flex items-center gap-1.5 text-[13px] text-muted hover:text-foreground transition-colors duration-150"
                       >
                         <RefreshCw size={14} strokeWidth={1.5} />
                         Regenerate
                       </button>
                     </div>
-                    <div className="bg-[#f5f5f4] rounded p-4 mb-4">
-                      <div className="text-[11px] text-[#737373] mb-1">To: {selectedContact.email}</div>
-                      <div className="text-[11px] text-[#737373]">Subject: Following up on our conversation</div>
+                    <div className="bg-secondary rounded p-4 mb-4">
+                      <div className="text-[11px] text-muted mb-1">To: {selectedContact.email}</div>
+                      <div className="text-[11px] text-muted">Subject: Following up on our conversation</div>
                     </div>
                     <textarea
                       value={currentDraft}
                       onChange={(e) => handleDraftChange(e.target.value)}
-                      className="flex-1 min-h-[300px] w-full bg-[#f5f5f4] border border-[#e5e5e3] rounded p-4 text-[13px] leading-relaxed resize-none focus:outline-none focus:border-primary transition-colors duration-150"
+                      className="flex-1 min-h-[300px] w-full bg-secondary border border-border rounded p-4 text-[13px] leading-relaxed resize-none focus:outline-none focus:border-primary transition-colors duration-150"
                     />
                   </div>
                 )}
@@ -482,7 +488,7 @@ export default function OutboundEmailPage() {
                 {activeTab === 'review' && (
                   <div className="p-6 max-w-3xl">
                     <div className="flex items-center gap-4 mb-6">
-                      <div className="text-[11px] text-[#737373] uppercase tracking-wide">Status</div>
+                      <div className="text-[11px] text-muted uppercase tracking-wide">Status</div>
                       <span className={`inline-flex items-center gap-1.5 text-[13px] font-medium ${
                         currentStatus === 'approved' ? 'text-success' :
                         currentStatus === 'rejected' ? 'text-destructive' :
@@ -495,16 +501,16 @@ export default function OutboundEmailPage() {
                       </span>
                     </div>
 
-                    <div className="bg-[#f5f5f4] rounded p-4 mb-6">
-                      <div className="text-[11px] text-[#737373] mb-1">To: {selectedContact.email}</div>
-                      <div className="text-[11px] text-[#737373] mb-4">Subject: Following up on our conversation</div>
-                      <div className="text-[13px] leading-relaxed whitespace-pre-line border-t border-[#e5e5e3] pt-4">{currentDraft}</div>
+                    <div className="bg-secondary rounded p-4 mb-6">
+                      <div className="text-[11px] text-muted mb-1">To: {selectedContact.email}</div>
+                      <div className="text-[11px] text-muted mb-4">Subject: Following up on our conversation</div>
+                      <div className="text-[13px] leading-relaxed whitespace-pre-line border-t border-border pt-4">{currentDraft}</div>
                     </div>
 
                     {currentStatus === 'pending' && (
                       <>
                         <div className="mb-4">
-                          <div className="text-[11px] text-[#737373] uppercase tracking-wide mb-2">Reviewer Notes (optional)</div>
+                          <div className="text-[11px] text-muted uppercase tracking-wide mb-2">Reviewer Notes (optional)</div>
                           <textarea
                             value={currentReviewerNote}
                             onChange={(e) => {
@@ -513,10 +519,10 @@ export default function OutboundEmailPage() {
                               }
                             }}
                             placeholder="Add notes for the sender..."
-                            className="w-full h-20 bg-[#f5f5f4] border border-[#e5e5e3] rounded p-3 text-[13px] resize-none focus:outline-none focus:border-primary transition-colors duration-150 placeholder-[#737373]"
+                            className="w-full h-20 bg-secondary border border-border rounded p-3 text-[13px] resize-none focus:outline-none focus:border-primary transition-colors duration-150 placeholder-muted"
                           />
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex flex-wrap gap-3">
                           <button
                             onClick={handleApprove}
                             className="h-10 px-5 bg-success text-white text-[13px] font-medium rounded hover:bg-success/90 transition-colors duration-150 flex items-center gap-2"
@@ -526,13 +532,13 @@ export default function OutboundEmailPage() {
                           </button>
                           <button
                             onClick={handleReject}
-                            className="h-10 px-5 bg-[#f5f5f4] border border-[#e5e5e3] text-[13px] rounded hover:bg-[#eeeeec] transition-colors duration-150"
+                            className="h-10 px-5 bg-secondary border border-border text-[13px] rounded hover:bg-surface-2 transition-colors duration-150"
                           >
                             Reject
                           </button>
                           <button
                             onClick={() => setActiveTab('draft')}
-                            className="h-10 px-5 bg-[#f5f5f4] border border-[#e5e5e3] text-[13px] rounded hover:bg-[#eeeeec] transition-colors duration-150"
+                            className="h-10 px-5 bg-secondary border border-border text-[13px] rounded hover:bg-surface-2 transition-colors duration-150"
                           >
                             Edit Draft
                           </button>
@@ -541,17 +547,17 @@ export default function OutboundEmailPage() {
                     )}
 
                     {currentStatus !== 'pending' && (
-                      <div className="flex gap-3">
+                      <div className="flex flex-wrap gap-3">
                         <button
                           onClick={handleReset}
-                          className="h-10 px-5 bg-[#f5f5f4] border border-[#e5e5e3] text-[13px] rounded hover:bg-[#eeeeec] transition-colors duration-150"
+                          className="h-10 px-5 bg-secondary border border-border text-[13px] rounded hover:bg-surface-2 transition-colors duration-150"
                         >
                           Reset to Pending
                         </button>
                         {currentStatus === 'rejected' && (
                           <button
                             onClick={() => setActiveTab('draft')}
-                            className="h-10 px-5 bg-[#f5f5f4] border border-[#e5e5e3] text-[13px] rounded hover:bg-[#eeeeec] transition-colors duration-150"
+                            className="h-10 px-5 bg-secondary border border-border text-[13px] rounded hover:bg-surface-2 transition-colors duration-150"
                           >
                             Revise Draft
                           </button>
@@ -560,8 +566,8 @@ export default function OutboundEmailPage() {
                     )}
 
                     {currentReviewerNote && currentStatus !== 'pending' && (
-                      <div className="mt-6 p-4 bg-[#f5f5f4] rounded">
-                        <div className="text-[11px] text-[#737373] uppercase tracking-wide mb-2">Reviewer Notes</div>
+                      <div className="mt-6 p-4 bg-secondary rounded">
+                        <div className="text-[11px] text-muted uppercase tracking-wide mb-2">Reviewer Notes</div>
                         <p className="text-[13px]">{currentReviewerNote}</p>
                       </div>
                     )}
@@ -571,17 +577,18 @@ export default function OutboundEmailPage() {
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
-              <div className="w-12 h-12 rounded-full bg-[#f5f5f4] flex items-center justify-center mb-4">
-                <Send size={20} strokeWidth={1.5} className="text-[#737373]" />
+              <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mb-4">
+                <Send size={20} strokeWidth={1.5} className="text-muted" />
               </div>
-              <div className="text-[15px] text-[#191919] mb-1">No contact selected</div>
-              <div className="text-[13px] text-[#737373] max-w-xs">
+              <div className="text-[15px] text-foreground mb-1">No contact selected</div>
+              <div className="text-[13px] text-muted max-w-xs">
                 Select a contact from the list to view their CRM context and draft an outbound email.
               </div>
             </div>
           )}
         </main>
       </div>
+      {isEmbedded && <div className="flex-shrink-0" style={{ height: 34, background: 'var(--background)' }} />}
     </div>
   );
 }

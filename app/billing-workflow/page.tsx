@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Check, AlertTriangle, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Check, AlertTriangle, ChevronRight, ChevronDown } from 'lucide-react';
 
 const colors = {
   bg: 'var(--background)',
@@ -153,6 +153,9 @@ function generateCustomerData(): Customer[] {
 }
 
 export default function BillingWorkflowPage() {
+  const [isEmbedded, setIsEmbedded] = useState(false);
+  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
+
   const [currentStep, setCurrentStep] = useState<WorkflowStep>('review');
   const [customers, setCustomers] = useState<Customer[]>(() => generateCustomerData());
   
@@ -198,16 +201,18 @@ export default function BillingWorkflowPage() {
       flexDirection: 'column',
       color: colors.text,
     }}>
+      {isEmbedded && <div style={{ height: 47, flexShrink: 0, background: colors.bg }} />}
       {/* Header */}
       <header style={{ 
         borderBottom: `1px solid ${colors.border}`,
         background: colors.surface,
         flexShrink: 0,
       }}>
-        <div style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <Link 
               href="/" 
+              onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }}
               style={{ 
                 color: colors.muted, 
                 display: 'flex', 
@@ -220,7 +225,7 @@ export default function BillingWorkflowPage() {
               <ArrowLeft size={16} strokeWidth={1.5} />
               Back
             </Link>
-            <div style={{ width: 1, height: 24, background: colors.border }} />
+            <div style={{ width: 1, height: 16, background: colors.border }} />
             <div>
               <div style={{ fontSize: 15, fontWeight: 500 }}>Monthly Billing</div>
               <div style={{ fontSize: 13, color: colors.muted }}>January 2026</div>
@@ -228,7 +233,7 @@ export default function BillingWorkflowPage() {
           </div>
           
           {/* Pipeline Steps */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflowX: 'auto', scrollbarWidth: 'none', flex: '1 1 320px', justifyContent: 'flex-end' }}>
             {stepLabels.map((label, i) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center' }}>
                 <button
@@ -244,6 +249,8 @@ export default function BillingWorkflowPage() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
                   }}
                 >
                   <span style={{
@@ -271,20 +278,33 @@ export default function BillingWorkflowPage() {
 
       {/* Stats Bar */}
       <div style={{ 
-        padding: '16px 24px',
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '12px 48px',
         borderBottom: `1px solid ${colors.border}`,
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        WebkitOverflowScrolling: 'touch',
+        scrollSnapType: 'x mandatory',
         flexShrink: 0,
       }}>
-        <Stat label="Active Customers" value={stats.active} />
-        <Stat label="Monthly Revenue" value={`${stats.monthlyRevenue.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`} />
-        <Stat label="Pending Invoices" value={stats.pendingInvoices} />
-        <Stat label="Anomalies" value={stats.anomalies} highlight={stats.anomalies > 0} highlightColor={colors.warning} />
-        {currentStep === 'review' && (
-          <Stat label="Verified" value={`${stats.verified}/${stats.active}`} highlight={stats.verified === stats.active} highlightColor={colors.success} />
-        )}
+        <div style={{ display: 'flex', padding: '0 24px', minWidth: 'min-content' }}>
+          {[
+            { label: 'Active Customers', value: stats.active },
+            { label: 'Monthly Revenue', value: `${stats.monthlyRevenue.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR` },
+            { label: 'Pending Invoices', value: stats.pendingInvoices },
+            { label: 'Anomalies', value: stats.anomalies, highlight: stats.anomalies > 0, highlightColor: colors.warning },
+            ...(currentStep === 'review' ? [{ label: 'Verified', value: `${stats.verified}/${stats.active}`, highlight: stats.verified === stats.active, highlightColor: colors.success }] : []),
+          ].map((stat, i, arr) => (
+            <div key={stat.label} style={{
+              padding: '16px 24px 16px 0',
+              paddingLeft: i > 0 ? 24 : 0,
+              scrollSnapAlign: 'start',
+              flexShrink: 0,
+              borderRight: i < arr.length - 1 ? `1px solid ${colors.border}` : 'none',
+            }}>
+              <div style={{ fontSize: 24, fontWeight: 500, color: stat.highlight ? stat.highlightColor : colors.text, fontVariantNumeric: 'tabular-nums' }}>{stat.value}</div>
+              <div style={{ fontSize: 11, color: colors.muted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{stat.label}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Main Content */}
@@ -299,6 +319,7 @@ export default function BillingWorkflowPage() {
           <FinancialPlanTab customers={customers} />
         )}
       </main>
+      {isEmbedded && <div style={{ height: 34, flexShrink: 0, background: colors.bg }} />}
     </div>
   );
 }
@@ -319,7 +340,7 @@ function Stat({
       <div style={{ fontSize: 11, color: colors.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         {label}
       </div>
-      <div style={{ fontSize: 18, fontWeight: 500, color: highlight ? highlightColor : colors.text, fontVariantNumeric: 'tabular-nums' }}>
+      <div style={{ fontSize: 24, fontWeight: 500, color: highlight ? highlightColor : colors.text, fontVariantNumeric: 'tabular-nums' }}>
         {value}
       </div>
     </div>
@@ -463,25 +484,31 @@ function InvoicingTab({
                   {customer.total.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                 </Td>
                 <Td>
-                  <select
-                    value={customer.invoiceStatus}
-                    onChange={(e) => onUpdateStatus(customer.id, e.target.value as InvoiceStatus)}
-                    style={{
-                      background: colors.bg,
-                      border: `1px solid ${colors.border}`,
-                      borderRadius: 4,
-                      color: customer.invoiceStatus === 'Paid' ? colors.success : 
-                             customer.invoiceStatus === 'Sent' ? colors.primary : colors.text,
-                      padding: '6px 10px',
-                      fontSize: 13,
-                      cursor: 'pointer',
-                      fontWeight: 500,
-                    }}
-                  >
-                    <option value="Draft">Draft</option>
-                    <option value="Sent">Sent</option>
-                    <option value="Paid">Paid</option>
-                  </select>
+                  <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                    <select
+                      value={customer.invoiceStatus}
+                      onChange={(e) => onUpdateStatus(customer.id, e.target.value as InvoiceStatus)}
+                      style={{
+                        appearance: 'none',
+                        WebkitAppearance: 'none',
+                        background: colors.surface,
+                        border: `1px solid ${colors.border}`,
+                        borderRadius: 6,
+                        color: customer.invoiceStatus === 'Paid' ? colors.success : 
+                               customer.invoiceStatus === 'Sent' ? colors.primary : colors.text,
+                        padding: '7px 36px 7px 12px',
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                        outline: 'none',
+                      }}
+                    >
+                      <option value="Draft">Draft</option>
+                      <option value="Sent">Sent</option>
+                      <option value="Paid">Paid</option>
+                    </select>
+                    <ChevronDown size={14} strokeWidth={1.5} style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: colors.muted }} />
+                  </div>
                 </Td>
                 <Td style={{ color: colors.muted, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
                   {customer.dueDate.toLocaleDateString('de-DE')}
@@ -667,7 +694,7 @@ function SummaryCard({
       <div style={{ fontSize: 11, color: colors.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         {label}
       </div>
-      <div style={{ fontSize: 18, fontWeight: 500, color: color || colors.text, fontVariantNumeric: 'tabular-nums' }}>
+      <div style={{ fontSize: 24, fontWeight: 500, color: color || colors.text, fontVariantNumeric: 'tabular-nums' }}>
         {value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
       </div>
     </div>
@@ -676,9 +703,9 @@ function SummaryCard({
 
 function StatusBadge({ status }: { status: CustomerStatus }) {
   const config = {
-    Verified: { color: colors.success, bg: 'rgba(22, 163, 74, 0.07)' },
+    Verified: { color: colors.success, bg: 'rgba(22, 163, 74, 0.08)' },
     Pending: { color: colors.muted, bg: colors.surface2 },
-    Anomaly: { color: colors.warning, bg: 'rgba(217, 119, 6, 0.07)' },
+    Anomaly: { color: colors.warning, bg: 'rgba(217, 119, 6, 0.08)' },
   };
   
   const { color, bg } = config[status];
