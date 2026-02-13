@@ -1171,43 +1171,6 @@ export default function Home() {
     <div className="flex flex-col overflow-hidden relative isolate" style={{ height: '100dvh' }}>
       {/* Background atmosphere */}
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-        {/* Warm ambient glow — tracks focused card */}
-        <div
-          style={{
-            position: 'absolute',
-            width: '60%',
-            height: '60%',
-            top: '5%',
-            left: `${10 + (focusedIndex / Math.max(projects.length - 1, 1)) * 30}%`,
-            background: 'radial-gradient(ellipse at center, rgba(245,195,150,0.15) 0%, rgba(245,195,150,0.04) 50%, transparent 75%)',
-            transition: 'left 1200ms cubic-bezier(0.16, 1, 0.3, 1)',
-            filter: 'blur(60px)',
-          }}
-        />
-        {/* Cool indigo accent — bottom right */}
-        <div
-          style={{
-            position: 'absolute',
-            width: '45%',
-            height: '50%',
-            bottom: '-5%',
-            right: '0%',
-            background: 'radial-gradient(ellipse at center, rgba(79,70,229,0.06) 0%, transparent 70%)',
-            filter: 'blur(80px)',
-          }}
-        />
-        {/* Soft sage wash — top left */}
-        <div
-          style={{
-            position: 'absolute',
-            width: '40%',
-            height: '40%',
-            top: '-10%',
-            left: '-5%',
-            background: 'radial-gradient(ellipse at center, rgba(167,215,180,0.07) 0%, transparent 70%)',
-            filter: 'blur(80px)',
-          }}
-        />
         {/* Dot grid — gravitational field */}
         <canvas
           ref={canvasRef}
@@ -2124,32 +2087,37 @@ export default function Home() {
                     {focusedProject.description}
                   </p>
 
-                  {/* Step list */}
-                  <ul className="mt-5 space-y-2.5">
-                    {focusedProject.steps.map((step, i) => {
-                      const done = state[focusedProject.slug]?.[i]?.completed;
-                      return (
-                        <li key={i} className="flex items-center gap-2.5">
-                          {done ? (
-                            <Check size={11} strokeWidth={2.5} className="flex-shrink-0" style={{ color: '#059669' }} />
-                          ) : (
-                            <span className="flex-shrink-0" style={{ width: 4, height: 4, borderRadius: '50%', background: '#d6d3d1' }} />
-                          )}
-                          <span
-                            className={`text-[13px] leading-[1.4] ${done ? 'line-through' : ''}`}
-                            style={{ color: done ? '#a8a29e' : '#525252' }}
-                          >
-                            {step.label}
-                          </span>
-                        </li>
-                      );
-                    })}
+                  {/* Deliverables */}
+                  <ul className="mt-4 space-y-1.5">
+                    {focusedProject.deliverables.slice(0, 4).map((d, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="flex-shrink-0 mt-[7px]" style={{ width: 3, height: 3, borderRadius: '50%', background: '#4f46e5' }} />
+                        <span className="text-[12px] leading-[1.5]" style={{ color: '#525252' }}>{d}</span>
+                      </li>
+                    ))}
+                    {focusedProject.deliverables.length > 4 && (
+                      <li className="text-[11px] pl-[11px]" style={{ color: '#a8a29e' }}>
+                        +{focusedProject.deliverables.length - 4} more
+                      </li>
+                    )}
                   </ul>
                 </div>
 
                 <div>
                   {/* Divider */}
                   <div className="mb-4" style={{ height: 1, background: '#e7e5e4' }} />
+
+                  {/* Progress bar */}
+                  <div className="w-full h-[2px] rounded-full overflow-hidden mb-3" style={{ background: '#e7e5e4' }}>
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${(focusedCompleted / focusedTotal) * 100}%`,
+                        background: focusedCompleted === focusedTotal ? '#059669' : '#4f46e5',
+                        transition: 'width 300ms ease-out',
+                      }}
+                    />
+                  </div>
 
                   {/* Status + estimate */}
                   <div className="flex items-center justify-between">
