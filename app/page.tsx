@@ -654,6 +654,7 @@ export default function Home() {
   }>>([]);
   const [launchComplete, setLaunchComplete] = useState(false);
   const [launchCopied, setLaunchCopied] = useState(false);
+  const [launchLive, setLaunchLive] = useState(false);
   const launchTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "finalReview" | "launch" | "dashboard" | "browse">("intake");
   const intakeScrollRef = useRef<HTMLDivElement>(null);
@@ -1205,9 +1206,13 @@ export default function Home() {
     setPhase("launch");
     setLaunchComplete(false);
     setLaunchCopied(false);
+    setLaunchLive(false);
     const steps = [
+      { label: "Creating GitHub repository", status: "pending" as const },
+      { label: "Pushing codebase to repo", status: "pending" as const },
+      { label: "Connecting to Vercel", status: "pending" as const },
+      { label: "Building production bundle", status: "pending" as const },
       { label: "Deploying to edge network", status: "pending" as const },
-      { label: "Configuring DNS records", status: "pending" as const },
       { label: "Provisioning SSL certificate", status: "pending" as const },
       { label: "Running final checks", status: "pending" as const },
     ];
@@ -2948,189 +2953,284 @@ export default function Home() {
   if (phase === "launch") {
     const selectedBrand = brandSelected !== null ? brandOptions[brandSelected] : null;
     const brandPrimary = selectedBrand?.colors.primary || "#4f46e5";
+    const brandBg = selectedBrand?.colors.background || "#fafaf9";
     const siteDomain = selectedBrand?.domains[0] || "yoursite.com";
     const siteUrl = `https://${siteDomain}`;
+    const repoName = siteDomain.replace(/\.com|\.co|\.io|\.app/g, "").replace(/\./g, "-");
+    const repoUrl = `https://github.com/${repoName}/${repoName}`;
+    const vercelUrl = `https://vercel.com/${repoName}`;
+    const previewDomain = `${repoName}.vercel.app`;
+    const previewUrl = `/${projects[0]?.slug || "outbound-email"}?embed=1`;
     const doneCount = launchSteps.filter(s => s.status === "done").length;
     const progress = launchSteps.length > 0 ? Math.round((doneCount / launchSteps.length) * 100) : 0;
 
+    // Show live site after deployment completes (with brief delay)
+    if (launchComplete && !launchLive) {
+      setTimeout(() => setLaunchLive(true), 600);
+    }
+
     return (
-      <div
-        className="flex flex-col items-center justify-center"
-        style={{ height: "100dvh", background: "#fafaf9" }}
-      >
-        <div className="w-full max-w-[400px] px-6">
-          {!launchComplete ? (
-            /* Deploying state */
-            <div className="flex flex-col items-center">
-              {/* Spinner */}
-              <div
-                className="w-10 h-10 rounded-full mb-8"
-                style={{
-                  border: `2.5px solid #e7e5e4`,
-                  borderTopColor: brandPrimary,
-                  animation: "spin 0.8s linear infinite",
-                }}
-              />
-
-              {/* Steps */}
-              <div className="w-full flex flex-col gap-3 mb-8">
-                {launchSteps.map((step, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                      {step.status === "done" ? (
-                        <div
-                          className="w-5 h-5 rounded-full flex items-center justify-center"
-                          style={{ background: brandPrimary }}
-                        >
-                          <Check size={11} strokeWidth={2.5} color="#fff" />
-                        </div>
-                      ) : step.status === "active" ? (
-                        <div
-                          className="w-4 h-4 rounded-full"
-                          style={{
-                            border: `2px solid ${brandPrimary}`,
-                            borderTopColor: "transparent",
-                            animation: "spin 0.8s linear infinite",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          style={{ background: "#d6d3d1" }}
-                        />
-                      )}
-                    </div>
-                    <span
-                      className="text-[13px]"
-                      style={{
-                        color: step.status === "done" ? "#1a1a1a" : step.status === "active" ? "#1a1a1a" : "#a8a29e",
-                        fontWeight: step.status === "active" ? 500 : 400,
-                      }}
-                    >
-                      {step.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Progress bar */}
-              <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: "#e7e5e4" }}>
+      <div className="flex flex-col" style={{ height: "100dvh", background: "#fafaf9" }}>
+        {!launchComplete ? (
+          /* ── Deploying state ── */
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <div className="w-full max-w-[400px] px-6">
+              <div className="flex flex-col items-center">
+                {/* Spinner */}
                 <div
-                  className="h-full rounded-full"
+                  className="w-10 h-10 rounded-full mb-8"
                   style={{
-                    width: `${progress}%`,
-                    background: brandPrimary,
-                    transition: "width 300ms ease-out",
+                    border: `2.5px solid #e7e5e4`,
+                    borderTopColor: brandPrimary,
+                    animation: "spin 0.8s linear infinite",
                   }}
                 />
+
+                {/* Steps */}
+                <div className="w-full flex flex-col gap-3 mb-8">
+                  {launchSteps.map((step, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                        {step.status === "done" ? (
+                          <div
+                            className="w-5 h-5 rounded-full flex items-center justify-center"
+                            style={{ background: brandPrimary }}
+                          >
+                            <Check size={11} strokeWidth={2.5} color="#fff" />
+                          </div>
+                        ) : step.status === "active" ? (
+                          <div
+                            className="w-4 h-4 rounded-full"
+                            style={{
+                              border: `2px solid ${brandPrimary}`,
+                              borderTopColor: "transparent",
+                              animation: "spin 0.8s linear infinite",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ background: "#d6d3d1" }}
+                          />
+                        )}
+                      </div>
+                      <span
+                        className="text-[13px]"
+                        style={{
+                          color: step.status === "done" ? "#1a1a1a" : step.status === "active" ? "#1a1a1a" : "#a8a29e",
+                          fontWeight: step.status === "active" ? 500 : 400,
+                        }}
+                      >
+                        {step.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: "#e7e5e4" }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${progress}%`,
+                      background: brandPrimary,
+                      transition: "width 300ms ease-out",
+                    }}
+                  />
+                </div>
               </div>
             </div>
-          ) : (
-            /* Launched state */
-            <div className="flex flex-col items-center">
-              {/* Success indicator */}
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center mb-6"
-                style={{ background: brandPrimary }}
-              >
-                <Check size={20} strokeWidth={2.5} color="#fff" />
-              </div>
-
-              <p
-                className="text-[18px] font-medium mb-1 text-center"
-                style={{ color: "#1a1a1a" }}
-              >
-                Your site is live
-              </p>
-              <p className="text-[13px] mb-8 text-center" style={{ color: "#78716c" }}>
-                Everything is deployed and ready to go.
-              </p>
-
-              {/* Domain card */}
-              <div
-                className="w-full px-4 py-3 rounded-[8px] flex items-center justify-between mb-3"
-                style={{ background: "#fff", border: "1px solid #e7e5e4" }}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Globe size={15} strokeWidth={1.5} style={{ color: brandPrimary }} />
-                  <span className="text-[13px] font-medium" style={{ color: "#1a1a1a" }}>
-                    {siteDomain}
+          </div>
+        ) : !launchLive ? (
+          /* ── Brief success moment ── */
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center"
+              style={{ background: brandPrimary }}
+            >
+              <Check size={20} strokeWidth={2.5} color="#fff" />
+            </div>
+          </div>
+        ) : (
+          /* ── Live site view ── */
+          <>
+            {/* Top bar */}
+            <div
+              className="flex items-center justify-between flex-shrink-0 px-4"
+              style={{ height: 48, borderBottom: "1px solid #e7e5e4" }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-6 h-6 rounded-[4px] flex items-center justify-center"
+                  style={{ background: brandPrimary }}
+                >
+                  <span className="text-[10px] font-semibold text-white">
+                    {(selectedBrand?.name || "S").charAt(0).toUpperCase()}
                   </span>
                 </div>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(siteUrl).catch(() => {});
-                    setLaunchCopied(true);
-                    setTimeout(() => setLaunchCopied(false), 2000);
-                  }}
-                  className="flex items-center gap-1 px-2 py-1 rounded-[4px] text-[11px] transition-all duration-150"
-                  style={{ color: launchCopied ? brandPrimary : "#a8a29e" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f5f4"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                <span className="text-[13px] font-medium" style={{ color: "#1a1a1a" }}>
+                  Your site is live
+                </span>
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded-[3px] font-medium"
+                  style={{ background: "#ecfdf5", color: "#059669" }}
                 >
-                  {launchCopied ? (
-                    <>
-                      <Check size={11} strokeWidth={2} />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={11} strokeWidth={2} />
-                      Copy
-                    </>
-                  )}
+                  Deployed
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={confirmLaunch}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[12px] font-medium text-white transition-all duration-150"
+                  style={{ background: brandPrimary }}
+                  onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+                >
+                  View dashboard
+                  <ArrowRight size={12} strokeWidth={2} />
                 </button>
               </div>
+            </div>
 
-              {/* Stats row */}
-              <div
-                className="w-full grid grid-cols-3 gap-px rounded-[8px] overflow-hidden mb-8"
-                style={{ background: "#e7e5e4" }}
-              >
-                {[
-                  { label: "Deliverables", value: specData?.sections?.reduce((sum, s) => sum + s.items.length, 0) || 0 },
-                  { label: "Timeline", value: specData?.timeline || "—" },
-                  { label: "Total", value: `$${decomposeItems.reduce((sum, item) => sum + item.tasks.filter(t => t.included).reduce((s, t) => s + t.price, 0), 0).toLocaleString()}` },
-                ].map((stat, i) => (
-                  <div
-                    key={i}
-                    className="flex flex-col items-center py-3"
-                    style={{ background: "#fff" }}
-                  >
-                    <span className="text-[15px] font-medium" style={{ color: "#1a1a1a" }}>
-                      {stat.value}
-                    </span>
-                    <span className="text-[11px]" style={{ color: "#a8a29e" }}>
-                      {stat.label}
-                    </span>
+            {/* Main content */}
+            <div className="flex-1 flex overflow-hidden" style={{ background: "#e7e5e4" }}>
+              {/* Site preview */}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Browser chrome */}
+                <div
+                  className="flex items-center gap-2 px-4 flex-shrink-0"
+                  style={{ height: 36, background: "#fff", borderBottom: "1px solid #e7e5e4" }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#e7e5e4" }} />
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#e7e5e4" }} />
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#e7e5e4" }} />
                   </div>
-                ))}
+                  <div
+                    className="flex-1 mx-8 px-3 py-1 rounded-[4px] text-[11px] text-center flex items-center justify-center gap-1.5"
+                    style={{ background: "#f5f5f4", color: "#a8a29e" }}
+                  >
+                    <Lock size={9} strokeWidth={2} />
+                    {previewDomain}
+                  </div>
+                </div>
+                {/* Iframe */}
+                <div className="flex-1 relative">
+                  <iframe
+                    src={previewUrl}
+                    className="w-full h-full border-0"
+                    style={{ background: brandBg }}
+                  />
+                </div>
               </div>
 
-              {/* Action buttons */}
-              <button
-                onClick={confirmLaunch}
-                className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-[8px] text-[14px] font-medium text-white transition-all duration-150 mb-3"
-                style={{ background: brandPrimary }}
-                onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+              {/* Right panel — deploy info */}
+              <div
+                className="flex flex-col flex-shrink-0"
+                style={{ width: 280, borderLeft: "1px solid #e7e5e4", background: "#fff" }}
               >
-                View dashboard
-                <ArrowRight size={14} strokeWidth={2} />
-              </button>
-              <button
-                onClick={() => window.open(siteUrl, "_blank")}
-                className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-[8px] text-[13px] font-medium transition-all duration-150"
-                style={{ color: "#78716c" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f5f4"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-              >
-                Open site
-                <ExternalLink size={12} strokeWidth={2} />
-              </button>
+                <div className="flex-1 overflow-y-auto px-4 py-5">
+                  {/* Domain */}
+                  <div className="mb-5">
+                    <span className="text-[11px] font-medium block mb-2" style={{ color: "#a8a29e" }}>
+                      LIVE URL
+                    </span>
+                    <div
+                      className="flex items-center justify-between px-3 py-2 rounded-[6px]"
+                      style={{ background: "#f5f5f4" }}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Globe size={13} strokeWidth={1.5} style={{ color: brandPrimary }} />
+                        <span className="text-[12px] font-medium truncate" style={{ color: "#1a1a1a" }}>
+                          {previewDomain}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(`https://${previewDomain}`).catch(() => {});
+                          setLaunchCopied(true);
+                          setTimeout(() => setLaunchCopied(false), 2000);
+                        }}
+                        className="flex-shrink-0 ml-2"
+                        style={{ color: launchCopied ? brandPrimary : "#a8a29e" }}
+                      >
+                        {launchCopied ? <Check size={12} strokeWidth={2} /> : <Copy size={12} strokeWidth={2} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* GitHub */}
+                  <div className="mb-5">
+                    <span className="text-[11px] font-medium block mb-2" style={{ color: "#a8a29e" }}>
+                      GITHUB REPOSITORY
+                    </span>
+                    <button
+                      onClick={() => window.open(repoUrl, "_blank")}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left transition-all duration-150"
+                      style={{ background: "#f5f5f4" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "#eeeceb"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "#f5f5f4"; }}
+                    >
+                      <Github size={14} strokeWidth={1.5} style={{ color: "#1a1a1a" }} />
+                      <span className="text-[12px] truncate" style={{ color: "#1a1a1a" }}>
+                        {repoName}/{repoName}
+                      </span>
+                      <ExternalLink size={10} strokeWidth={2} className="ml-auto flex-shrink-0" style={{ color: "#a8a29e" }} />
+                    </button>
+                  </div>
+
+                  {/* Vercel */}
+                  <div className="mb-5">
+                    <span className="text-[11px] font-medium block mb-2" style={{ color: "#a8a29e" }}>
+                      VERCEL PROJECT
+                    </span>
+                    <button
+                      onClick={() => window.open(vercelUrl, "_blank")}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-left transition-all duration-150"
+                      style={{ background: "#f5f5f4" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "#eeeceb"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "#f5f5f4"; }}
+                    >
+                      <Zap size={14} strokeWidth={1.5} style={{ color: "#1a1a1a" }} />
+                      <span className="text-[12px] truncate" style={{ color: "#1a1a1a" }}>
+                        {repoName}
+                      </span>
+                      <ExternalLink size={10} strokeWidth={2} className="ml-auto flex-shrink-0" style={{ color: "#a8a29e" }} />
+                    </button>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="w-full h-px mb-5" style={{ background: "#e7e5e4" }} />
+
+                  {/* Project summary */}
+                  <div className="flex flex-col gap-3">
+                    {[
+                      { label: "Deliverables", value: `${specData?.sections?.reduce((sum, s) => sum + s.items.length, 0) || 0}` },
+                      { label: "Timeline", value: specData?.timeline || "—" },
+                      { label: "Investment", value: `$${decomposeItems.reduce((sum, item) => sum + item.tasks.filter(t => t.included).reduce((s, t) => s + t.price, 0), 0).toLocaleString()}` },
+                      { label: "Domain", value: siteDomain },
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <span className="text-[11px]" style={{ color: "#a8a29e" }}>{item.label}</span>
+                        <span className="text-[12px] font-medium" style={{ color: "#1a1a1a" }}>{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Bottom bar with ownership message */}
+                <div
+                  className="flex-shrink-0 px-4 py-3"
+                  style={{ borderTop: "1px solid #e7e5e4" }}
+                >
+                  <p className="text-[11px] text-center" style={{ color: "#a8a29e" }}>
+                    You own everything — code, domain, and hosting.
+                  </p>
+                </div>
+              </div>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
     );
   }
