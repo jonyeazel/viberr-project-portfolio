@@ -592,7 +592,7 @@ export default function Home() {
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [keyNav, setKeyNav] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "launch" | "dashboard" | "browse">("intake");
+  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "finalReview" | "launch" | "dashboard" | "browse">("intake");
   const [intakeMessages, setIntakeMessages] = useState<Array<{ from: "user" | "ai"; text: string }>>([
     { from: "ai", text: "What are you building?" },
   ]);
@@ -644,7 +644,10 @@ export default function Home() {
   const [reviewChatOpen, setReviewChatOpen] = useState(false);
   const [reviewRevisionCount, setReviewRevisionCount] = useState(0);
   const reviewScrollRef = useRef<HTMLDivElement>(null);
-  // Phase 7: Launch state
+  // Phase 7: Final Review state
+  const [finalReviewViewport, setFinalReviewViewport] = useState<"desktop" | "mobile">("desktop");
+  const [finalReviewPageIndex, setFinalReviewPageIndex] = useState(0);
+  // Phase 8: Launch state
   const [launchSteps, setLaunchSteps] = useState<Array<{
     label: string;
     status: "pending" | "active" | "done";
@@ -652,7 +655,7 @@ export default function Home() {
   const [launchComplete, setLaunchComplete] = useState(false);
   const [launchCopied, setLaunchCopied] = useState(false);
   const launchTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "launch" | "dashboard" | "browse">("intake");
+  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "finalReview" | "launch" | "dashboard" | "browse">("intake");
   const intakeScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -1193,6 +1196,12 @@ export default function Home() {
   }, []);
 
   const confirmReview = useCallback(() => {
+    setPhase("finalReview");
+    setFinalReviewViewport("desktop");
+    setFinalReviewPageIndex(0);
+  }, []);
+
+  const confirmFinalReview = useCallback(() => {
     setPhase("launch");
     setLaunchComplete(false);
     setLaunchCopied(false);
@@ -2714,6 +2723,222 @@ export default function Home() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── FINAL REVIEW PHASE ──────────────────────────────────────────
+  if (phase === "finalReview") {
+    const selectedBrand = brandSelected !== null ? brandOptions[brandSelected] : null;
+    const brandPrimary = selectedBrand?.colors.primary || "#4f46e5";
+    const brandBg = selectedBrand?.colors.background || "#fafaf9";
+    const siteDomain = selectedBrand?.domains[0] || "yoursite.com";
+
+    // Build page list from spec sections, mapped to available project slugs
+    const pageList = (specData?.sections || []).map((section, i) => ({
+      label: section.title,
+      slug: projects[i % projects.length]?.slug || "outbound-email",
+    }));
+    // Always have at least a "Home" page
+    if (pageList.length === 0) {
+      pageList.push({ label: "Home", slug: projects[0]?.slug || "outbound-email" });
+    }
+    const currentPage = pageList[finalReviewPageIndex] || pageList[0];
+    const previewUrl = `/${currentPage.slug}?embed=1`;
+    const isMobile = finalReviewViewport === "mobile";
+
+    return (
+      <div className="flex flex-col" style={{ height: "100dvh", background: "#1a1a1a" }}>
+        {/* Top bar */}
+        <div
+          className="flex items-center justify-between flex-shrink-0 px-4"
+          style={{ height: 48, borderBottom: "1px solid #2a2a2a" }}
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className="text-[12px] font-medium tracking-[0.08em] uppercase"
+              style={{ color: "#78716c" }}
+            >
+              Viberr
+            </span>
+            <div className="w-px h-4" style={{ background: "#2a2a2a" }} />
+            <span className="text-[12px]" style={{ color: "#a8a29e" }}>
+              Final review
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Viewport toggle */}
+            <div
+              className="flex items-center rounded-[6px] p-0.5"
+              style={{ background: "#2a2a2a" }}
+            >
+              <button
+                onClick={() => setFinalReviewViewport("desktop")}
+                className="flex items-center justify-center w-7 h-7 rounded-[4px] transition-all duration-150"
+                style={{
+                  background: !isMobile ? "#3a3a3a" : "transparent",
+                  color: !isMobile ? "#fff" : "#78716c",
+                }}
+              >
+                <Monitor size={14} strokeWidth={1.5} />
+              </button>
+              <button
+                onClick={() => setFinalReviewViewport("mobile")}
+                className="flex items-center justify-center w-7 h-7 rounded-[4px] transition-all duration-150"
+                style={{
+                  background: isMobile ? "#3a3a3a" : "transparent",
+                  color: isMobile ? "#fff" : "#78716c",
+                }}
+              >
+                <Smartphone size={14} strokeWidth={1.5} />
+              </button>
+            </div>
+
+            <button
+              onClick={() => {
+                setPhase("review");
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[12px] font-medium transition-all duration-150"
+              style={{ color: "#a8a29e", border: "1px solid #2a2a2a" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#2a2a2a"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <RotateCcw size={12} strokeWidth={2} />
+              Back to revisions
+            </button>
+
+            <button
+              onClick={confirmFinalReview}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[12px] font-medium text-white transition-all duration-150"
+              style={{ background: brandPrimary }}
+              onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+            >
+              Approve & launch
+              <ArrowRight size={12} strokeWidth={2} />
+            </button>
+          </div>
+        </div>
+
+        {/* Page tabs */}
+        {pageList.length > 1 && (
+          <div
+            className="flex items-center gap-0.5 px-4 flex-shrink-0 overflow-x-auto"
+            style={{ height: 36, borderBottom: "1px solid #2a2a2a" }}
+          >
+            {pageList.map((page, i) => (
+              <button
+                key={i}
+                onClick={() => setFinalReviewPageIndex(i)}
+                className="flex items-center px-3 py-1 rounded-[4px] text-[11px] font-medium whitespace-nowrap transition-all duration-150"
+                style={{
+                  color: i === finalReviewPageIndex ? "#fff" : "#78716c",
+                  background: i === finalReviewPageIndex ? "#2a2a2a" : "transparent",
+                }}
+                onMouseEnter={(e) => {
+                  if (i !== finalReviewPageIndex) e.currentTarget.style.color = "#a8a29e";
+                }}
+                onMouseLeave={(e) => {
+                  if (i !== finalReviewPageIndex) e.currentTarget.style.color = "#78716c";
+                }}
+              >
+                {page.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Preview area */}
+        <div className="flex-1 flex items-start justify-center overflow-hidden p-6">
+          <div
+            className="flex flex-col h-full transition-all duration-150"
+            style={{
+              width: isMobile ? 375 : "100%",
+              maxWidth: isMobile ? 375 : "100%",
+            }}
+          >
+            {/* Browser chrome */}
+            <div
+              className="flex items-center gap-2 px-4 flex-shrink-0 rounded-t-[8px]"
+              style={{ height: 36, background: "#fff" }}
+            >
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#e7e5e4" }} />
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#e7e5e4" }} />
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#e7e5e4" }} />
+              </div>
+              <div
+                className="flex-1 mx-4 px-3 py-1 rounded-[4px] text-[11px] text-center"
+                style={{ background: "#f5f5f4", color: "#a8a29e" }}
+              >
+                {siteDomain}{pageList.length > 1 ? `/${currentPage.slug}` : ""}
+              </div>
+            </div>
+
+            {/* Iframe */}
+            <div
+              className="flex-1 relative overflow-hidden"
+              style={{ background: brandBg, borderRadius: "0 0 8px 8px" }}
+            >
+              <iframe
+                key={`${currentPage.slug}-${finalReviewViewport}`}
+                src={previewUrl}
+                className="border-0 absolute inset-0"
+                style={{
+                  width: isMobile ? 375 : "100%",
+                  height: "100%",
+                  background: brandBg,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom status bar */}
+        <div
+          className="flex items-center justify-between px-4 flex-shrink-0"
+          style={{ height: 32, borderTop: "1px solid #2a2a2a" }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-[11px]" style={{ color: "#78716c" }}>
+              {pageList.length} page{pageList.length !== 1 ? "s" : ""}
+            </span>
+            <span className="text-[11px]" style={{ color: "#525252" }}>
+              {finalReviewPageIndex + 1} of {pageList.length}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setFinalReviewPageIndex(Math.max(0, finalReviewPageIndex - 1))}
+              disabled={finalReviewPageIndex === 0}
+              className="w-5 h-5 flex items-center justify-center rounded-[3px] transition-all duration-150"
+              style={{
+                color: finalReviewPageIndex === 0 ? "#3a3a3a" : "#78716c",
+              }}
+              onMouseEnter={(e) => {
+                if (finalReviewPageIndex > 0) e.currentTarget.style.background = "#2a2a2a";
+              }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <ChevronLeft size={14} strokeWidth={2} />
+            </button>
+            <button
+              onClick={() => setFinalReviewPageIndex(Math.min(pageList.length - 1, finalReviewPageIndex + 1))}
+              disabled={finalReviewPageIndex >= pageList.length - 1}
+              className="w-5 h-5 flex items-center justify-center rounded-[3px] transition-all duration-150"
+              style={{
+                color: finalReviewPageIndex >= pageList.length - 1 ? "#3a3a3a" : "#78716c",
+              }}
+              onMouseEnter={(e) => {
+                if (finalReviewPageIndex < pageList.length - 1) e.currentTarget.style.background = "#2a2a2a";
+              }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <ChevronRight size={14} strokeWidth={2} />
+            </button>
+          </div>
         </div>
       </div>
     );
