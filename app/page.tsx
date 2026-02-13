@@ -592,7 +592,7 @@ export default function Home() {
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [keyNav, setKeyNav] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "finalReview" | "launch" | "dashboard" | "browse">("intake");
+  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "finalReview" | "launch" | "domain" | "dashboard" | "browse">("intake");
   const [intakeMessages, setIntakeMessages] = useState<Array<{ from: "user" | "ai"; text: string }>>([
     { from: "ai", text: "What are you building?" },
   ]);
@@ -656,7 +656,18 @@ export default function Home() {
   const [launchCopied, setLaunchCopied] = useState(false);
   const [launchLive, setLaunchLive] = useState(false);
   const launchTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "finalReview" | "launch" | "dashboard" | "browse">("intake");
+  // Phase 9: Domain state
+  const [domainSelected, setDomainSelected] = useState<number | null>(null);
+  const [domainCustom, setDomainCustom] = useState("");
+  const [domainCustomMode, setDomainCustomMode] = useState(false);
+  const [domainChecking, setDomainChecking] = useState(false);
+  const [domainAvailable, setDomainAvailable] = useState<boolean | null>(null);
+  const [domainPurchasing, setDomainPurchasing] = useState(false);
+  const [domainConnecting, setDomainConnecting] = useState(false);
+  const [domainProgress, setDomainProgress] = useState(0);
+  const [domainConnected, setDomainConnected] = useState(false);
+  const domainTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "finalReview" | "launch" | "domain" | "dashboard" | "browse">("intake");
   const intakeScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -1221,6 +1232,53 @@ export default function Home() {
   }, [runLaunchStep]);
 
   const confirmLaunch = useCallback(() => {
+    setPhase("domain");
+    setDomainSelected(null);
+    setDomainCustom("");
+    setDomainCustomMode(false);
+    setDomainChecking(false);
+    setDomainAvailable(null);
+    setDomainPurchasing(false);
+    setDomainConnecting(false);
+    setDomainProgress(0);
+    setDomainConnected(false);
+  }, []);
+
+  const checkDomainAvailability = useCallback(() => {
+    setDomainChecking(true);
+    setDomainAvailable(null);
+    setTimeout(() => {
+      setDomainChecking(false);
+      setDomainAvailable(true);
+    }, 1200 + Math.random() * 800);
+  }, []);
+
+  const purchaseDomain = useCallback(() => {
+    setDomainPurchasing(true);
+    setTimeout(() => {
+      setDomainPurchasing(false);
+      setDomainConnecting(true);
+      setDomainProgress(0);
+      // Simulate DNS propagation
+      let progress = 0;
+      const tick = () => {
+        progress += Math.random() * 15 + 5;
+        if (progress >= 100) {
+          setDomainProgress(100);
+          setTimeout(() => {
+            setDomainConnecting(false);
+            setDomainConnected(true);
+          }, 400);
+          return;
+        }
+        setDomainProgress(Math.round(progress));
+        domainTimerRef.current = setTimeout(tick, 300 + Math.random() * 400);
+      };
+      domainTimerRef.current = setTimeout(tick, 500);
+    }, 2000);
+  }, []);
+
+  const confirmDomain = useCallback(() => {
     setPhase("dashboard");
   }, []);
 
@@ -3231,6 +3289,320 @@ export default function Home() {
             </div>
           </>
         )}
+      </div>
+    );
+  }
+
+  // ── DOMAIN PHASE ───────────────────────────────────────────────
+  if (phase === "domain") {
+    const selectedBrand = brandSelected !== null ? brandOptions[brandSelected] : null;
+    const brandPrimary = selectedBrand?.colors.primary || "#4f46e5";
+    const brandDomains = selectedBrand?.domains || ["yoursite.com"];
+    const repoName = brandDomains[0].replace(/\.com|\.co|\.io|\.app/g, "").replace(/\./g, "-");
+    const vercelDomain = `${repoName}.vercel.app`;
+    const activeDomain = domainCustomMode
+      ? domainCustom.trim()
+      : domainSelected !== null
+        ? brandDomains[domainSelected]
+        : null;
+    const hasDomain = activeDomain && activeDomain.length > 0;
+
+    return (
+      <div className="flex flex-col items-center" style={{ height: "100dvh", background: "#fafaf9" }}>
+        {/* Top bar */}
+        <div
+          className="w-full flex items-center justify-between flex-shrink-0 px-6"
+          style={{ height: 52, borderBottom: "1px solid #e7e5e4" }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-6 h-6 rounded-[4px] flex items-center justify-center"
+              style={{ background: brandPrimary }}
+            >
+              <span className="text-[10px] font-semibold text-white">
+                {(selectedBrand?.name || "S").charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <span className="text-[13px] font-medium" style={{ color: "#1a1a1a" }}>
+              Connect domain
+            </span>
+          </div>
+          <button
+            onClick={confirmDomain}
+            className="text-[12px] font-medium transition-all duration-150"
+            style={{ color: "#a8a29e" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#78716c"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "#a8a29e"; }}
+          >
+            Skip for now
+          </button>
+        </div>
+
+        {/* Center content */}
+        <div className="flex-1 flex items-center justify-center w-full px-6">
+          <div className="w-full max-w-[440px]">
+            {!domainConnected ? (
+              <>
+                {/* Current deployment info */}
+                <div className="mb-8">
+                  <div
+                    className="flex items-center gap-2 px-3 py-2 rounded-[6px]"
+                    style={{ background: "#f5f5f4" }}
+                  >
+                    <Lock size={11} strokeWidth={2} style={{ color: "#a8a29e" }} />
+                    <span className="text-[12px]" style={{ color: "#78716c" }}>{vercelDomain}</span>
+                    <span
+                      className="text-[10px] px-1.5 py-0.5 rounded-[3px] ml-auto"
+                      style={{ background: "#ecfdf5", color: "#059669" }}
+                    >
+                      Active
+                    </span>
+                  </div>
+                </div>
+
+                {/* Domain selection */}
+                {!domainConnecting && !domainPurchasing && (
+                  <>
+                    <div className="flex flex-col gap-2 mb-4">
+                      {brandDomains.map((domain, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setDomainSelected(i);
+                            setDomainCustomMode(false);
+                            setDomainAvailable(null);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-[6px] text-left transition-all duration-150"
+                          style={{
+                            background: !domainCustomMode && domainSelected === i ? `${brandPrimary}0a` : "#fff",
+                            border: `1.5px solid ${!domainCustomMode && domainSelected === i ? brandPrimary : "#e7e5e4"}`,
+                          }}
+                          onMouseEnter={(e) => {
+                            if (domainCustomMode || domainSelected !== i) e.currentTarget.style.borderColor = "#d6d3d1";
+                          }}
+                          onMouseLeave={(e) => {
+                            if (domainCustomMode || domainSelected !== i) e.currentTarget.style.borderColor = "#e7e5e4";
+                          }}
+                        >
+                          <Globe size={14} strokeWidth={1.5} style={{ color: !domainCustomMode && domainSelected === i ? brandPrimary : "#a8a29e" }} />
+                          <span className="text-[13px] font-medium" style={{ color: "#1a1a1a" }}>{domain}</span>
+                          <span className="text-[11px] ml-auto" style={{ color: "#a8a29e" }}>$12/yr</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Custom domain option */}
+                    <div className="mb-6">
+                      {!domainCustomMode ? (
+                        <button
+                          onClick={() => {
+                            setDomainCustomMode(true);
+                            setDomainSelected(null);
+                            setDomainAvailable(null);
+                          }}
+                          className="text-[12px] font-medium transition-all duration-150"
+                          style={{ color: "#a8a29e" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = "#78716c"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = "#a8a29e"; }}
+                        >
+                          Use a different domain
+                        </button>
+                      ) : (
+                        <div
+                          className="flex items-center gap-2 px-3 py-2 rounded-[6px]"
+                          style={{ border: `1.5px solid ${brandPrimary}`, background: `${brandPrimary}0a` }}
+                        >
+                          <Globe size={14} strokeWidth={1.5} style={{ color: brandPrimary }} />
+                          <input
+                            type="text"
+                            value={domainCustom}
+                            onChange={(e) => {
+                              setDomainCustom(e.target.value);
+                              setDomainAvailable(null);
+                            }}
+                            placeholder="yourdomain.com"
+                            className="flex-1 bg-transparent text-[13px] font-medium outline-none"
+                            style={{ color: "#1a1a1a" }}
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => {
+                              setDomainCustomMode(false);
+                              setDomainCustom("");
+                              setDomainAvailable(null);
+                            }}
+                            className="flex-shrink-0"
+                            style={{ color: "#a8a29e" }}
+                          >
+                            <X size={12} strokeWidth={2} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Availability check result */}
+                    {domainAvailable !== null && !domainChecking && (
+                      <div className="mb-4">
+                        {domainAvailable ? (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-[6px]" style={{ background: "#ecfdf5" }}>
+                            <Check size={13} strokeWidth={2} style={{ color: "#059669" }} />
+                            <span className="text-[12px] font-medium" style={{ color: "#059669" }}>
+                              {activeDomain} is available
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-[6px]" style={{ background: "#fef2f2" }}>
+                            <X size={13} strokeWidth={2} style={{ color: "#dc2626" }} />
+                            <span className="text-[12px] font-medium" style={{ color: "#dc2626" }}>
+                              {activeDomain} is not available
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div className="flex flex-col gap-2">
+                      {!domainAvailable ? (
+                        <button
+                          onClick={checkDomainAvailability}
+                          disabled={!hasDomain || domainChecking}
+                          className="w-full py-2.5 rounded-[6px] text-[13px] font-medium text-white transition-all duration-150 disabled:opacity-40"
+                          style={{ background: brandPrimary }}
+                          onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.filter = "brightness(1.1)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+                        >
+                          {domainChecking ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <span
+                                className="w-3.5 h-3.5 rounded-full"
+                                style={{
+                                  border: "2px solid rgba(255,255,255,0.3)",
+                                  borderTopColor: "#fff",
+                                  animation: "spin 0.8s linear infinite",
+                                  display: "inline-block",
+                                }}
+                              />
+                              Checking availability
+                            </span>
+                          ) : (
+                            "Check availability"
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={purchaseDomain}
+                          className="w-full py-2.5 rounded-[6px] text-[13px] font-medium text-white transition-all duration-150"
+                          style={{ background: brandPrimary }}
+                          onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+                        >
+                          Purchase {activeDomain} — $12/yr
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {/* Purchasing state */}
+                {domainPurchasing && (
+                  <div className="flex flex-col items-center py-8">
+                    <div
+                      className="w-8 h-8 rounded-full mb-4"
+                      style={{
+                        border: "2.5px solid #e7e5e4",
+                        borderTopColor: brandPrimary,
+                        animation: "spin 0.8s linear infinite",
+                      }}
+                    />
+                    <span className="text-[13px]" style={{ color: "#78716c" }}>Processing payment</span>
+                  </div>
+                )}
+
+                {/* DNS propagation state */}
+                {domainConnecting && (
+                  <div className="flex flex-col py-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[13px] font-medium" style={{ color: "#1a1a1a" }}>Connecting {activeDomain}</span>
+                      <span className="text-[11px]" style={{ color: "#a8a29e" }}>{domainProgress}%</span>
+                    </div>
+                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: "#e7e5e4" }}>
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${domainProgress}%`,
+                          background: brandPrimary,
+                          transition: "width 300ms ease-out",
+                        }}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2 mt-5">
+                      {[
+                        { label: "DNS records configured", done: domainProgress > 20 },
+                        { label: "SSL certificate issued", done: domainProgress > 50 },
+                        { label: "Propagation complete", done: domainProgress >= 100 },
+                      ].map((step, i) => (
+                        <div key={i} className="flex items-center gap-2.5">
+                          <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
+                            {step.done ? (
+                              <div
+                                className="w-4 h-4 rounded-full flex items-center justify-center"
+                                style={{ background: brandPrimary }}
+                              >
+                                <Check size={9} strokeWidth={2.5} color="#fff" />
+                              </div>
+                            ) : (
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{
+                                  border: `2px solid ${brandPrimary}`,
+                                  borderTopColor: "transparent",
+                                  animation: "spin 0.8s linear infinite",
+                                }}
+                              />
+                            )}
+                          </div>
+                          <span
+                            className="text-[12px]"
+                            style={{ color: step.done ? "#1a1a1a" : "#a8a29e" }}
+                          >
+                            {step.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* ── Domain connected success ── */
+              <div className="flex flex-col items-center">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center mb-4"
+                  style={{ background: brandPrimary }}
+                >
+                  <Check size={16} strokeWidth={2.5} color="#fff" />
+                </div>
+                <span className="text-[15px] font-medium mb-1" style={{ color: "#1a1a1a" }}>
+                  {activeDomain}
+                </span>
+                <span className="text-[12px] mb-8" style={{ color: "#a8a29e" }}>
+                  Connected and live
+                </span>
+                <button
+                  onClick={confirmDomain}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-[6px] text-[13px] font-medium text-white transition-all duration-150"
+                  style={{ background: brandPrimary }}
+                  onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+                >
+                  View dashboard
+                  <ArrowRight size={12} strokeWidth={2} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
