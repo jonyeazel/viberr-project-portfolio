@@ -19,6 +19,9 @@ import {
   Square,
   Zap,
   Lock,
+  ArrowRight,
+  Minus,
+  Plus,
 } from "lucide-react";
 
 type StepType = "upload" | "input" | "choice" | "confirm";
@@ -581,15 +584,21 @@ export default function Home() {
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [keyNav, setKeyNav] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [phase, setPhase] = useState<"intake" | "browse">("intake");
+  const [phase, setPhase] = useState<"intake" | "decompose" | "browse">("intake");
   const [intakeMessages, setIntakeMessages] = useState<Array<{ from: "user" | "ai"; text: string }>>([
     { from: "ai", text: "What are you building?" },
   ]);
   const [intakePoints, setIntakePoints] = useState<Array<{ text: string; confirmed: boolean }> | null>(null);
   const [intakeLoading, setIntakeLoading] = useState(false);
   const [intakeValue, setIntakeValue] = useState("");
+  // Phase 2: Decompose state
+  const [decomposeItems, setDecomposeItems] = useState<Array<{
+    feature: string;
+    tasks: Array<{ name: string; description: string; price: number; included: boolean }>;
+  }>>([]);
+  const [decomposeLoading, setDecomposeLoading] = useState(false);
   const closingTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const phaseRef = useRef<"intake" | "browse">("intake");
+  const phaseRef = useRef<"intake" | "decompose" | "browse">("intake");
   const intakeScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -877,7 +886,52 @@ export default function Home() {
     });
   }, []);
 
-  const confirmIntake = useCallback(() => {
+  const confirmIntake = useCallback(async () => {
+    if (!intakePoints) return;
+    const confirmed = intakePoints.filter(p => p.confirmed).map(p => p.text);
+    if (confirmed.length === 0) return;
+    setPhase("decompose");
+    setDecomposeLoading(true);
+    try {
+      const res = await fetch("/api/decompose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ features: confirmed }),
+      });
+      const data = await res.json();
+      if (data.items?.length) {
+        setDecomposeItems(
+          data.items.map((item: { feature: string; tasks: Array<{ name: string; description: string; price: number }> }) => ({
+            feature: item.feature,
+            tasks: item.tasks.map((t: { name: string; description: string; price: number }) => ({ ...t, included: true })),
+          }))
+        );
+      }
+    } catch {
+      // fallback — stay on decompose with empty state
+    } finally {
+      setDecomposeLoading(false);
+    }
+  }, [intakePoints]);
+
+  const toggleDecomposeTask = useCallback((featureIdx: number, taskIdx: number) => {
+    setDecomposeItems(prev => {
+      const next = [...prev];
+      const feature = { ...next[featureIdx] };
+      const tasks = [...feature.tasks];
+      tasks[taskIdx] = { ...tasks[taskIdx], included: !tasks[taskIdx].included };
+      feature.tasks = tasks;
+      next[featureIdx] = feature;
+      return next;
+    });
+  }, []);
+
+  const decomposeTotal = decomposeItems.reduce(
+    (sum, item) => sum + item.tasks.reduce((s, t) => s + (t.included ? t.price : 0), 0),
+    0
+  );
+
+  const confirmDecompose = useCallback(() => {
     setPhase("browse");
   }, []);
 
@@ -1512,6 +1566,134 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // ── DECOMPOSE PHASE ──────────────────────────────────────────────
+  if (phase === "decompose") {
+    const includedCount = decomposeItems.reduce(
+      (sum, item) => sum + item.tasks.filter(t => t.included).length, 0
+    );
+    const totalCount = decomposeItems.reduce(
+      (sum, item) => sum + item.tasks.length, 0
+    );
+
+    return (
+      <div className="flex flex-col" style={{ height: "100dvh", background: "#fafaf9" }}>
+        {/* Top bar */}
+        <div className="flex items-center justify-center flex-shrink-0" style={{ height: 48 }}>
+          <span
+            className="text-[12px] font-medium tracking-[0.08em] uppercase"
+            style={{ color: "#a8a29e" }}
+          >
+            Viberr
+          </span>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6">
+          <div className="max-w-[600px] mx-auto py-8">
+            {decomposeLoading ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-24">
+                <div className="flex gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a8a29e", animation: "pulse 1.5s ease-in-out infinite" }} />
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a8a29e", animation: "pulse 1.5s ease-in-out 0.2s infinite" }} />
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a8a29e", animation: "pulse 1.5s ease-in-out 0.4s infinite" }} />
+                </div>
+                <p className="text-[14px]" style={{ color: "#78716c" }}>
+                  Breaking down your project...
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-8">
+                {decomposeItems.map((item, fi) => (
+                  <div key={fi} className="flex flex-col gap-1">
+                    <p className="text-[13px] font-medium uppercase tracking-[0.05em] mb-2" style={{ color: "#a8a29e" }}>
+                      {item.feature}
+                    </p>
+                    {item.tasks.map((task, ti) => (
+                      <button
+                        key={ti}
+                        onClick={() => toggleDecomposeTask(fi, ti)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-[8px] text-left transition-all duration-150 group"
+                        style={{
+                          background: task.included ? "#fff" : "transparent",
+                          border: task.included ? "1px solid #e7e5e4" : "1px solid transparent",
+                        }}
+                      >
+                        <div
+                          className="w-5 h-5 rounded-[4px] flex items-center justify-center flex-shrink-0 transition-all duration-150"
+                          style={{
+                            background: task.included ? "#4f46e5" : "transparent",
+                            border: task.included ? "1px solid #4f46e5" : "1px solid #d6d3d1",
+                          }}
+                        >
+                          {task.included && <Check size={12} strokeWidth={2.5} color="#fff" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className="text-[14px] font-medium leading-[1.4] transition-colors duration-150"
+                            style={{ color: task.included ? "#1a1a1a" : "#a8a29e" }}
+                          >
+                            {task.name}
+                          </p>
+                          <p
+                            className="text-[12px] leading-[1.5] mt-0.5 transition-colors duration-150"
+                            style={{ color: task.included ? "#78716c" : "#c4c0bc" }}
+                          >
+                            {task.description}
+                          </p>
+                        </div>
+                        <span
+                          className="text-[14px] tabular-nums font-medium flex-shrink-0 transition-colors duration-150"
+                          style={{ color: task.included ? "#1a1a1a" : "#c4c0bc" }}
+                        >
+                          ${task.price}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom bar — running total + confirm */}
+        {!decomposeLoading && decomposeItems.length > 0 && (
+          <div className="flex-shrink-0 px-6 pb-6">
+            <div className="max-w-[600px] mx-auto">
+              <div
+                className="flex items-center justify-between px-5 py-4 rounded-[12px]"
+                style={{ background: "#fff", border: "1px solid #e7e5e4" }}
+              >
+                <div className="flex flex-col">
+                  <span className="text-[24px] font-medium tabular-nums tracking-[-0.02em]" style={{ color: "#1a1a1a" }}>
+                    ${decomposeTotal.toLocaleString()}
+                  </span>
+                  <span className="text-[12px]" style={{ color: "#a8a29e" }}>
+                    {includedCount} of {totalCount} tasks selected
+                  </span>
+                </div>
+                <button
+                  onClick={confirmDecompose}
+                  disabled={includedCount === 0}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-[8px] text-[14px] font-medium text-white transition-all duration-150"
+                  style={{
+                    background: includedCount > 0 ? "#4f46e5" : "#d6d3d1",
+                    cursor: includedCount > 0 ? "pointer" : "default",
+                  }}
+                  onMouseEnter={(e) => { if (includedCount > 0) e.currentTarget.style.filter = "brightness(1.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+                >
+                  Looks good
+                  <ArrowRight size={14} strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
