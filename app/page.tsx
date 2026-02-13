@@ -1085,9 +1085,13 @@ export default function Home() {
           posY[i] += (ty - posY[i]) * LERP;
 
           const sz = BASE_R + proximity * 0.6;
-          const alpha = 0.8 + proximity * 0.15;
+          const alpha = 0.08 + proximity * 0.7;
           ctx.globalAlpha = alpha;
-          ctx.fillStyle = 'rgb(168, 162, 158)';
+          // Interpolate gray → indigo based on proximity
+          const cr = Math.round(168 + (79 - 168) * proximity);
+          const cg = Math.round(162 + (70 - 162) * proximity);
+          const cb = Math.round(158 + (229 - 158) * proximity);
+          ctx.fillStyle = `rgb(${cr},${cg},${cb})`;
           ctx.fillRect(posX[i] - sz, posY[i] - sz, sz * 2, sz * 2);
         }
       }
