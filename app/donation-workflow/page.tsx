@@ -395,8 +395,6 @@ function ActivityItem({ event }: { event: ActivityEvent }) {
 }
 
 export default function DonationWorkflowPage() {
-  const [isEmbedded, setIsEmbedded] = useState(false);
-  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
 
   const [selectedDonation, setSelectedDonation] = useState<Donation | null>(null);
   const [receiptFilter, setReceiptFilter] = useState<'all' | ReceiptStatus>('all');
@@ -449,7 +447,6 @@ export default function DonationWorkflowPage() {
 
   return (
     <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
-      {isEmbedded && <div className="flex-shrink-0" style={{ height: 47, background: 'var(--background)' }} />}
       {/* Header */}
       <header className="flex-shrink-0 border-b border-border px-6 h-14 flex items-center gap-4">
         <Link

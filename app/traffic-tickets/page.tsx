@@ -387,8 +387,6 @@ function daysUntil(date: Date): number {
 }
 
 export default function TrafficTicketsPage() {
-  const [isEmbedded, setIsEmbedded] = useState(false);
-  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
 
   const initialTickets = useMemo(() => generateTickets(), []);
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
@@ -617,7 +615,6 @@ export default function TrafficTicketsPage() {
 
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
-      {isEmbedded && <div className="flex-shrink-0" style={{ height: 47, background: 'var(--background)' }} />}
       {/* Header */}
       <header className="flex-shrink-0 px-6 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-4">

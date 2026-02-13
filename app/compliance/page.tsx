@@ -460,8 +460,6 @@ const SortIndicator = ({ field, sortField, sortDirection }: { field: string; sor
 };
 
 export default function ComplianceDashboard() {
-  const [isEmbedded, setIsEmbedded] = useState(false);
-  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
 
   const [documents] = useState<Document[]>(() => generateDocuments());
   const [policies] = useState<Policy[]>(() => generatePolicies(documents));
@@ -585,7 +583,6 @@ export default function ComplianceDashboard() {
       display: 'flex',
       flexDirection: 'column',
     }}>
-      {isEmbedded && <div style={{ height: 47, flexShrink: 0, background: colors.bg }} />}
       {/* Header */}
       <header style={{
         padding: '16px 24px',

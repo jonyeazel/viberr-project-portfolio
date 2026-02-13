@@ -103,3 +103,8 @@ select:focus-visible,
   from { opacity: 1; }
   to { opacity: 0; transform: translateX(-12px); }
 }
+
+/* Hide project page headers when embedded in iframe preview */
+html[data-embed] header {
+  display: none !important;
+}

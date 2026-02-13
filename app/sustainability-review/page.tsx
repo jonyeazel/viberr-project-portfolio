@@ -365,8 +365,6 @@ function FilterSelect({
 }
 
 export default function SustainabilityReviewPage() {
-  const [isEmbedded, setIsEmbedded] = useState(false);
-  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
 
   const [submissions, setSubmissions] = useState<Submission[]>(initialSubmissions);
   const [selectedId, setSelectedId] = useState<string | null>(initialSubmissions[0]?.id || null);
@@ -431,7 +429,6 @@ export default function SustainabilityReviewPage() {
 
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
-      {isEmbedded && <div className="flex-shrink-0" style={{ height: 47, background: 'var(--background)' }} />}
       {/* Header */}
       <header 
         className="flex-shrink-0 flex flex-wrap items-center gap-x-4 gap-y-2 px-4 sm:px-6 py-3 sm:py-0 sm:h-14 border-b"

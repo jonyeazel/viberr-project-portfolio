@@ -212,8 +212,6 @@ function formatCurrency(value: number): string {
 }
 
 export default function OutboundEmailPage() {
-  const [isEmbedded, setIsEmbedded] = useState(false);
-  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
 
   const contacts = useMemo(() => generateContacts(), []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -286,7 +284,6 @@ export default function OutboundEmailPage() {
 
   return (
     <div className="h-screen w-screen bg-background text-foreground flex flex-col overflow-hidden">
-      {isEmbedded && <div className="flex-shrink-0" style={{ height: 47, background: 'var(--background)' }} />}
       <header className="h-12 border-b border-border flex items-center gap-4 px-4 shrink-0 bg-background">
         <Link 
           href="/" 

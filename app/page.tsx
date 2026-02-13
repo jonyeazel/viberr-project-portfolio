@@ -801,7 +801,7 @@ export default function Home() {
     // Center immediately (before paint, uses target layout values)
     center();
     // Also re-center after CSS transition completes (350ms safety net)
-    const timer = setTimeout(center, 350);
+    const timer = setTimeout(center, 400);
     return () => clearTimeout(timer);
   }, [previewSlug, previewMode]);
 
@@ -1229,7 +1229,7 @@ export default function Home() {
   const desktopH = Math.min(Math.round(desktopW * 0.5625), windowH - 160);
 
   const SPRING = "cubic-bezier(0.32, 0.72, 0, 1)";
-  const T = `width 300ms ${SPRING}, height 300ms ${SPRING}, border-radius 300ms ${SPRING}, transform 150ms ease-out, opacity 150ms ease-out`;
+  const T = `width 350ms ${SPRING}, height 350ms ${SPRING}, border-radius 350ms ${SPRING}, transform 150ms ease-out, opacity 150ms ease-out`;
 
   // Calculate card dimensions based on preview mode for the active card
   const getCardStyle = (
@@ -1366,8 +1366,8 @@ export default function Home() {
                   opacity: isPreviewing ? 0 : 1,
                   pointerEvents: isPreviewing ? "none" : "auto",
                   transition: isPreviewing
-                    ? "opacity 100ms ease-out"
-                    : "opacity 200ms ease-out 150ms",
+                    ? "opacity 80ms ease-out"
+                    : "opacity 250ms ease-out 200ms",
                 }}
               >
                 {/* Type badge + code + activity dot */}
@@ -1531,8 +1531,8 @@ export default function Home() {
                   opacity: isPreviewing ? 1 : 0,
                   pointerEvents: isPreviewing ? "auto" : "none",
                   transition: isPreviewing
-                    ? "opacity 200ms ease-out 100ms"
-                    : "opacity 100ms ease-out",
+                    ? "opacity 200ms ease-out 150ms"
+                    : "opacity 80ms ease-out",
                 }}
               >
                 {/* Browser chrome — address bar at top */}
@@ -1638,7 +1638,7 @@ export default function Home() {
                       >
                         {(() => {
                           const availH = (isMobile ? cardH : desktopH) - 28;
-                          const phoneH = Math.min(mobileH - 32, availH - 24);
+                          const phoneH = Math.min(mobileH - 32, availH - 12);
                           const phoneW = Math.round(phoneH * (MOBILE_FRAME_W / (MOBILE_FRAME_H - 32)));
                           const iframeScale = phoneW / MOBILE_IFRAME_W;
                           return (
@@ -1667,7 +1667,7 @@ export default function Home() {
                                 }}
                               >
                                 <iframe
-                                  src={`/${project.slug}`}
+                                  src={`/${project.slug}?embed=1`}
                                   className="w-full h-full border-none"
                                   style={{ background: "#fff" }}
                                   title={`${project.name} — mobile`}
@@ -1690,7 +1690,7 @@ export default function Home() {
                         }}
                       >
                         <iframe
-                          src={`/${project.slug}`}
+                          src={`/${project.slug}?embed=1`}
                           style={{ width: "100%", height: "100%", border: "none", background: "#fff" }}
                           title={`${project.name} — desktop`}
                           onLoad={() => setIframeLoaded(prev => ({ ...prev, [project.slug]: true }))}
@@ -2485,7 +2485,7 @@ export default function Home() {
           {/* Fullscreen iframe */}
           <div className="flex-1 overflow-hidden" style={isMobile ? { borderRadius: 0 } : { margin: '0 24px 24px', borderRadius: 8 }}>
             <iframe
-              src={`/${previewSlug}`}
+              src={`/${previewSlug}?embed=1`}
               className="w-full h-full border-none"
               style={{ background: "#fff" }}
               title={

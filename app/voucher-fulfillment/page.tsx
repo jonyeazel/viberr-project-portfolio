@@ -236,8 +236,6 @@ function getRelativeTime(date: Date): string {
 }
 
 export default function VoucherFulfillmentPage() {
-  const [isEmbedded, setIsEmbedded] = useState(false);
-  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
 
   const initialOrders = useMemo(() => generateOrders(), []);
   const [orders, setOrders] = useState<Order[]>(initialOrders);
@@ -347,7 +345,6 @@ export default function VoucherFulfillmentPage() {
 
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
-      {isEmbedded && <div className="flex-shrink-0" style={{ height: 47, background: 'var(--background)' }} />}
       {/* Header */}
       <header
         className="flex-shrink-0 px-6 py-4 border-b flex items-center justify-between"

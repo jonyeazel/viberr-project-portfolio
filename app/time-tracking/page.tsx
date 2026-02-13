@@ -232,8 +232,6 @@ const getStatusColor = (status: 'on-track' | 'behind' | 'over'): string => {
 };
 
 export default function TimeTrackingPage() {
-  const [isEmbedded, setIsEmbedded] = useState(false);
-  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
 
   const employees = useMemo(() => generateEmployees(), []);
   const importHistory = useMemo(() => generateImportHistory(), []);
@@ -281,7 +279,6 @@ export default function TimeTrackingPage() {
 
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: colors.bg, color: colors.text }}>
-      {isEmbedded && <div className="flex-shrink-0" style={{ height: 47, background: colors.bg }} />}
       <header
         className="flex flex-wrap items-center justify-between gap-2 px-6 py-3 flex-shrink-0"
         style={{ borderBottom: `1px solid ${colors.border}` }}

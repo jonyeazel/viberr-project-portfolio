@@ -244,8 +244,6 @@ function getInitials(name: string): string {
 }
 
 export default function CollectablesPage() {
-  const [isEmbedded, setIsEmbedded] = useState(false);
-  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
 
   const [collectibles, setCollectibles] = useState<Collectible[]>(initialCollectibles);
   const [searchQuery, setSearchQuery] = useState('');
@@ -369,7 +367,6 @@ export default function CollectablesPage() {
         overflow: 'hidden',
       }}
     >
-      {isEmbedded && <div style={{ height: 47, flexShrink: 0, background: 'var(--background)' }} />}
       <header
         style={{
           borderBottom: '1px solid var(--border)',

@@ -153,8 +153,6 @@ function generateCustomerData(): Customer[] {
 }
 
 export default function BillingWorkflowPage() {
-  const [isEmbedded, setIsEmbedded] = useState(false);
-  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
 
   const [currentStep, setCurrentStep] = useState<WorkflowStep>('review');
   const [customers, setCustomers] = useState<Customer[]>(() => generateCustomerData());
@@ -201,7 +199,6 @@ export default function BillingWorkflowPage() {
       flexDirection: 'column',
       color: colors.text,
     }}>
-      {isEmbedded && <div style={{ height: 47, flexShrink: 0, background: colors.bg }} />}
       {/* Header */}
       <header style={{ 
         borderBottom: `1px solid ${colors.border}`,

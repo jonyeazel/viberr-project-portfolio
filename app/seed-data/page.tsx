@@ -166,8 +166,6 @@ const generateRevenueByStream = () => {
 type Tab = 'users' | 'streams' | 'buyers' | 'analytics';
 
 export default function SeedDataPage() {
-  const [isEmbedded, setIsEmbedded] = useState(false);
-  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
 
   const [activeTab, setActiveTab] = useState<Tab>('users');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -236,7 +234,6 @@ export default function SeedDataPage() {
 
   return (
     <div style={{ backgroundColor: colors.bg, color: colors.text, height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {isEmbedded && <div style={{ height: 47, flexShrink: 0, background: colors.bg }} />}
       <header style={{ padding: '12px 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
         <Link href="/" onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }} style={{ color: colors.muted, display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontSize: 13 }}>
           <ArrowLeft size={14} strokeWidth={1.5} />

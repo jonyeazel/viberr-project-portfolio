@@ -278,8 +278,6 @@ function getSignalColor(type: SignalType): string {
 }
 
 export default function LeadIntelligencePage() {
-  const [isEmbedded, setIsEmbedded] = useState(false);
-  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
 
   const [locationFilter, setLocationFilter] = useState<Location[]>([]);
   const [industryFilter, setIndustryFilter] = useState<Industry[]>([]);
@@ -351,7 +349,6 @@ export default function LeadIntelligencePage() {
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: colors.bg, color: colors.text, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      {isEmbedded && <div style={{ height: 47, flexShrink: 0, background: colors.bg }} />}
       <header style={{ padding: '16px 24px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <Link href="/" onClick={(e) => { try { if (window.self !== window.top) { e.preventDefault(); window.parent.postMessage('close-preview', '*'); } } catch { e.preventDefault(); } }} style={{ display: 'flex', alignItems: 'center', gap: 8, color: colors.muted, textDecoration: 'none', fontSize: 13 }}>

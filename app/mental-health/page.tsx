@@ -559,8 +559,6 @@ function getEventColor(type: EventType): string {
 }
 
 export default function MentalHealthDashboard() {
-  const [isEmbedded, setIsEmbedded] = useState(false);
-  useEffect(() => { try { setIsEmbedded(window.self !== window.top); } catch { setIsEmbedded(true); } }, []);
 
   const [selectedPatientIndex, setSelectedPatientIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'patterns' | 'resources' | 'timeline'>('overview');
@@ -595,8 +593,7 @@ export default function MentalHealthDashboard() {
         overflow: 'hidden',
       }}
     >
-      {isEmbedded && <div style={{ height: 47, flexShrink: 0, background: colors.bg }} />}
-      <div
+      <header
         style={{
           backgroundColor: colors.bg,
           borderBottom: `1px solid ${colors.border}`,
@@ -649,7 +646,7 @@ export default function MentalHealthDashboard() {
             <span style={{ fontSize: 11, color: colors.muted }}>AES-256</span>
           </div>
         </div>
-      </div>
+      </header>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <div
