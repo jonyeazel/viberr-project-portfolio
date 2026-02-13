@@ -584,7 +584,7 @@ export default function Home() {
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [keyNav, setKeyNav] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [phase, setPhase] = useState<"intake" | "decompose" | "browse">("intake");
+  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "browse">("intake");
   const [intakeMessages, setIntakeMessages] = useState<Array<{ from: "user" | "ai"; text: string }>>([
     { from: "ai", text: "What are you building?" },
   ]);
@@ -597,8 +597,18 @@ export default function Home() {
     tasks: Array<{ name: string; description: string; price: number; included: boolean }>;
   }>>([]);
   const [decomposeLoading, setDecomposeLoading] = useState(false);
+  // Phase 3: Brand state
+  const [brandOptions, setBrandOptions] = useState<Array<{
+    name: string;
+    vibe: string;
+    colors: { primary: string; secondary: string; accent: string; background: string; text: string };
+    font: { heading: string; body: string };
+    domains: string[];
+  }>>([]);
+  const [brandSelected, setBrandSelected] = useState<number | null>(null);
+  const [brandLoading, setBrandLoading] = useState(false);
   const closingTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const phaseRef = useRef<"intake" | "decompose" | "browse">("intake");
+  const phaseRef = useRef<"intake" | "decompose" | "brand" | "browse">("intake");
   const intakeScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -931,7 +941,32 @@ export default function Home() {
     0
   );
 
-  const confirmDecompose = useCallback(() => {
+  const confirmDecompose = useCallback(async () => {
+    setPhase("brand");
+    setBrandLoading(true);
+    try {
+      // Build description from intake messages
+      const userMessages = intakeMessages.filter(m => m.from === "user").map(m => m.text);
+      const description = userMessages.join(" ");
+      const features = intakePoints?.filter(p => p.confirmed).map(p => p.text) || [];
+      const res = await fetch("/api/brand", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description, features }),
+      });
+      const data = await res.json();
+      if (data.options?.length) {
+        setBrandOptions(data.options);
+        setBrandSelected(0);
+      }
+    } catch {
+      // stay on brand with empty state
+    } finally {
+      setBrandLoading(false);
+    }
+  }, [intakeMessages, intakePoints]);
+
+  const confirmBrand = useCallback(() => {
     setPhase("browse");
   }, []);
 
@@ -1688,6 +1723,218 @@ export default function Home() {
                   onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
                 >
                   Looks good
+                  <ArrowRight size={14} strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── BRAND PHASE ──────────────────────────────────────────────────
+  if (phase === "brand") {
+    const selected = brandSelected !== null ? brandOptions[brandSelected] : null;
+
+    return (
+      <div className="flex flex-col" style={{ height: "100dvh", background: "#fafaf9" }}>
+        {/* Top bar */}
+        <div className="flex items-center justify-center flex-shrink-0" style={{ height: 48 }}>
+          <span
+            className="text-[12px] font-medium tracking-[0.08em] uppercase"
+            style={{ color: "#a8a29e" }}
+          >
+            Viberr
+          </span>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6">
+          <div className="max-w-[600px] mx-auto py-8">
+            {brandLoading ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-24">
+                <div className="flex gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a8a29e", animation: "pulse 1.5s ease-in-out infinite" }} />
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a8a29e", animation: "pulse 1.5s ease-in-out 0.2s infinite" }} />
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a8a29e", animation: "pulse 1.5s ease-in-out 0.4s infinite" }} />
+                </div>
+                <p className="text-[14px]" style={{ color: "#78716c" }}>
+                  Generating brand directions...
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-6">
+                {/* Brand option cards */}
+                {brandOptions.map((opt, i) => {
+                  const isSelected = brandSelected === i;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setBrandSelected(i)}
+                      className="w-full text-left rounded-[12px] overflow-hidden transition-all duration-150"
+                      style={{
+                        border: isSelected ? `2px solid ${opt.colors.primary}` : "1px solid #e7e5e4",
+                        padding: isSelected ? 0 : 1,
+                      }}
+                    >
+                      {/* Color preview strip */}
+                      <div className="flex" style={{ height: 48 }}>
+                        <div className="flex-1" style={{ background: opt.colors.primary }} />
+                        <div className="flex-1" style={{ background: opt.colors.secondary }} />
+                        <div className="flex-1" style={{ background: opt.colors.accent }} />
+                        <div className="flex-1" style={{ background: opt.colors.background }} />
+                        <div className="flex-1" style={{ background: opt.colors.text }} />
+                      </div>
+
+                      {/* Info */}
+                      <div className="px-5 py-4" style={{ background: "#fff" }}>
+                        <div className="flex items-center gap-3">
+                          <p
+                            className="text-[16px] font-medium leading-[1.3]"
+                            style={{ color: "#1a1a1a" }}
+                          >
+                            {opt.name}
+                          </p>
+                          {isSelected && (
+                            <div
+                              className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                              style={{ background: opt.colors.primary }}
+                            >
+                              <Check size={12} strokeWidth={2.5} color="#fff" />
+                            </div>
+                          )}
+                        </div>
+                        <p
+                          className="text-[13px] leading-[1.5] mt-1"
+                          style={{ color: "#78716c" }}
+                        >
+                          {opt.vibe}
+                        </p>
+
+                        {/* Typography */}
+                        <div className="flex gap-4 mt-3">
+                          <div>
+                            <p className="text-[11px] uppercase tracking-[0.05em]" style={{ color: "#a8a29e" }}>
+                              Heading
+                            </p>
+                            <p className="text-[13px] font-medium" style={{ color: "#1a1a1a" }}>
+                              {opt.font.heading}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] uppercase tracking-[0.05em]" style={{ color: "#a8a29e" }}>
+                              Body
+                            </p>
+                            <p className="text-[13px] font-medium" style={{ color: "#1a1a1a" }}>
+                              {opt.font.body}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Domains */}
+                        <div className="flex flex-wrap gap-1.5 mt-3">
+                          {opt.domains.map((d, di) => (
+                            <span
+                              key={di}
+                              className="px-2.5 py-1 rounded-[6px] text-[12px]"
+                              style={{
+                                background: isSelected ? `${opt.colors.primary}10` : "#f5f5f4",
+                                color: isSelected ? opt.colors.primary : "#78716c",
+                              }}
+                            >
+                              {d}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {/* Live preview of selected brand */}
+                {selected && (
+                  <div
+                    className="rounded-[12px] overflow-hidden"
+                    style={{ border: "1px solid #e7e5e4" }}
+                  >
+                    <div className="px-5 py-6" style={{ background: selected.colors.background }}>
+                      <p
+                        className="text-[24px] font-semibold leading-[1.2]"
+                        style={{ color: selected.colors.text, fontFamily: `"${selected.font.heading}", system-ui` }}
+                      >
+                        {selected.domains[0]?.replace('.com', '') || 'Your Brand'}
+                      </p>
+                      <p
+                        className="text-[14px] leading-[1.6] mt-2"
+                        style={{ color: `${selected.colors.text}99`, fontFamily: `"${selected.font.body}", system-ui` }}
+                      >
+                        Built for your business. Powered by modern technology.
+                      </p>
+                      <div className="flex gap-2 mt-4">
+                        <div
+                          className="px-4 py-2 rounded-[6px] text-[13px] font-medium"
+                          style={{
+                            background: selected.colors.primary,
+                            color: "#fff",
+                          }}
+                        >
+                          Get started
+                        </div>
+                        <div
+                          className="px-4 py-2 rounded-[6px] text-[13px] font-medium"
+                          style={{
+                            background: "transparent",
+                            color: selected.colors.text,
+                            border: `1px solid ${selected.colors.text}33`,
+                          }}
+                        >
+                          Learn more
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        {!brandLoading && brandOptions.length > 0 && brandSelected !== null && (
+          <div className="flex-shrink-0 px-6 pb-6">
+            <div className="max-w-[600px] mx-auto">
+              <div
+                className="flex items-center justify-between px-5 py-4 rounded-[12px]"
+                style={{ background: "#fff", border: "1px solid #e7e5e4" }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1">
+                    {brandOptions.map((opt, i) => (
+                      <div
+                        key={i}
+                        className="w-3 h-3 rounded-full cursor-pointer transition-all duration-150"
+                        style={{
+                          background: opt.colors.primary,
+                          opacity: brandSelected === i ? 1 : 0.3,
+                          transform: brandSelected === i ? "scale(1.2)" : "scale(1)",
+                        }}
+                        onClick={() => setBrandSelected(i)}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-[13px]" style={{ color: "#78716c" }}>
+                    {brandOptions[brandSelected].name}
+                  </span>
+                </div>
+                <button
+                  onClick={confirmBrand}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-[8px] text-[14px] font-medium text-white transition-all duration-150"
+                  style={{ background: brandOptions[brandSelected].colors.primary }}
+                  onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+                >
+                  Use this brand
                   <ArrowRight size={14} strokeWidth={2} />
                 </button>
               </div>
