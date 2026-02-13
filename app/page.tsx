@@ -22,6 +22,8 @@ import {
   ArrowRight,
   Minus,
   Plus,
+  MessageCircle,
+  RotateCcw,
 } from "lucide-react";
 
 type StepType = "upload" | "input" | "choice" | "confirm";
@@ -584,7 +586,7 @@ export default function Home() {
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [keyNav, setKeyNav] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "building" | "browse">("intake");
+  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "browse">("intake");
   const [intakeMessages, setIntakeMessages] = useState<Array<{ from: "user" | "ai"; text: string }>>([
     { from: "ai", text: "What are you building?" },
   ]);
@@ -627,7 +629,16 @@ export default function Home() {
   const [buildComplete, setBuildComplete] = useState(false);
   const buildTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const closingTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "browse">("intake");
+  // Phase 6: Review state
+  const [reviewMessages, setReviewMessages] = useState<Array<{ from: "user" | "ai"; text: string }>>([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewValue, setReviewValue] = useState("");
+  const [reviewApplying, setReviewApplying] = useState(false);
+  const [reviewChanges, setReviewChanges] = useState<string[] | null>(null);
+  const [reviewChatOpen, setReviewChatOpen] = useState(false);
+  const [reviewRevisionCount, setReviewRevisionCount] = useState(0);
+  const reviewScrollRef = useRef<HTMLDivElement>(null);
+  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "browse">("intake");
   const intakeScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -906,6 +917,12 @@ export default function Home() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [intakeMessages, intakeLoading, intakePoints]);
 
+  // Auto-scroll review chat
+  useEffect(() => {
+    const el = reviewScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [reviewMessages, reviewLoading]);
+
   const toggleIntakePoint = useCallback((index: number) => {
     setIntakePoints(prev => {
       if (!prev) return prev;
@@ -1094,6 +1111,58 @@ export default function Home() {
   }, [specData, brandSelected, brandOptions, decomposeItems, decomposeTotal, runBuildStep]);
 
   const confirmBuild = useCallback(() => {
+    setPhase("review");
+    setReviewMessages([{ from: "ai", text: "Your site is live. Take a look around — if anything needs adjusting, let me know." }]);
+    setReviewChatOpen(false);
+    setReviewRevisionCount(0);
+  }, []);
+
+  const sendReviewMessage = useCallback(async (text: string) => {
+    if (!text.trim() || reviewLoading) return;
+    const selectedBrand = brandSelected !== null ? brandOptions[brandSelected] : null;
+    setReviewMessages(prev => [...prev, { from: "user", text }]);
+    setReviewValue("");
+    setReviewLoading(true);
+    try {
+      const history = reviewMessages.map(m => ({
+        role: m.from === "user" ? "user" as const : "assistant" as const,
+        content: m.text,
+      }));
+      const res = await fetch("/api/revise", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          history,
+          spec: specData,
+          brand: selectedBrand ? {
+            name: selectedBrand.name,
+            colors: selectedBrand.colors,
+          } : null,
+        }),
+      });
+      const data = await res.json();
+      if (data.applying && data.changes) {
+        setReviewApplying(true);
+        setReviewChanges(data.changes);
+        setReviewMessages(prev => [...prev, { from: "ai", text: data.message }]);
+        // Simulate applying changes
+        setTimeout(() => {
+          setReviewApplying(false);
+          setReviewChanges(null);
+          setReviewRevisionCount(prev => prev + 1);
+          setReviewMessages(prev => [...prev, { from: "ai", text: "Done — changes applied. Take another look." }]);
+        }, 2500 + (data.changes.length * 800));
+      } else {
+        setReviewMessages(prev => [...prev, { from: "ai", text: data.message || "I couldn't process that." }]);
+      }
+    } catch {
+      setReviewMessages(prev => [...prev, { from: "ai", text: "Something went wrong. Try again." }]);
+    }
+    setReviewLoading(false);
+  }, [reviewMessages, reviewLoading, brandSelected, brandOptions, specData]);
+
+  const confirmReview = useCallback(() => {
     setPhase("browse");
   }, []);
 
@@ -2381,6 +2450,227 @@ export default function Home() {
             </div>
           </div>
         )}
+      </div>
+    );
+  }
+
+  // ── REVIEW PHASE ────────────────────────────────────────────────
+  if (phase === "review") {
+    const selectedBrand = brandSelected !== null ? brandOptions[brandSelected] : null;
+    const brandPrimary = selectedBrand?.colors.primary || "#4f46e5";
+    const brandBg = selectedBrand?.colors.background || "#fafaf9";
+    const brandText = selectedBrand?.colors.text || "#1a1a1a";
+    const siteDomain = selectedBrand?.domains[0] || "yoursite.com";
+    // Pick a project page to show as the "built" preview
+    const previewUrl = `/${projects[0]?.slug || "outbound-email"}?embed=1`;
+
+    return (
+      <div className="flex flex-col" style={{ height: "100dvh", background: "#fafaf9" }}>
+        {/* Top bar */}
+        <div
+          className="flex items-center justify-between flex-shrink-0 px-4"
+          style={{ height: 48, borderBottom: "1px solid #e7e5e4" }}
+        >
+          <span
+            className="text-[12px] font-medium tracking-[0.08em] uppercase"
+            style={{ color: "#a8a29e" }}
+          >
+            Viberr
+          </span>
+          <div className="flex items-center gap-2">
+            {reviewRevisionCount > 0 && (
+              <span className="text-[11px] tabular-nums" style={{ color: "#a8a29e" }}>
+                {reviewRevisionCount} revision{reviewRevisionCount !== 1 ? "s" : ""} applied
+              </span>
+            )}
+            <button
+              onClick={() => setReviewChatOpen(!reviewChatOpen)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[12px] font-medium transition-all duration-150"
+              style={{
+                background: reviewChatOpen ? brandPrimary : "transparent",
+                color: reviewChatOpen ? "#fff" : "#78716c",
+                border: reviewChatOpen ? "none" : "1px solid #e7e5e4",
+              }}
+            >
+              <MessageCircle size={13} strokeWidth={2} />
+              Revise
+            </button>
+            <button
+              onClick={confirmReview}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[12px] font-medium text-white transition-all duration-150"
+              style={{ background: brandPrimary }}
+              onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+            >
+              Approve & launch
+              <ArrowRight size={12} strokeWidth={2} />
+            </button>
+          </div>
+        </div>
+
+        {/* Main content area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Site preview */}
+          <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "#e7e5e4" }}>
+            {/* Browser chrome */}
+            <div
+              className="flex items-center gap-2 px-4 flex-shrink-0"
+              style={{ height: 36, background: "#fff", borderBottom: "1px solid #e7e5e4" }}
+            >
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#e7e5e4" }} />
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#e7e5e4" }} />
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#e7e5e4" }} />
+              </div>
+              <div
+                className="flex-1 mx-8 px-3 py-1 rounded-[4px] text-[11px] text-center"
+                style={{ background: "#f5f5f4", color: "#a8a29e" }}
+              >
+                {siteDomain}
+              </div>
+            </div>
+
+            {/* Iframe preview */}
+            <div className="flex-1 relative">
+              {reviewApplying && (
+                <div
+                  className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4"
+                  style={{ background: "rgba(250, 250, 249, 0.92)", backdropFilter: "blur(2px)" }}
+                >
+                  <div
+                    className="w-5 h-5 rounded-full"
+                    style={{
+                      border: `2px solid ${brandPrimary}`,
+                      borderTopColor: "transparent",
+                      animation: "spin 0.8s linear infinite",
+                    }}
+                  />
+                  <div className="flex flex-col items-center gap-2">
+                    {reviewChanges?.map((change, i) => (
+                      <span
+                        key={i}
+                        className="text-[12px]"
+                        style={{
+                          color: "#78716c",
+                          animation: `statusFadeIn 300ms ease-out ${i * 200}ms both`,
+                        }}
+                      >
+                        {change}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <iframe
+                src={previewUrl}
+                className="w-full h-full border-0"
+                style={{ background: brandBg }}
+              />
+            </div>
+          </div>
+
+          {/* Revision chat panel */}
+          {reviewChatOpen && (
+            <div
+              className="flex flex-col flex-shrink-0"
+              style={{ width: 340, borderLeft: "1px solid #e7e5e4", background: "#fff" }}
+            >
+              {/* Chat header */}
+              <div
+                className="flex items-center justify-between px-4 flex-shrink-0"
+                style={{ height: 48, borderBottom: "1px solid #f5f5f4" }}
+              >
+                <span className="text-[13px] font-medium" style={{ color: "#1a1a1a" }}>
+                  Revisions
+                </span>
+                <button
+                  onClick={() => setReviewChatOpen(false)}
+                  className="w-6 h-6 flex items-center justify-center rounded-[4px] transition-colors duration-150"
+                  style={{ color: "#a8a29e" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f5f4"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  <X size={14} strokeWidth={2} />
+                </button>
+              </div>
+
+              {/* Chat messages */}
+              <div
+                ref={reviewScrollRef}
+                className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3"
+              >
+                {reviewMessages.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className="max-w-[260px] px-3 py-2 rounded-[8px] text-[13px] leading-[1.5]"
+                      style={
+                        msg.from === "user"
+                          ? { background: brandPrimary, color: "#fff" }
+                          : { background: "#f5f5f4", color: "#1a1a1a" }
+                      }
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                {reviewLoading && (
+                  <div className="flex justify-start">
+                    <div className="flex items-center gap-1 px-3 py-2">
+                      {[0, 1, 2].map(j => (
+                        <div
+                          key={j}
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{
+                            background: "#d6d3d1",
+                            animation: `pulse 1.2s ease-in-out ${j * 0.2}s infinite`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat input */}
+              <div className="flex-shrink-0 px-3 pb-3">
+                <div
+                  className="flex items-center gap-2 px-3 py-2 rounded-[8px]"
+                  style={{ border: "1px solid #e7e5e4" }}
+                >
+                  <input
+                    type="text"
+                    value={reviewValue}
+                    onChange={(e) => setReviewValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendReviewMessage(reviewValue);
+                      }
+                    }}
+                    placeholder="Describe a change..."
+                    className="flex-1 text-[13px] bg-transparent outline-none"
+                    style={{ color: "#1a1a1a" }}
+                    disabled={reviewApplying}
+                  />
+                  <button
+                    onClick={() => sendReviewMessage(reviewValue)}
+                    disabled={!reviewValue.trim() || reviewLoading || reviewApplying}
+                    className="w-6 h-6 flex items-center justify-center rounded-full transition-all duration-150"
+                    style={{
+                      background: reviewValue.trim() ? brandPrimary : "#e7e5e4",
+                      opacity: reviewValue.trim() ? 1 : 0.5,
+                    }}
+                  >
+                    <SendHorizontal size={12} strokeWidth={2} color="#fff" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
