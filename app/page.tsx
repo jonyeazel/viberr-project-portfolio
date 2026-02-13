@@ -24,6 +24,9 @@ import {
   Plus,
   MessageCircle,
   RotateCcw,
+  ExternalLink,
+  Globe,
+  Copy,
 } from "lucide-react";
 
 type StepType = "upload" | "input" | "choice" | "confirm";
@@ -586,7 +589,7 @@ export default function Home() {
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [keyNav, setKeyNav] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "browse">("intake");
+  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "launch" | "browse">("intake");
   const [intakeMessages, setIntakeMessages] = useState<Array<{ from: "user" | "ai"; text: string }>>([
     { from: "ai", text: "What are you building?" },
   ]);
@@ -638,7 +641,15 @@ export default function Home() {
   const [reviewChatOpen, setReviewChatOpen] = useState(false);
   const [reviewRevisionCount, setReviewRevisionCount] = useState(0);
   const reviewScrollRef = useRef<HTMLDivElement>(null);
-  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "browse">("intake");
+  // Phase 7: Launch state
+  const [launchSteps, setLaunchSteps] = useState<Array<{
+    label: string;
+    status: "pending" | "active" | "done";
+  }>>([]);
+  const [launchComplete, setLaunchComplete] = useState(false);
+  const [launchCopied, setLaunchCopied] = useState(false);
+  const launchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "launch" | "browse">("intake");
   const intakeScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -1162,7 +1173,37 @@ export default function Home() {
     setReviewLoading(false);
   }, [reviewMessages, reviewLoading, brandSelected, brandOptions, specData]);
 
+  const runLaunchStep = useCallback((steps: Array<{ label: string; status: "pending" | "active" | "done" }>, index: number) => {
+    if (index >= steps.length) {
+      setLaunchComplete(true);
+      return;
+    }
+    setLaunchSteps(prev => prev.map((s, i) =>
+      i === index ? { ...s, status: "active" } : s
+    ));
+    launchTimerRef.current = setTimeout(() => {
+      setLaunchSteps(prev => prev.map((s, i) =>
+        i === index ? { ...s, status: "done" } : s
+      ));
+      runLaunchStep(steps, index + 1);
+    }, 1800 + Math.random() * 1200);
+  }, []);
+
   const confirmReview = useCallback(() => {
+    setPhase("launch");
+    setLaunchComplete(false);
+    setLaunchCopied(false);
+    const steps = [
+      { label: "Deploying to edge network", status: "pending" as const },
+      { label: "Configuring DNS records", status: "pending" as const },
+      { label: "Provisioning SSL certificate", status: "pending" as const },
+      { label: "Running final checks", status: "pending" as const },
+    ];
+    setLaunchSteps(steps);
+    setTimeout(() => runLaunchStep(steps, 0), 400);
+  }, [runLaunchStep]);
+
+  const confirmLaunch = useCallback(() => {
     setPhase("browse");
   }, []);
 
@@ -2668,6 +2709,197 @@ export default function Home() {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── LAUNCH PHASE ────────────────────────────────────────────────
+  if (phase === "launch") {
+    const selectedBrand = brandSelected !== null ? brandOptions[brandSelected] : null;
+    const brandPrimary = selectedBrand?.colors.primary || "#4f46e5";
+    const siteDomain = selectedBrand?.domains[0] || "yoursite.com";
+    const siteUrl = `https://${siteDomain}`;
+    const doneCount = launchSteps.filter(s => s.status === "done").length;
+    const progress = launchSteps.length > 0 ? Math.round((doneCount / launchSteps.length) * 100) : 0;
+
+    return (
+      <div
+        className="flex flex-col items-center justify-center"
+        style={{ height: "100dvh", background: "#fafaf9" }}
+      >
+        <div className="w-full max-w-[400px] px-6">
+          {!launchComplete ? (
+            /* Deploying state */
+            <div className="flex flex-col items-center">
+              {/* Spinner */}
+              <div
+                className="w-10 h-10 rounded-full mb-8"
+                style={{
+                  border: `2.5px solid #e7e5e4`,
+                  borderTopColor: brandPrimary,
+                  animation: "spin 0.8s linear infinite",
+                }}
+              />
+
+              {/* Steps */}
+              <div className="w-full flex flex-col gap-3 mb-8">
+                {launchSteps.map((step, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                      {step.status === "done" ? (
+                        <div
+                          className="w-5 h-5 rounded-full flex items-center justify-center"
+                          style={{ background: brandPrimary }}
+                        >
+                          <Check size={11} strokeWidth={2.5} color="#fff" />
+                        </div>
+                      ) : step.status === "active" ? (
+                        <div
+                          className="w-4 h-4 rounded-full"
+                          style={{
+                            border: `2px solid ${brandPrimary}`,
+                            borderTopColor: "transparent",
+                            animation: "spin 0.8s linear infinite",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{ background: "#d6d3d1" }}
+                        />
+                      )}
+                    </div>
+                    <span
+                      className="text-[13px]"
+                      style={{
+                        color: step.status === "done" ? "#1a1a1a" : step.status === "active" ? "#1a1a1a" : "#a8a29e",
+                        fontWeight: step.status === "active" ? 500 : 400,
+                      }}
+                    >
+                      {step.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: "#e7e5e4" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${progress}%`,
+                    background: brandPrimary,
+                    transition: "width 300ms ease-out",
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            /* Launched state */
+            <div className="flex flex-col items-center">
+              {/* Success indicator */}
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center mb-6"
+                style={{ background: brandPrimary }}
+              >
+                <Check size={20} strokeWidth={2.5} color="#fff" />
+              </div>
+
+              <p
+                className="text-[18px] font-medium mb-1 text-center"
+                style={{ color: "#1a1a1a" }}
+              >
+                Your site is live
+              </p>
+              <p className="text-[13px] mb-8 text-center" style={{ color: "#78716c" }}>
+                Everything is deployed and ready to go.
+              </p>
+
+              {/* Domain card */}
+              <div
+                className="w-full px-4 py-3 rounded-[8px] flex items-center justify-between mb-3"
+                style={{ background: "#fff", border: "1px solid #e7e5e4" }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Globe size={15} strokeWidth={1.5} style={{ color: brandPrimary }} />
+                  <span className="text-[13px] font-medium" style={{ color: "#1a1a1a" }}>
+                    {siteDomain}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(siteUrl).catch(() => {});
+                    setLaunchCopied(true);
+                    setTimeout(() => setLaunchCopied(false), 2000);
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 rounded-[4px] text-[11px] transition-all duration-150"
+                  style={{ color: launchCopied ? brandPrimary : "#a8a29e" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f5f4"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  {launchCopied ? (
+                    <>
+                      <Check size={11} strokeWidth={2} />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={11} strokeWidth={2} />
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Stats row */}
+              <div
+                className="w-full grid grid-cols-3 gap-px rounded-[8px] overflow-hidden mb-8"
+                style={{ background: "#e7e5e4" }}
+              >
+                {[
+                  { label: "Deliverables", value: specData?.sections?.reduce((sum, s) => sum + s.items.length, 0) || 0 },
+                  { label: "Timeline", value: specData?.timeline || "—" },
+                  { label: "Total", value: `$${decomposeItems.reduce((sum, item) => sum + item.tasks.filter(t => t.included).reduce((s, t) => s + t.price, 0), 0).toLocaleString()}` },
+                ].map((stat, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col items-center py-3"
+                    style={{ background: "#fff" }}
+                  >
+                    <span className="text-[15px] font-medium" style={{ color: "#1a1a1a" }}>
+                      {stat.value}
+                    </span>
+                    <span className="text-[11px]" style={{ color: "#a8a29e" }}>
+                      {stat.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Action buttons */}
+              <button
+                onClick={confirmLaunch}
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-[8px] text-[14px] font-medium text-white transition-all duration-150 mb-3"
+                style={{ background: brandPrimary }}
+                onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+              >
+                View dashboard
+                <ArrowRight size={14} strokeWidth={2} />
+              </button>
+              <button
+                onClick={() => window.open(siteUrl, "_blank")}
+                className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-[8px] text-[13px] font-medium transition-all duration-150"
+                style={{ color: "#78716c" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f5f4"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                Open site
+                <ExternalLink size={12} strokeWidth={2} />
+              </button>
             </div>
           )}
         </div>
