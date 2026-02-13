@@ -27,6 +27,9 @@ import {
   ExternalLink,
   Globe,
   Copy,
+  Activity,
+  Settings,
+  BarChart3,
 } from "lucide-react";
 
 type StepType = "upload" | "input" | "choice" | "confirm";
@@ -589,7 +592,7 @@ export default function Home() {
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [keyNav, setKeyNav] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "launch" | "browse">("intake");
+  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "launch" | "dashboard" | "browse">("intake");
   const [intakeMessages, setIntakeMessages] = useState<Array<{ from: "user" | "ai"; text: string }>>([
     { from: "ai", text: "What are you building?" },
   ]);
@@ -649,7 +652,7 @@ export default function Home() {
   const [launchComplete, setLaunchComplete] = useState(false);
   const [launchCopied, setLaunchCopied] = useState(false);
   const launchTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "launch" | "browse">("intake");
+  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "review" | "launch" | "dashboard" | "browse">("intake");
   const intakeScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -1204,7 +1207,7 @@ export default function Home() {
   }, [runLaunchStep]);
 
   const confirmLaunch = useCallback(() => {
-    setPhase("browse");
+    setPhase("dashboard");
   }, []);
 
   // Center expanded card in scroll container
@@ -2902,6 +2905,243 @@ export default function Home() {
               </button>
             </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── DASHBOARD PHASE ──────────────────────────────────────────────
+  if (phase === "dashboard") {
+    const selectedBrand = brandSelected !== null ? brandOptions[brandSelected] : null;
+    const brandPrimary = selectedBrand?.colors.primary || "#4f46e5";
+    const siteDomain = selectedBrand?.domains[0] || "yoursite.com";
+    const siteUrl = `https://${siteDomain}`;
+    const previewUrl = `/${projects[0]?.slug || "outbound-email"}?embed=1`;
+    const totalDeliverables = specData?.sections?.reduce((sum, s) => sum + s.items.length, 0) || 0;
+    const totalCost = decomposeItems.reduce((sum, item) => sum + item.tasks.filter(t => t.included).reduce((s, t) => s + t.price, 0), 0);
+
+    // Generate mock activity feed from build steps
+    const activityItems = buildSteps
+      .filter(s => s.status === "done")
+      .slice(-5)
+      .reverse()
+      .map((s, i) => ({
+        label: s.label,
+        time: `${i === 0 ? "Just now" : i === 1 ? "1m ago" : `${i}m ago`}`,
+      }));
+
+    // Generate mock analytics
+    const mockStats = [
+      { label: "Visitors", value: Math.floor(Math.random() * 40 + 12), change: `+${Math.floor(Math.random() * 20 + 5)}%` },
+      { label: "Page views", value: Math.floor(Math.random() * 120 + 40), change: `+${Math.floor(Math.random() * 30 + 10)}%` },
+      { label: "Uptime", value: "100%", change: null },
+    ];
+
+    return (
+      <div className="flex flex-col" style={{ height: "100dvh", background: "#fafaf9" }}>
+        {/* Top bar */}
+        <div
+          className="flex items-center justify-between flex-shrink-0 px-6"
+          style={{ height: 52, borderBottom: "1px solid #e7e5e4" }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-6 h-6 rounded-[4px] flex items-center justify-center"
+              style={{ background: brandPrimary }}
+            >
+              <span className="text-[10px] font-semibold text-white">
+                {(selectedBrand?.name || "S").charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <span className="text-[13px] font-medium" style={{ color: "#1a1a1a" }}>
+              {selectedBrand?.name || "Your Site"}
+            </span>
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-[3px] font-medium"
+              style={{ background: "#ecfdf5", color: "#059669" }}
+            >
+              Live
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => window.open(siteUrl, "_blank")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[12px] font-medium transition-all duration-150"
+              style={{ color: "#78716c" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f5f4"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <ExternalLink size={12} strokeWidth={2} />
+              {siteDomain}
+            </button>
+          </div>
+        </div>
+
+        {/* Main content */}
+        <div className="flex-1 overflow-y-auto px-6 py-8">
+          <div className="max-w-[720px] mx-auto">
+            {/* Site preview card */}
+            <div
+              className="rounded-[8px] overflow-hidden mb-6"
+              style={{ border: "1px solid #e7e5e4" }}
+            >
+              <div
+                className="relative w-full overflow-hidden"
+                style={{ height: 280 }}
+              >
+                <iframe
+                  src={previewUrl}
+                  className="w-full border-0 pointer-events-none"
+                  style={{
+                    height: 800,
+                    transform: "scale(0.5)",
+                    transformOrigin: "top left",
+                    width: "200%",
+                  }}
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: "linear-gradient(transparent 60%, rgba(250,250,249,0.9))",
+                    pointerEvents: "none",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              {mockStats.map((stat, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col px-4 py-3 rounded-[8px]"
+                  style={{ background: "#fff", border: "1px solid #e7e5e4" }}
+                >
+                  <span className="text-[11px] mb-1" style={{ color: "#a8a29e" }}>
+                    {stat.label}
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[18px] font-medium tabular-nums" style={{ color: "#1a1a1a" }}>
+                      {stat.value}
+                    </span>
+                    {stat.change && (
+                      <span className="text-[11px] font-medium" style={{ color: "#059669" }}>
+                        {stat.change}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Two-column layout */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {/* Quick actions */}
+              <div
+                className="flex flex-col rounded-[8px] p-4"
+                style={{ background: "#fff", border: "1px solid #e7e5e4" }}
+              >
+                <span className="text-[11px] font-medium mb-3" style={{ color: "#a8a29e" }}>
+                  QUICK ACTIONS
+                </span>
+                <div className="flex flex-col gap-1">
+                  {[
+                    { icon: Settings, label: "Site settings" },
+                    { icon: BarChart3, label: "Analytics" },
+                    { icon: Globe, label: "Domain settings" },
+                    { icon: MessageCircle, label: "Request changes" },
+                  ].map((action, i) => (
+                    <button
+                      key={i}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-[6px] text-[13px] text-left transition-all duration-150"
+                      style={{ color: "#1a1a1a" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f5f4"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <action.icon size={14} strokeWidth={1.5} style={{ color: "#78716c" }} />
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Activity feed */}
+              <div
+                className="flex flex-col rounded-[8px] p-4"
+                style={{ background: "#fff", border: "1px solid #e7e5e4" }}
+              >
+                <span className="text-[11px] font-medium mb-3" style={{ color: "#a8a29e" }}>
+                  RECENT ACTIVITY
+                </span>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2.5 px-2.5 py-1.5">
+                    <div
+                      className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ background: "#ecfdf5" }}
+                    >
+                      <Check size={10} strokeWidth={2.5} style={{ color: "#059669" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[12px] font-medium" style={{ color: "#1a1a1a" }}>
+                        Site deployed
+                      </span>
+                    </div>
+                    <span className="text-[11px]" style={{ color: "#a8a29e" }}>Just now</span>
+                  </div>
+                  {activityItems.slice(0, 4).map((item, i) => (
+                    <div key={i} className="flex items-center gap-2.5 px-2.5 py-1.5">
+                      <div
+                        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: "#f5f5f4" }}
+                      >
+                        <Activity size={10} strokeWidth={2} style={{ color: "#a8a29e" }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[12px] truncate block" style={{ color: "#78716c" }}>
+                          {item.label}
+                        </span>
+                      </div>
+                      <span className="text-[11px] flex-shrink-0" style={{ color: "#d6d3d1" }}>
+                        {item.time}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Project summary */}
+            <div
+              className="flex items-center justify-between px-4 py-3 rounded-[8px]"
+              style={{ background: "#fff", border: "1px solid #e7e5e4" }}
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col">
+                  <span className="text-[11px]" style={{ color: "#a8a29e" }}>Deliverables</span>
+                  <span className="text-[14px] font-medium tabular-nums" style={{ color: "#1a1a1a" }}>{totalDeliverables}</span>
+                </div>
+                <div className="w-px h-8" style={{ background: "#e7e5e4" }} />
+                <div className="flex flex-col">
+                  <span className="text-[11px]" style={{ color: "#a8a29e" }}>Timeline</span>
+                  <span className="text-[14px] font-medium" style={{ color: "#1a1a1a" }}>{specData?.timeline || "—"}</span>
+                </div>
+                <div className="w-px h-8" style={{ background: "#e7e5e4" }} />
+                <div className="flex flex-col">
+                  <span className="text-[11px]" style={{ color: "#a8a29e" }}>Investment</span>
+                  <span className="text-[14px] font-medium tabular-nums" style={{ color: "#1a1a1a" }}>${totalCost.toLocaleString()}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px]" style={{ color: "#a8a29e" }}>
+                  {selectedBrand?.font.heading} / {selectedBrand?.font.body}
+                </span>
+                <div
+                  className="w-4 h-4 rounded-full"
+                  style={{ background: brandPrimary, border: "1px solid rgba(0,0,0,0.08)" }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
