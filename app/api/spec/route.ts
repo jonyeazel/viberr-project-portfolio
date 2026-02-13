@@ -78,7 +78,10 @@ Total budget: $${total}`,
     }
 
     const data = await response.json();
-    const raw = data.content?.[0]?.text || '{"spec":{}}';
+    let raw = data.content?.[0]?.text || '{"spec":{}}';
+
+    // Strip markdown code fences if present
+    raw = raw.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
 
     try {
       const parsed = JSON.parse(raw);

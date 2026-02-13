@@ -104,6 +104,10 @@ select:focus-visible,
   to { opacity: 0; transform: translateX(-12px); }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Hide project page headers when embedded in iframe preview */
 html[data-embed] header {
   display: none !important;

@@ -584,7 +584,7 @@ export default function Home() {
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [keyNav, setKeyNav] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "browse">("intake");
+  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "building" | "browse">("intake");
   const [intakeMessages, setIntakeMessages] = useState<Array<{ from: "user" | "ai"; text: string }>>([
     { from: "ai", text: "What are you building?" },
   ]);
@@ -616,8 +616,18 @@ export default function Home() {
     notes: string;
   } | null>(null);
   const [specLoading, setSpecLoading] = useState(false);
+  // Phase 5: Build state
+  const [buildSteps, setBuildSteps] = useState<Array<{
+    id: string;
+    label: string;
+    detail: string;
+    duration: number;
+    status: "pending" | "building" | "done";
+  }>>([]);
+  const [buildComplete, setBuildComplete] = useState(false);
+  const buildTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const closingTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "browse">("intake");
+  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "building" | "browse">("intake");
   const intakeScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -1019,7 +1029,71 @@ export default function Home() {
     }
   }, [brandSelected, brandOptions, intakeMessages, decomposeItems, decomposeTotal]);
 
-  const confirmSpec = useCallback(() => {
+  const runBuildStep = useCallback((steps: Array<{ id: string; label: string; detail: string; duration: number; status: "pending" | "building" | "done" }>, index: number) => {
+    if (index >= steps.length) {
+      setBuildComplete(true);
+      return;
+    }
+    // Mark current step as building
+    setBuildSteps(prev => prev.map((s, i) =>
+      i === index ? { ...s, status: "building" } : s
+    ));
+    // After duration, mark done and start next
+    buildTimerRef.current = setTimeout(() => {
+      setBuildSteps(prev => prev.map((s, i) =>
+        i === index ? { ...s, status: "done" } : s
+      ));
+      runBuildStep(steps, index + 1);
+    }, steps[index].duration);
+  }, []);
+
+  const confirmSpec = useCallback(async () => {
+    if (!specData) return;
+    const selectedBrand = brandSelected !== null ? brandOptions[brandSelected] : null;
+    setPhase("building");
+    setBuildComplete(false);
+    try {
+      const includedFeatures = decomposeItems
+        .map(item => ({
+          feature: item.feature,
+          tasks: item.tasks.filter(t => t.included).map(t => ({
+            name: t.name,
+            description: t.description,
+            price: t.price,
+          })),
+        }))
+        .filter(item => item.tasks.length > 0);
+      const res = await fetch("/api/build", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spec: specData,
+          brand: selectedBrand ? {
+            name: selectedBrand.name,
+            colors: selectedBrand.colors,
+            font: selectedBrand.font,
+            domain: selectedBrand.domains[0],
+          } : null,
+          features: includedFeatures,
+          total: decomposeTotal,
+        }),
+      });
+      const data = await res.json();
+      if (data.steps?.length) {
+        const steps = data.steps.map((s: { id: string; label: string; detail: string; duration: number }) => ({
+          ...s,
+          status: "pending" as const,
+        }));
+        setBuildSteps(steps);
+        // Start the build sequence after a brief pause
+        setTimeout(() => runBuildStep(steps, 0), 600);
+      }
+    } catch {
+      // stay on building with empty state
+    }
+  }, [specData, brandSelected, brandOptions, decomposeItems, decomposeTotal, runBuildStep]);
+
+  const confirmBuild = useCallback(() => {
     setPhase("browse");
   }, []);
 
@@ -2151,6 +2225,156 @@ export default function Home() {
                   onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
                 >
                   Approve &amp; build
+                  <ArrowRight size={14} strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── BUILDING PHASE ───────────────────────────────────────────────
+  if (phase === "building") {
+    const selectedBrand = brandSelected !== null ? brandOptions[brandSelected] : null;
+    const brandPrimary = selectedBrand?.colors.primary || "#4f46e5";
+    const doneCount = buildSteps.filter(s => s.status === "done").length;
+    const progress = buildSteps.length > 0 ? Math.round((doneCount / buildSteps.length) * 100) : 0;
+    const currentStep = buildSteps.find(s => s.status === "building");
+
+    return (
+      <div className="flex flex-col" style={{ height: "100dvh", background: "#fafaf9" }}>
+        {/* Top bar */}
+        <div className="flex items-center justify-center flex-shrink-0" style={{ height: 48 }}>
+          <span
+            className="text-[12px] font-medium tracking-[0.08em] uppercase"
+            style={{ color: "#a8a29e" }}
+          >
+            Viberr
+          </span>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6">
+          <div className="max-w-[600px] mx-auto py-8 pb-24">
+            {/* Progress bar */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[13px] font-medium" style={{ color: "#1a1a1a" }}>
+                  {buildComplete ? "Build complete" : currentStep ? currentStep.label : "Preparing build..."}
+                </span>
+                <span className="text-[12px] tabular-nums" style={{ color: "#a8a29e" }}>
+                  {progress}%
+                </span>
+              </div>
+              <div className="h-1 rounded-full overflow-hidden" style={{ background: "#e7e5e4" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${progress}%`,
+                    background: brandPrimary,
+                    transition: "width 300ms ease-out",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Step list */}
+            <div className="flex flex-col gap-0.5">
+              {buildSteps.map((step, i) => (
+                <div
+                  key={step.id}
+                  className="flex items-start gap-3 px-4 py-3 rounded-[8px] transition-all duration-150"
+                  style={{
+                    background: step.status === "building" ? "#fff" : "transparent",
+                    border: step.status === "building" ? "1px solid #e7e5e4" : "1px solid transparent",
+                    opacity: step.status === "pending" ? 0.4 : 1,
+                  }}
+                >
+                  {/* Status indicator */}
+                  <div className="w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    {step.status === "done" ? (
+                      <div
+                        className="w-5 h-5 rounded-full flex items-center justify-center"
+                        style={{ background: brandPrimary }}
+                      >
+                        <Check size={11} strokeWidth={2.5} color="#fff" />
+                      </div>
+                    ) : step.status === "building" ? (
+                      <div
+                        className="w-5 h-5 rounded-full"
+                        style={{
+                          border: `2px solid ${brandPrimary}`,
+                          borderTopColor: "transparent",
+                          animation: "spin 0.8s linear infinite",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="w-2 h-2 rounded-full"
+                        style={{ background: "#d6d3d1" }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="text-[14px] font-medium leading-[1.4]"
+                      style={{
+                        color: step.status === "pending" ? "#a8a29e" : "#1a1a1a",
+                      }}
+                    >
+                      {step.label}
+                    </p>
+                    <p
+                      className="text-[12px] leading-[1.5] mt-0.5"
+                      style={{
+                        color: step.status === "pending" ? "#c4c0bc" : "#78716c",
+                      }}
+                    >
+                      {step.detail}
+                    </p>
+                  </div>
+
+                  {/* Step number */}
+                  <span
+                    className="text-[11px] tabular-nums flex-shrink-0 mt-1"
+                    style={{ color: step.status === "done" ? "#a8a29e" : "#d6d3d1" }}
+                  >
+                    {i + 1}/{buildSteps.length}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom bar — only shows when complete */}
+        {buildComplete && (
+          <div className="flex-shrink-0 px-6 pb-6">
+            <div className="max-w-[600px] mx-auto">
+              <div
+                className="flex items-center justify-between px-5 py-4 rounded-[12px]"
+                style={{ background: "#fff", border: "1px solid #e7e5e4" }}
+              >
+                <div className="flex flex-col">
+                  <span className="text-[15px] font-medium" style={{ color: "#1a1a1a" }}>
+                    Your site is ready
+                  </span>
+                  <span className="text-[12px]" style={{ color: "#a8a29e" }}>
+                    {selectedBrand?.domains[0] || "Preview available"}
+                  </span>
+                </div>
+                <button
+                  onClick={confirmBuild}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-[8px] text-[14px] font-medium text-white transition-all duration-150"
+                  style={{ background: brandPrimary }}
+                  onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+                >
+                  View site
                   <ArrowRight size={14} strokeWidth={2} />
                 </button>
               </div>

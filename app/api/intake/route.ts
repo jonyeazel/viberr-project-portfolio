@@ -72,9 +72,12 @@ Rules:
     }
 
     const data = await response.json();
-    const raw =
+    let raw =
       data.content?.[0]?.text ||
       '{"message":"Something went wrong.","points":null}';
+
+    // Strip markdown code fences if present
+    raw = raw.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
 
     try {
       const parsed = JSON.parse(raw);
