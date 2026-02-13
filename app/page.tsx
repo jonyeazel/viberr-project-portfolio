@@ -937,9 +937,10 @@ export default function Home() {
   const cardW = isMobile ? Math.round(windowW * 0.8) : CARD_W;
   const cardH = isMobile ? Math.min(Math.round(cardW * (4 / 3)), windowH - 200) : CARD_H;
 
-  // Context card — persistent left panel
+  // Context card — persistent left panel (same size as project cards)
   const leftSpace = windowW / 2 - cardW / 2;
-  const showContextCard = !isMobile && leftSpace >= 240;
+  const showContextCard = !isMobile && leftSpace >= cardW + 48;
+  const contextCardLeft = leftSpace - cardW - 40;
   const focusedCompleted = state[focusedProject?.slug ?? '']?.filter(s => s.completed).length ?? 0;
   const focusedTotal = focusedProject?.steps.length ?? 0;
   const focusedSubmitted = submitted[focusedProject?.slug ?? ''];
@@ -1230,7 +1231,7 @@ export default function Home() {
         style={{
           scrollbarWidth: "none",
           WebkitOverflowScrolling: 'touch' as never,
-          gap: isMobile ? 16 : 20,
+          gap: isMobile ? 32 : 40,
           paddingLeft: `calc(50vw - ${cardW / 2}px)`,
           paddingRight: `calc(50vw - ${cardW / 2}px)`,
           transform: chatActive ? (isMobile ? 'scale(0.98) translateY(-4px)' : 'scale(0.94) translateY(-12px)') : 'scale(1) translateY(0)',
@@ -1420,7 +1421,7 @@ export default function Home() {
                   </div>
 
                   {/* Action row */}
-                  <div className="flex items-center gap-2 mt-3">
+                  <div className="flex items-center gap-2 mt-3" style={isMobile ? undefined : { paddingLeft: 12, paddingRight: 12 }}>
                     <button
                       onClick={() => {
                         setPreviewSlug(project.slug);
@@ -2045,151 +2046,163 @@ export default function Home() {
         </div>
       )}
 
-      {/* Context card — persistent left panel (desktop only) */}
+      {/* Context card — persistent left panel, same size as project cards */}
       {showContextCard && (
         <div
           className="fixed z-10 pointer-events-none"
           style={{
-            left: 32,
+            left: Math.max(contextCardLeft, 16),
             top: '50%',
             transform: 'translateY(-50%)',
-            width: Math.min(leftSpace - 56, 240),
+            width: cardW,
+            height: cardH,
           }}
         >
           <div
-            className="rounded-[8px] overflow-hidden"
-            style={{ background: '#ffffff', border: '1px solid #e7e5e4' }}
+            className="absolute inset-0 overflow-hidden bg-card flex flex-col"
+            style={{
+              borderRadius: 16,
+              border: '1px solid #d6d3d1',
+              boxShadow: '0 0 0 1px rgba(99,91,255,0.06), 0 8px 40px rgba(0,0,0,0.06)',
+            }}
           >
             {showHint ? (
               /* Welcome / onboarding state */
-              <div key="welcome" className="p-4" style={{ animation: 'coachFadeIn 500ms ease-out both', animationDelay: '200ms' }}>
-                <div className="text-[18px] font-medium tracking-[-0.02em] leading-[1.2]" style={{ color: '#1a1a1a' }}>
-                  Viberr
+              <div key="welcome" className="flex flex-col justify-between h-full p-6" style={{ animation: 'coachFadeIn 500ms ease-out both', animationDelay: '200ms' }}>
+                <div>
+                  <div className="text-[24px] font-medium tracking-[-0.03em] leading-[1.15]" style={{ color: '#1a1a1a' }}>
+                    Viberr
+                  </div>
+                  <p className="text-[13px] leading-[1.6] mt-3" style={{ color: '#78716c' }}>
+                    12 projects built and ready to ship. Browse, preview live demos, and configure each one.
+                  </p>
                 </div>
-                <p className="text-[11px] leading-[1.5] mt-1.5" style={{ color: '#78716c' }}>
-                  12 projects built and ready to ship.
-                </p>
 
-                <div className="mt-4" style={{ height: 1, background: '#e7e5e4' }} />
-
-                <div className="mt-4 flex flex-col gap-3">
-                  {[
-                    { num: '01', label: 'Browse', desc: 'Scroll or arrow keys' },
-                    { num: '02', label: 'Preview', desc: 'Live interactive demos' },
-                    { num: '03', label: 'Customize', desc: 'Configure and submit' },
-                    { num: '04', label: 'Ask', desc: '\u2318K for AI assistance' },
-                  ].map((step, i) => (
-                    <div
-                      key={step.num}
-                      className="flex items-start gap-2"
-                      style={{ animation: 'coachFadeIn 400ms ease-out both', animationDelay: `${400 + i * 100}ms` }}
-                    >
-                      <span className="text-[10px] tabular-nums leading-none flex-shrink-0" style={{ color: '#d6d3d1', marginTop: 2 }}>
-                        {step.num}
-                      </span>
-                      <div>
-                        <span className="text-[11px] font-medium leading-none" style={{ color: '#1a1a1a' }}>{step.label}</span>
-                        <p className="text-[10px] leading-[1.4] mt-0.5" style={{ color: '#a8a29e' }}>{step.desc}</p>
+                <div>
+                  <div style={{ height: 1, background: '#e7e5e4' }} />
+                  <div className="mt-5 flex flex-col gap-5">
+                    {[
+                      { num: '01', label: 'Browse', desc: 'Scroll or use arrow keys to move between projects' },
+                      { num: '02', label: 'Preview', desc: 'View live interactive demos of each project' },
+                      { num: '03', label: 'Customize', desc: 'Configure settings and submit your preferences' },
+                      { num: '04', label: 'Ask', desc: '\u2318K to get AI assistance about any project' },
+                    ].map((step, i) => (
+                      <div
+                        key={step.num}
+                        className="flex items-start gap-3"
+                        style={{ animation: 'coachFadeIn 400ms ease-out both', animationDelay: `${400 + i * 120}ms` }}
+                      >
+                        <span className="text-[11px] tabular-nums leading-none flex-shrink-0 mt-[2px]" style={{ color: '#d6d3d1' }}>
+                          {step.num}
+                        </span>
+                        <div>
+                          <span className="text-[13px] font-medium leading-none" style={{ color: '#1a1a1a' }}>{step.label}</span>
+                          <p className="text-[11px] leading-[1.5] mt-1" style={{ color: '#a8a29e' }}>{step.desc}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : focusedProject ? (
               /* Per-project context state */
-              <div key={focusedProject.slug} className="p-4" style={{ animation: 'coachFadeIn 250ms ease-out both' }}>
-                {/* Type + code */}
-                <div className="flex items-center gap-1.5">
-                  <FocusedTypeIcon size={11} strokeWidth={1.5} style={{ color: '#a8a29e' }} />
-                  <span className="text-[10px] tracking-[0.05em] uppercase" style={{ color: '#a8a29e' }}>
-                    {focusedProject.type}
-                  </span>
-                  <span className="text-[10px] tabular-nums ml-auto" style={{ color: '#d6d3d1' }}>
-                    {focusedProject.code}
-                  </span>
-                </div>
-
-                {/* Description */}
-                <p className="text-[11px] leading-[1.5] mt-2" style={{ color: '#78716c' }}>
-                  {focusedProject.description}
-                </p>
-
-                {/* Step list — no header, self-explanatory */}
-                <ul className="mt-3 space-y-1.5">
-                  {focusedProject.steps.map((step, i) => {
-                    const done = state[focusedProject.slug]?.[i]?.completed;
-                    return (
-                      <li key={i} className="flex items-center gap-2">
-                        {done ? (
-                          <Check size={9} strokeWidth={2.5} className="flex-shrink-0" style={{ color: '#059669' }} />
-                        ) : (
-                          <span className="flex-shrink-0" style={{ width: 3, height: 3, borderRadius: '50%', background: '#d6d3d1' }} />
-                        )}
-                        <span
-                          className={`text-[11px] leading-[1.3] ${done ? 'line-through' : ''}`}
-                          style={{ color: done ? '#a8a29e' : '#525252' }}
-                        >
-                          {step.label}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-
-                {/* Divider */}
-                <div className="mt-3.5 mb-3" style={{ height: 1, background: '#e7e5e4' }} />
-
-                {/* Status + estimate */}
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px]" style={{ color: focusedSubmitted ? '#059669' : focusedCompleted === focusedTotal ? '#4f46e5' : '#a8a29e' }}>
-                    {focusedSubmitted
-                      ? 'Submitted'
-                      : focusedCompleted === focusedTotal
-                        ? 'Ready to submit'
-                        : `${focusedCompleted}/${focusedTotal} configured`}
-                  </span>
-                  <span className="text-[10px] tabular-nums" style={{ color: '#d6d3d1' }}>
-                    ${focusedProject.estimate.toLocaleString()}
-                  </span>
-                </div>
-
-                {/* Chat thread indicator */}
-                {(chatBySlug[focusedProject.slug]?.length ?? 0) > 0 && (
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#4f46e5' }} />
-                    <span className="text-[10px]" style={{ color: '#a8a29e' }}>
-                      {chatBySlug[focusedProject.slug].filter(m => !isStatusMsg(m.text)).length} messages
+              <div key={focusedProject.slug} className="flex flex-col justify-between h-full p-6" style={{ animation: 'coachFadeIn 250ms ease-out both' }}>
+                <div>
+                  {/* Type + code */}
+                  <div className="flex items-center gap-2">
+                    <FocusedTypeIcon size={13} strokeWidth={1.5} style={{ color: '#a8a29e' }} />
+                    <span className="text-[10px] tracking-[0.05em] uppercase" style={{ color: '#a8a29e' }}>
+                      {focusedProject.type}
+                    </span>
+                    <span className="text-[10px] tabular-nums ml-auto" style={{ color: '#d6d3d1' }}>
+                      {focusedProject.code}
                     </span>
                   </div>
-                )}
 
-                {/* Action — ghost button, understated */}
-                {!focusedSubmitted && (
-                  <button
-                    onClick={() => setOpenDrawer(focusedProject.slug)}
-                    className="mt-3 w-full h-7 rounded-[4px] flex items-center justify-center text-[10px] font-medium pointer-events-auto"
-                    style={{
-                      color: focusedCompleted === focusedTotal ? '#ffffff' : '#78716c',
-                      background: focusedCompleted === focusedTotal ? '#4f46e5' : 'transparent',
-                      border: focusedCompleted === focusedTotal ? 'none' : '1px solid #e7e5e4',
-                      transition: 'border-color 150ms ease-out, color 150ms ease-out',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (focusedCompleted !== focusedTotal) {
-                        e.currentTarget.style.borderColor = '#a8a29e';
-                        e.currentTarget.style.color = '#525252';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (focusedCompleted !== focusedTotal) {
-                        e.currentTarget.style.borderColor = '#e7e5e4';
-                        e.currentTarget.style.color = '#78716c';
-                      }
-                    }}
-                  >
-                    {focusedCompleted === focusedTotal ? 'Submit' : focusedCompleted > 0 ? 'Continue' : 'Start'}
-                  </button>
-                )}
+                  {/* Description */}
+                  <p className="text-[13px] leading-[1.6] mt-3" style={{ color: '#78716c' }}>
+                    {focusedProject.description}
+                  </p>
+
+                  {/* Step list */}
+                  <ul className="mt-5 space-y-2.5">
+                    {focusedProject.steps.map((step, i) => {
+                      const done = state[focusedProject.slug]?.[i]?.completed;
+                      return (
+                        <li key={i} className="flex items-center gap-2.5">
+                          {done ? (
+                            <Check size={11} strokeWidth={2.5} className="flex-shrink-0" style={{ color: '#059669' }} />
+                          ) : (
+                            <span className="flex-shrink-0" style={{ width: 4, height: 4, borderRadius: '50%', background: '#d6d3d1' }} />
+                          )}
+                          <span
+                            className={`text-[13px] leading-[1.4] ${done ? 'line-through' : ''}`}
+                            style={{ color: done ? '#a8a29e' : '#525252' }}
+                          >
+                            {step.label}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+
+                <div>
+                  {/* Divider */}
+                  <div className="mb-4" style={{ height: 1, background: '#e7e5e4' }} />
+
+                  {/* Status + estimate */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px]" style={{ color: focusedSubmitted ? '#059669' : focusedCompleted === focusedTotal ? '#4f46e5' : '#a8a29e' }}>
+                      {focusedSubmitted
+                        ? 'Submitted'
+                        : focusedCompleted === focusedTotal
+                          ? 'Ready to submit'
+                          : `${focusedCompleted}/${focusedTotal} configured`}
+                    </span>
+                    <span className="text-[11px] tabular-nums" style={{ color: '#d6d3d1' }}>
+                      ${focusedProject.estimate.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Chat thread indicator */}
+                  {(chatBySlug[focusedProject.slug]?.length ?? 0) > 0 && (
+                    <div className="flex items-center gap-1.5 mt-3">
+                      <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#4f46e5' }} />
+                      <span className="text-[11px]" style={{ color: '#a8a29e' }}>
+                        {chatBySlug[focusedProject.slug].filter(m => !isStatusMsg(m.text)).length} messages
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Action */}
+                  {!focusedSubmitted && (
+                    <button
+                      onClick={() => setOpenDrawer(focusedProject.slug)}
+                      className="mt-4 w-full h-9 rounded-[8px] flex items-center justify-center text-[12px] font-medium pointer-events-auto"
+                      style={{
+                        color: focusedCompleted === focusedTotal ? '#ffffff' : '#78716c',
+                        background: focusedCompleted === focusedTotal ? '#4f46e5' : 'transparent',
+                        border: focusedCompleted === focusedTotal ? 'none' : '1px solid #e7e5e4',
+                        transition: 'border-color 150ms ease-out, color 150ms ease-out',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (focusedCompleted !== focusedTotal) {
+                          e.currentTarget.style.borderColor = '#a8a29e';
+                          e.currentTarget.style.color = '#525252';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (focusedCompleted !== focusedTotal) {
+                          e.currentTarget.style.borderColor = '#e7e5e4';
+                          e.currentTarget.style.color = '#78716c';
+                        }
+                      }}
+                    >
+                      {focusedCompleted === focusedTotal ? 'Submit' : focusedCompleted > 0 ? 'Continue' : 'Start'}
+                    </button>
+                  )}
+                </div>
               </div>
             ) : null}
           </div>
