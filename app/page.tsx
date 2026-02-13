@@ -584,7 +584,7 @@ export default function Home() {
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [keyNav, setKeyNav] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "browse">("intake");
+  const [phase, setPhase] = useState<"intake" | "decompose" | "brand" | "spec" | "browse">("intake");
   const [intakeMessages, setIntakeMessages] = useState<Array<{ from: "user" | "ai"; text: string }>>([
     { from: "ai", text: "What are you building?" },
   ]);
@@ -607,8 +607,17 @@ export default function Home() {
   }>>([]);
   const [brandSelected, setBrandSelected] = useState<number | null>(null);
   const [brandLoading, setBrandLoading] = useState(false);
+  // Phase 4: Spec state
+  const [specData, setSpecData] = useState<{
+    summary: string;
+    sections: Array<{ title: string; items: string[] }>;
+    tech: string[];
+    timeline: string;
+    notes: string;
+  } | null>(null);
+  const [specLoading, setSpecLoading] = useState(false);
   const closingTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const phaseRef = useRef<"intake" | "decompose" | "brand" | "browse">("intake");
+  const phaseRef = useRef<"intake" | "decompose" | "brand" | "spec" | "browse">("intake");
   const intakeScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -966,7 +975,51 @@ export default function Home() {
     }
   }, [intakeMessages, intakePoints]);
 
-  const confirmBrand = useCallback(() => {
+  const confirmBrand = useCallback(async () => {
+    if (brandSelected === null || !brandOptions[brandSelected]) return;
+    const selectedBrand = brandOptions[brandSelected];
+    setPhase("spec");
+    setSpecLoading(true);
+    try {
+      const userMessages = intakeMessages.filter(m => m.from === "user").map(m => m.text);
+      const description = userMessages.join(" ");
+      const includedFeatures = decomposeItems
+        .map(item => ({
+          feature: item.feature,
+          tasks: item.tasks.filter(t => t.included).map(t => ({
+            name: t.name,
+            description: t.description,
+            price: t.price,
+          })),
+        }))
+        .filter(item => item.tasks.length > 0);
+      const res = await fetch("/api/spec", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description,
+          features: includedFeatures,
+          brand: {
+            name: selectedBrand.name,
+            colors: selectedBrand.colors,
+            font: selectedBrand.font,
+            domain: selectedBrand.domains[0],
+          },
+          total: decomposeTotal,
+        }),
+      });
+      const data = await res.json();
+      if (data.spec) {
+        setSpecData(data.spec);
+      }
+    } catch {
+      // stay on spec with empty state
+    } finally {
+      setSpecLoading(false);
+    }
+  }, [brandSelected, brandOptions, intakeMessages, decomposeItems, decomposeTotal]);
+
+  const confirmSpec = useCallback(() => {
     setPhase("browse");
   }, []);
 
@@ -1935,6 +1988,169 @@ export default function Home() {
                   onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
                 >
                   Use this brand
+                  <ArrowRight size={14} strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── SPEC PHASE ───────────────────────────────────────────────────
+  if (phase === "spec") {
+    const selectedBrand = brandSelected !== null ? brandOptions[brandSelected] : null;
+
+    return (
+      <div className="flex flex-col" style={{ height: "100dvh", background: "#fafaf9" }}>
+        {/* Top bar */}
+        <div className="flex items-center justify-center flex-shrink-0" style={{ height: 48 }}>
+          <span
+            className="text-[12px] font-medium tracking-[0.08em] uppercase"
+            style={{ color: "#a8a29e" }}
+          >
+            Viberr
+          </span>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6">
+          <div className="max-w-[600px] mx-auto py-8">
+            {specLoading ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-24">
+                <div className="flex gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a8a29e", animation: "pulse 1.5s ease-in-out infinite" }} />
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a8a29e", animation: "pulse 1.5s ease-in-out 0.2s infinite" }} />
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a8a29e", animation: "pulse 1.5s ease-in-out 0.4s infinite" }} />
+                </div>
+                <p className="text-[14px]" style={{ color: "#78716c" }}>
+                  Writing your build spec...
+                </p>
+              </div>
+            ) : specData ? (
+              <div className="flex flex-col gap-8">
+                {/* Summary */}
+                <div>
+                  <p className="text-[15px] leading-[1.6]" style={{ color: "#1a1a1a" }}>
+                    {specData.summary}
+                  </p>
+                </div>
+
+                {/* Sections */}
+                {specData.sections.map((section, si) => (
+                  <div key={si}>
+                    <p className="text-[13px] font-medium uppercase tracking-[0.05em] mb-3" style={{ color: "#a8a29e" }}>
+                      {section.title}
+                    </p>
+                    <div className="flex flex-col gap-1.5">
+                      {section.items.map((item, ii) => (
+                        <div
+                          key={ii}
+                          className="flex items-start gap-3 px-4 py-3 rounded-[8px]"
+                          style={{ background: "#fff", border: "1px solid #e7e5e4" }}
+                        >
+                          <div
+                            className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                            style={{ background: selectedBrand?.colors.primary || "#4f46e5", opacity: 0.15 }}
+                          >
+                            <Check size={10} strokeWidth={2.5} style={{ color: selectedBrand?.colors.primary || "#4f46e5" }} />
+                          </div>
+                          <p className="text-[14px] leading-[1.5]" style={{ color: "#1a1a1a" }}>
+                            {item}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Tech + Timeline */}
+                <div className="flex gap-6">
+                  <div className="flex-1">
+                    <p className="text-[13px] font-medium uppercase tracking-[0.05em] mb-2" style={{ color: "#a8a29e" }}>
+                      Stack
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {specData.tech.map((t, i) => (
+                        <span
+                          key={i}
+                          className="px-2.5 py-1 rounded-[6px] text-[12px] font-medium"
+                          style={{ background: "#f5f5f4", color: "#57534e" }}
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-medium uppercase tracking-[0.05em] mb-2" style={{ color: "#a8a29e" }}>
+                      Timeline
+                    </p>
+                    <p className="text-[14px] font-medium" style={{ color: "#1a1a1a" }}>
+                      {specData.timeline}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {specData.notes && (
+                  <div
+                    className="px-4 py-3 rounded-[8px] text-[13px] leading-[1.6]"
+                    style={{ background: "#f5f5f4", color: "#78716c" }}
+                  >
+                    {specData.notes}
+                  </div>
+                )}
+
+                {/* Brand reminder */}
+                {selectedBrand && (
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-[8px]" style={{ background: "#fff", border: "1px solid #e7e5e4" }}>
+                    <div className="flex gap-0.5">
+                      <div className="w-4 h-4 rounded-[2px]" style={{ background: selectedBrand.colors.primary }} />
+                      <div className="w-4 h-4 rounded-[2px]" style={{ background: selectedBrand.colors.secondary }} />
+                      <div className="w-4 h-4 rounded-[2px]" style={{ background: selectedBrand.colors.accent }} />
+                    </div>
+                    <span className="text-[13px]" style={{ color: "#78716c" }}>
+                      {selectedBrand.name} &middot; {selectedBrand.font.heading} / {selectedBrand.font.body} &middot; {selectedBrand.domains[0]}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-4 py-24">
+                <p className="text-[14px]" style={{ color: "#78716c" }}>
+                  Something went wrong generating the spec.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        {!specLoading && specData && (
+          <div className="flex-shrink-0 px-6 pb-6">
+            <div className="max-w-[600px] mx-auto">
+              <div
+                className="flex items-center justify-between px-5 py-4 rounded-[12px]"
+                style={{ background: "#fff", border: "1px solid #e7e5e4" }}
+              >
+                <div className="flex flex-col">
+                  <span className="text-[24px] font-medium tabular-nums tracking-[-0.02em]" style={{ color: "#1a1a1a" }}>
+                    ${decomposeTotal.toLocaleString()}
+                  </span>
+                  <span className="text-[12px]" style={{ color: "#a8a29e" }}>
+                    {specData.sections.reduce((sum, s) => sum + s.items.length, 0)} deliverables &middot; {specData.timeline}
+                  </span>
+                </div>
+                <button
+                  onClick={confirmSpec}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-[8px] text-[14px] font-medium text-white transition-all duration-150"
+                  style={{ background: selectedBrand?.colors.primary || "#4f46e5" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+                >
+                  Approve &amp; build
                   <ArrowRight size={14} strokeWidth={2} />
                 </button>
               </div>
