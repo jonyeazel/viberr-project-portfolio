@@ -580,6 +580,8 @@ export default function Home() {
   const [showTiltHint, setShowTiltHint] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [keyNav, setKeyNav] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const closingTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -786,6 +788,32 @@ export default function Home() {
     });
   }, [focusedIndex]);
 
+  // Close preview with smooth re-centering
+  const closePreview = useCallback(() => {
+    clearTimeout(closingTimerRef.current);
+    setPreviewSlug(null);
+    setPreviewMode(null);
+    setIsClosing(true);
+    // Track the card's center on every frame during contraction
+    const startTime = performance.now();
+    const duration = 450;
+    const track = () => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const child = el.children[focusedIndex] as HTMLElement;
+      if (!child) return;
+      el.scrollLeft = child.offsetLeft + child.offsetWidth / 2 - el.clientWidth / 2;
+      if (performance.now() - startTime < duration) {
+        requestAnimationFrame(track);
+      }
+    };
+    requestAnimationFrame(track);
+    // Re-enable snap after contraction animation settles
+    closingTimerRef.current = setTimeout(() => {
+      setIsClosing(false);
+    }, 500);
+  }, [focusedIndex]);
+
   // Center expanded card in scroll container
   useLayoutEffect(() => {
     if (!previewSlug) return;
@@ -939,8 +967,7 @@ export default function Home() {
           return;
         }
         if (previewSlug) {
-          setPreviewSlug(null);
-          setPreviewMode(null);
+          closePreview();
           return;
         }
         setOpenDrawer(null);
@@ -953,19 +980,18 @@ export default function Home() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [scrollBy, previewSlug, previewMode]);
+  }, [scrollBy, closePreview, previewSlug, previewMode]);
 
   // Listen for close-preview messages from iframes
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       if (e.data === "close-preview") {
-        setPreviewSlug(null);
-        setPreviewMode(null);
+        closePreview();
       }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, []);
+  }, [closePreview]);
 
   // Visual viewport offset for mobile keyboard
   const [keyboardOffset, setKeyboardOffset] = useState(0);
@@ -1313,7 +1339,7 @@ export default function Home() {
       {/* Card slideshow */}
       <div
         ref={scrollRef}
-        className={`flex-1 flex items-center overflow-x-auto ${previewSlug ? '' : 'snap-x snap-mandatory'}`}
+        className={`flex-1 flex items-center overflow-x-auto ${(previewSlug || isClosing) ? '' : 'snap-x snap-mandatory'}`}
         onPointerDown={() => setKeyNav(false)}
         onWheel={(e) => { if (previewSlug) e.preventDefault(); }}
         style={{
@@ -1325,7 +1351,7 @@ export default function Home() {
           transform: chatActive ? (isMobile ? 'scale(0.98) translateY(-4px)' : 'scale(0.94) translateY(-12px)') : 'scale(1) translateY(0)',
           transformOrigin: 'center center',
           transition: 'transform 400ms cubic-bezier(0.32, 0.72, 0, 1)',
-          ...(previewSlug
+          ...((previewSlug || isClosing)
             ? { touchAction: "none" }
             : {}),
         }}
@@ -1558,7 +1584,7 @@ export default function Home() {
                 >
                   {/* Close dot */}
                   <button
-                    onClick={() => { setPreviewSlug(null); setPreviewMode(null); }}
+                    onClick={closePreview}
                     className="w-3 h-3 rounded-full flex-shrink-0 transition-opacity duration-150 hover:opacity-80"
                     style={{ background: '#dc2626' }}
                   />
@@ -2457,7 +2483,7 @@ export default function Home() {
           <div className="flex items-center gap-2 px-4 flex-shrink-0" style={{ height: 40, background: 'rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <button
               onClick={() => {
-                if (isMobile) { setPreviewSlug(null); setPreviewMode(null); }
+                if (isMobile) { closePreview(); }
                 else setPreviewMode("desktop");
               }}
               className="w-3 h-3 rounded-full flex-shrink-0 transition-opacity duration-150 hover:opacity-80"
