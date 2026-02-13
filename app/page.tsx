@@ -581,7 +581,16 @@ export default function Home() {
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [keyNav, setKeyNav] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [phase, setPhase] = useState<"intake" | "browse">("intake");
+  const [intakeMessages, setIntakeMessages] = useState<Array<{ from: "user" | "ai"; text: string }>>([
+    { from: "ai", text: "What are you building?" },
+  ]);
+  const [intakePoints, setIntakePoints] = useState<Array<{ text: string; confirmed: boolean }> | null>(null);
+  const [intakeLoading, setIntakeLoading] = useState(false);
+  const [intakeValue, setIntakeValue] = useState("");
   const closingTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const phaseRef = useRef<"intake" | "browse">("intake");
+  const intakeScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -814,6 +823,64 @@ export default function Home() {
     }, 500);
   }, [focusedIndex]);
 
+  // Keep phaseRef in sync
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+
+  // Intake conversation
+  const sendIntake = useCallback(async (textOverride?: string) => {
+    const text = (textOverride || intakeValue).trim();
+    if (!text || intakeLoading) return;
+    setIntakeMessages(prev => [...prev, { from: "user", text }]);
+    setIntakeValue("");
+    setIntakeLoading(true);
+    try {
+      const history = intakeMessages.map(m => ({
+        role: m.from === "user" ? "user" as const : "assistant" as const,
+        content: m.text,
+      }));
+      const res = await fetch("/api/intake", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, history }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setIntakeMessages(prev => [...prev, { from: "ai", text: "Something went wrong. Try again." }]);
+      } else {
+        setIntakeMessages(prev => [...prev, { from: "ai", text: data.message }]);
+        if (data.points) {
+          setIntakePoints(data.points.map((p: string) => ({ text: p, confirmed: true })));
+        }
+      }
+    } catch {
+      setIntakeMessages(prev => [...prev, { from: "ai", text: "Something went wrong. Try again." }]);
+    } finally {
+      setIntakeLoading(false);
+    }
+  }, [intakeValue, intakeMessages, intakeLoading]);
+
+  const sendIntakeRef = useRef(sendIntake);
+  useEffect(() => { sendIntakeRef.current = sendIntake; }, [sendIntake]);
+
+  // Auto-scroll intake conversation
+  useEffect(() => {
+    const el = intakeScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [intakeMessages, intakeLoading, intakePoints]);
+
+  const toggleIntakePoint = useCallback((index: number) => {
+    setIntakePoints(prev => {
+      if (!prev) return prev;
+      const next = [...prev];
+      next[index] = { ...next[index], confirmed: !next[index].confirmed };
+      return next;
+    });
+  }, []);
+
+  const confirmIntake = useCallback(() => {
+    setPhase("browse");
+  }, []);
+
   // Center expanded card in scroll container
   useLayoutEffect(() => {
     if (!previewSlug) return;
@@ -927,7 +994,11 @@ export default function Home() {
           if (res.ok) {
             const data = await res.json();
             if (data.text) {
-              sendChat(data.text);
+              if (phaseRef.current === "intake") {
+                sendIntakeRef.current?.(data.text);
+              } else {
+                sendChat(data.text);
+              }
             }
           }
         } catch {
@@ -1317,6 +1388,135 @@ export default function Home() {
     };
   };
 
+  // ── INTAKE PHASE ──────────────────────────────────────────────────
+  if (phase === "intake") {
+    return (
+      <div className="flex flex-col" style={{ height: "100dvh", background: "#fafaf9" }}>
+        {/* Minimal top bar */}
+        <div className="flex items-center justify-center flex-shrink-0" style={{ height: 48 }}>
+          <span
+            className="text-[12px] font-medium tracking-[0.08em] uppercase"
+            style={{ color: "#a8a29e" }}
+          >
+            Viberr
+          </span>
+        </div>
+
+        {/* Conversation */}
+        <div ref={intakeScrollRef} className="flex-1 overflow-y-auto px-6">
+          <div className="max-w-[600px] mx-auto flex flex-col gap-5 py-8">
+            {intakeMessages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={
+                    msg.from === "user"
+                      ? "px-4 py-2.5 rounded-[16px] rounded-br-[4px] text-[15px] leading-[1.5]"
+                      : "text-[15px] leading-[1.5]"
+                  }
+                  style={
+                    msg.from === "user"
+                      ? { background: "#4f46e5", color: "#fff", maxWidth: "85%" }
+                      : { color: "#1a1a1a", maxWidth: "85%" }
+                  }
+                >
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+
+            {/* Extracted points as chips */}
+            {intakePoints && (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap gap-2">
+                  {intakePoints.map((point, i) => (
+                    <button
+                      key={i}
+                      onClick={() => toggleIntakePoint(i)}
+                      className="px-3.5 py-2 rounded-full text-[13px] font-medium transition-all duration-150"
+                      style={{
+                        background: point.confirmed ? "#4f46e5" : "transparent",
+                        color: point.confirmed ? "#fff" : "#78716c",
+                        border: point.confirmed ? "1px solid #4f46e5" : "1px solid #d6d3d1",
+                      }}
+                    >
+                      {point.text}
+                    </button>
+                  ))}
+                </div>
+                {intakePoints.some(p => p.confirmed) && (
+                  <button
+                    onClick={confirmIntake}
+                    className="self-start px-5 py-2.5 rounded-[8px] text-[14px] font-medium text-white transition-all duration-150 hover:brightness-110"
+                    style={{ background: "#4f46e5" }}
+                  >
+                    That covers it
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Loading dots */}
+            {intakeLoading && (
+              <div className="flex gap-1.5 py-1">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a8a29e", animation: "pulse 1.5s ease-in-out infinite" }} />
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a8a29e", animation: "pulse 1.5s ease-in-out 0.2s infinite" }} />
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a8a29e", animation: "pulse 1.5s ease-in-out 0.4s infinite" }} />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Input */}
+        <div className="px-6 pb-6 flex-shrink-0">
+          <div className="max-w-[600px] mx-auto">
+            <div
+              className="flex items-end gap-2 px-4 py-3 rounded-[12px]"
+              style={{ background: "#fff", border: "1px solid #d6d3d1" }}
+            >
+              <textarea
+                value={intakeValue}
+                onChange={(e) => setIntakeValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendIntake();
+                  }
+                }}
+                placeholder="Describe what you need built..."
+                className="flex-1 resize-none bg-transparent text-[15px] outline-none leading-[1.5]"
+                style={{ color: "#1a1a1a", minHeight: 24, maxHeight: 120 }}
+                rows={1}
+                disabled={intakeLoading}
+              />
+              <button
+                onClick={toggleRecording}
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-150"
+                style={{
+                  background: isRecording ? "#dc2626" : "#f5f5f4",
+                  color: isRecording ? "#fff" : "#78716c",
+                }}
+              >
+                {isRecording ? <Square size={12} fill="currentColor" /> : <Mic size={16} strokeWidth={1.5} />}
+              </button>
+              <button
+                onClick={() => sendIntake()}
+                disabled={!intakeValue.trim() || intakeLoading}
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-150"
+                style={{
+                  background: intakeValue.trim() ? "#4f46e5" : "#f5f5f4",
+                  color: intakeValue.trim() ? "#fff" : "#a8a29e",
+                }}
+              >
+                <SendHorizontal size={14} strokeWidth={2} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── BROWSE PHASE (existing carousel) ────────────────────────────
   return (
     <div className="flex flex-col overflow-hidden relative isolate" style={{ height: '100dvh' }}>
       {/* Background atmosphere */}
