@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useLayoutEffect } from "react";
 
 import {
   Github,
@@ -574,6 +574,9 @@ export default function Home() {
   const [windowH, setWindowH] = useState(800);
   const [windowW, setWindowW] = useState(1280);
   const [showHint, setShowHint] = useState(false);
+  const [tourStep, setTourStep] = useState(-1); // -1 = tour not active
+  const [tourCompleted, setTourCompleted] = useState(false);
+  const [showReward, setShowReward] = useState(false);
   const [showTiltHint, setShowTiltHint] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [keyNav, setKeyNav] = useState(false);
@@ -583,6 +586,7 @@ export default function Home() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const prevFocusRef = useRef(0);
+  const previewSlugRef = useRef<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mouseRef = useRef({ x: -9999, y: -9999 });
 
@@ -615,9 +619,19 @@ export default function Home() {
       }
     }
 
-    // First-visit hint
+    // Restore tour completion
+    if (localStorage.getItem('viberr-tour-done')) {
+      setTourCompleted(true);
+    }
+
+    // First visit
     if (!localStorage.getItem("viberr-visited")) {
-      setShowHint(true);
+      if (window.innerWidth >= 640) {
+        // Desktop: auto-start spotlight tour after brief delay
+        setTimeout(() => setTourStep(0), 800);
+      } else {
+        setShowHint(true);
+      }
       localStorage.setItem("viberr-visited", "1");
     }
   }, []);
@@ -647,11 +661,15 @@ export default function Home() {
     return () => window.removeEventListener("resize", update);
   }, []);
 
+  // Keep preview ref in sync
+  useEffect(() => { previewSlugRef.current = previewSlug; }, [previewSlug]);
+
   // Track which card is closest to center
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const onScroll = () => {
+      if (previewSlugRef.current) return;
       const containerCenter = el.scrollLeft + el.offsetWidth / 2;
       let closest = 0;
       let minDist = Infinity;
@@ -756,6 +774,36 @@ export default function Home() {
     if (!el) return;
     el.scrollBy({ left: direction * 400, behavior: "smooth" });
   }, []);
+
+  const centerFocused = useCallback(() => {
+    requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const child = el.children[focusedIndex] as HTMLElement | undefined;
+      if (child) {
+        child.scrollIntoView({ behavior: "smooth", inline: "center" });
+      }
+    });
+  }, [focusedIndex]);
+
+  // Center expanded card in scroll container
+  useLayoutEffect(() => {
+    if (!previewSlug) return;
+    const center = () => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const idx = projects.findIndex(p => p.slug === previewSlug);
+      if (idx < 0) return;
+      const child = el.children[idx] as HTMLElement;
+      if (!child) return;
+      el.scrollLeft = child.offsetLeft + child.offsetWidth / 2 - el.clientWidth / 2;
+    };
+    // Center immediately (before paint, uses target layout values)
+    center();
+    // Also re-center after CSS transition completes (350ms safety net)
+    const timer = setTimeout(center, 350);
+    return () => clearTimeout(timer);
+  }, [previewSlug, previewMode]);
 
   // AI chat
   const sendChat = useCallback(
@@ -937,14 +985,80 @@ export default function Home() {
   const cardW = isMobile ? Math.round(windowW * 0.8) : CARD_W;
   const cardH = isMobile ? Math.min(Math.round(cardW * (4 / 3)), windowH - 200) : CARD_H;
 
-  // Context card — persistent left panel (same size as project cards)
-  const leftSpace = windowW / 2 - cardW / 2;
-  const showContextCard = !isMobile && leftSpace >= cardW + 48;
-  const contextCardLeft = leftSpace - cardW - 40;
-  const focusedCompleted = state[focusedProject?.slug ?? '']?.filter(s => s.completed).length ?? 0;
-  const focusedTotal = focusedProject?.steps.length ?? 0;
-  const focusedSubmitted = submitted[focusedProject?.slug ?? ''];
-  const FocusedTypeIcon = focusedProject ? typeConfig[focusedProject.type].icon : Workflow;
+  // ─── Spotlight Tour ───────────────────────────────────────────
+  const tourSteps = [
+    {
+      target: '[data-tour="card"]',
+      title: 'These are real',
+      body: 'Not mockups. Not wireframes. Each card is a finished, running product you can take live today. Finish this tour for something good.',
+      position: 'right' as const,
+    },
+    {
+      target: '[data-tour="deliverables"]',
+      title: 'These talk back',
+      body: 'Click any line item and the AI breaks it down in real time. Scope, effort, integrations — answered instantly.',
+      position: 'right' as const,
+    },
+    {
+      target: '[data-tour="pricing"]',
+      title: 'No mystery pricing',
+      body: 'Half upfront, half on delivery. The number doesn\'t change. What you see is what it costs.',
+      position: 'right' as const,
+    },
+    {
+      target: '[data-tour="view-project"]',
+      title: 'Try it right now',
+      body: 'Hit this and the actual working demo loads inside the card. No signup. No new tab. Just the product.',
+      position: 'top' as const,
+    },
+    {
+      target: '[data-tour="next-steps"]',
+      title: 'Your turn',
+      body: 'Upload your files, pick your options, submit your preferences. The project adapts to you.',
+      position: 'top' as const,
+    },
+    {
+      target: '[data-tour="chat"]',
+      title: 'It knows things',
+      body: 'Ask the AI anything about this project. Features, timelines, tech stack. It answers in seconds.',
+      position: 'top' as const,
+    },
+    {
+      target: '[data-tour="nav"]',
+      title: 'There are 12 of these',
+      body: 'Arrow keys, scroll, or these buttons. Each one different. Each one finished. One more step...',
+      position: 'top' as const,
+    },
+  ];
+  const tourActive = tourStep >= 0 && tourStep < tourSteps.length;
+  const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
+
+  useEffect(() => {
+    if (!tourActive) { setSpotlightRect(null); return; }
+    const step = tourSteps[tourStep];
+    const measure = () => {
+      const el = document.querySelector(step.target);
+      if (el) setSpotlightRect(el.getBoundingClientRect());
+    };
+    measure();
+    const id = setInterval(measure, 200);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourStep, tourActive]);
+
+  const advanceTour = () => {
+    if (tourStep < tourSteps.length - 1) {
+      setTourStep(tourStep + 1);
+    } else {
+      setTourStep(-1);
+      if (!tourCompleted) {
+        setTourCompleted(true);
+        localStorage.setItem('viberr-tour-done', '1');
+        setShowReward(true);
+      }
+    }
+  };
+  const dismissTour = () => setTourStep(-1);
 
   // Haptic feedback on card snap (mobile)
   useEffect(() => {
@@ -1112,7 +1226,7 @@ export default function Home() {
   const maxCardH = Math.max(400, windowH - 218);
   const mobileH = Math.min(MOBILE_FRAME_H, maxCardH);
   const desktopW = isMobile ? windowW - 24 : Math.min(Math.round(windowW * 0.8), 1200);
-  const desktopH = Math.min(Math.round(desktopW * 0.45), maxCardH, windowH - 180);
+  const desktopH = Math.min(Math.round(desktopW * 0.5625), windowH - 160);
 
   const SPRING = "cubic-bezier(0.32, 0.72, 0, 1)";
   const T = `width 300ms ${SPRING}, height 300ms ${SPRING}, border-radius 300ms ${SPRING}, transform 150ms ease-out, opacity 150ms ease-out`;
@@ -1125,15 +1239,15 @@ export default function Home() {
   ): React.CSSProperties => {
     if (isPreviewing && previewMode === "mobile") {
       return {
-        width: isMobile ? cardW : MOBILE_FRAME_W,
-        height: isMobile ? cardH : mobileH,
-        borderRadius: 36,
+        width: isMobile ? cardW : desktopW,
+        height: isMobile ? cardH : desktopH,
+        borderRadius: isMobile ? 36 : 12,
         transform: "scale(1)",
         opacity: 1,
         transition: T,
         border: "1px solid #d6d3d1",
         boxShadow:
-          "0 0 0 1px rgba(99,91,255,0.06), 0 20px 60px rgba(0,0,0,0.12)",
+          "0 0 0 1px rgba(99,91,255,0.04), 0 2px 12px rgba(0,0,0,0.04)",
       };
     }
     if (isPreviewing && previewMode === "desktop") {
@@ -1193,8 +1307,9 @@ export default function Home() {
       {/* Card slideshow */}
       <div
         ref={scrollRef}
-        className="flex-1 flex items-center overflow-x-auto snap-x snap-mandatory"
+        className={`flex-1 flex items-center overflow-x-auto ${previewSlug ? '' : 'snap-x snap-mandatory'}`}
         onPointerDown={() => setKeyNav(false)}
+        onWheel={(e) => { if (previewSlug) e.preventDefault(); }}
         style={{
           scrollbarWidth: "none",
           WebkitOverflowScrolling: 'touch' as never,
@@ -1205,7 +1320,7 @@ export default function Home() {
           transformOrigin: 'center center',
           transition: 'transform 400ms cubic-bezier(0.32, 0.72, 0, 1)',
           ...(previewSlug
-            ? { overflow: "hidden", touchAction: "none" }
+            ? { touchAction: "none" }
             : {}),
         }}
       >
@@ -1213,8 +1328,6 @@ export default function Home() {
           const TypeIcon = typeConfig[project.type].icon;
           const progress = getProgress(project.slug);
           const isSubmitted = submitted[project.slug];
-          const completedCount =
-            state[project.slug]?.filter((s) => s.completed).length ?? 0;
           const isDrawerOpen = openDrawer === project.slug;
           const isFocused = idx === focusedIndex;
           const isPreviewing = previewSlug === project.slug;
@@ -1224,6 +1337,7 @@ export default function Home() {
             <div
               key={project.slug}
               className="flex-shrink-0 relative snap-center"
+              {...(isFocused ? { 'data-tour': 'card' } : {})}
               style={{
                 width: cardStyle.width,
                 height: cardStyle.height,
@@ -1236,19 +1350,6 @@ export default function Home() {
                 outlineOffset: 4,
               }}
             >
-              {/* Drawer glow — alive whisper, bleeds outside card bounds */}
-              <div
-                className="absolute pointer-events-none"
-                style={{
-                  inset: -32,
-                  borderRadius: ((cardStyle.borderRadius as number) || 16) + 32,
-                  opacity: isDrawerOpen ? 1 : 0,
-                  transition: 'opacity 600ms ease-out',
-                  background: 'radial-gradient(ellipse 140% 80% at 50% 15%, rgba(79,70,229,0.38) 0%, rgba(79,70,229,0.14) 35%, transparent 68%)',
-                  animation: isDrawerOpen ? 'drawerGlow 5s ease-in-out infinite' : 'none',
-                  transformOrigin: 'top center',
-                }}
-              />
               <div
                 className="absolute inset-0 overflow-hidden bg-card"
                 style={{
@@ -1276,10 +1377,10 @@ export default function Home() {
                     strokeWidth={1.5}
                     className="text-muted"
                   />
-                  <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'} text-muted tracking-[0.05em] uppercase`}>
+                  <span className={`${isMobile ? 'text-[13px]' : 'text-[12px]'} text-muted tracking-[0.05em] uppercase`}>
                     {project.type}
                   </span>
-                  <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'} text-muted tabular-nums ml-auto`}>
+                  <span className={`${isMobile ? 'text-[13px]' : 'text-[12px]'} text-muted tabular-nums ml-auto`}>
                     {project.code}
                   </span>
                   {(chatBySlug[project.slug]?.length ?? 0) > 0 && (
@@ -1291,15 +1392,15 @@ export default function Home() {
                 </div>
 
                 {/* Title + description */}
-                <h2 className={`${isMobile ? 'text-[22px]' : 'text-[20px]'} font-medium text-foreground mt-4 leading-[1.25] tracking-[-0.01em]`}>
+                <h2 className={`${isMobile ? 'text-[24px]' : 'text-[22px]'} font-medium text-foreground mt-3 leading-[1.25] tracking-[-0.02em]`}>
                   {project.name}
                 </h2>
-                <p className={`${isMobile ? 'text-[15px]' : 'text-[13px]'} text-secondary-foreground leading-[1.6] mt-1.5`}>
+                <p className={`${isMobile ? 'text-[15px]' : 'text-[14px]'} text-secondary-foreground leading-[1.6] mt-1`}>
                   {project.description}
                 </p>
 
                 {/* Deliverables — clickable, sends prompt to control panel */}
-                <ul className="mt-4 space-y-0.5">
+                <ul className="mt-3 space-y-0" {...(isFocused ? { 'data-tour': 'deliverables' } : {})}>
                   {project.deliverables.map((d, i) => (
                     <li key={i}>
                       <button
@@ -1312,12 +1413,12 @@ export default function Home() {
                           }
                         }}
                         disabled={!isFocused || chatLoading}
-                        className={`group/deliv flex items-start gap-2.5 ${isMobile ? 'text-[14px]' : 'text-[12px]'} leading-[1.5] text-muted text-left w-full py-1 rounded-[4px] transition-colors duration-150`}
+                        className={`group/deliv flex items-start gap-2 ${isMobile ? 'text-[14px]' : 'text-[13px]'} leading-[1.5] text-muted text-left w-full py-0.5 rounded-[4px] transition-colors duration-150`}
                         onMouseEnter={(e) => { if (isFocused) e.currentTarget.style.color = '#1a1a1a'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.color = ''; }}
                         style={{ cursor: isFocused && !chatLoading ? 'pointer' : 'default' }}
                       >
-                        <span className="w-1 h-1 rounded-full bg-primary mt-[7px] flex-shrink-0" />
+                        <span className="w-[3px] h-[3px] rounded-full mt-[8px] flex-shrink-0" style={{ background: '#c4c0bc' }} />
                         <span className="flex-1">{d}</span>
                         <Zap size={10} strokeWidth={2} className="flex-shrink-0 mt-[5px] opacity-0 group-hover/deliv:opacity-40 transition-opacity duration-150" style={{ color: '#4f46e5' }} />
                       </button>
@@ -1344,75 +1445,66 @@ export default function Home() {
                 </div>
 
                 {/* Price + progress */}
-                <div className="border-t border-border pt-3 mt-3">
+                <div className="border-t border-border pt-3 mt-3" {...(isFocused ? { 'data-tour': 'pricing' } : {})}>
                   <div className="flex items-baseline gap-1.5">
-                    <span className={`${isMobile ? 'text-[20px]' : 'text-[18px]'} font-medium tabular-nums text-foreground leading-none tracking-[-0.02em]`}>
-                      ${(project.estimate / 2).toLocaleString()}
-                    </span>
-                    <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'} text-muted`}>
-                      / ${project.estimate.toLocaleString()}
-                    </span>
-                  </div>
-
-                  {/* Step dots + progress track */}
-                  <div className="mt-3 flex flex-col gap-1.5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1.5">
-                        {project.steps.map((_step, stepIdx) => {
-                          const isDone = state[project.slug]?.[stepIdx]?.completed;
-                          return (
-                            <div
-                              key={stepIdx}
-                              className="w-[5px] h-[5px] rounded-full transition-all duration-150"
-                              style={{
-                                background: isDone ? '#059669' : 'transparent',
-                                border: isDone ? 'none' : '1px solid #c4c0bc',
-                              }}
-                            />
-                          );
-                        })}
-                      </div>
-                      <span className={`${isMobile ? 'text-[12px]' : 'text-[10px]'} tabular-nums text-muted`}>
-                        {completedCount}/{project.steps.length}
-                      </span>
-                    </div>
-                    <div className="w-full h-[2px] rounded-full overflow-hidden" style={{ background: '#e7e5e4' }}>
-                      <div
-                        className="h-full rounded-full transition-all duration-300"
-                        style={{
-                          width: `${(completedCount / project.steps.length) * 100}%`,
-                          background: completedCount === project.steps.length ? '#059669' : '#4f46e5',
-                        }}
-                      />
-                    </div>
+                    {tourCompleted ? (
+                      <>
+                        <span className={`${isMobile ? 'text-[22px]' : 'text-[20px]'} font-medium tabular-nums leading-none tracking-[-0.02em]`} style={{ color: '#4f46e5' }}>
+                          ${Math.round(project.estimate * 0.3).toLocaleString()}
+                        </span>
+                        <span className={`${isMobile ? 'text-[14px]' : 'text-[13px]'} line-through`} style={{ color: '#d6d3d1' }}>
+                          ${(project.estimate / 2).toLocaleString()}
+                        </span>
+                        <span className={`${isMobile ? 'text-[14px]' : 'text-[13px]'} text-muted`}>
+                          / ${Math.round(project.estimate * 0.6).toLocaleString()}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className={`${isMobile ? 'text-[22px]' : 'text-[20px]'} font-medium tabular-nums text-foreground leading-none tracking-[-0.02em]`}>
+                          ${(project.estimate / 2).toLocaleString()}
+                        </span>
+                        <span className={`${isMobile ? 'text-[14px]' : 'text-[13px]'} text-muted`}>
+                          / ${project.estimate.toLocaleString()}
+                        </span>
+                      </>
+                    )}
                   </div>
 
                   {/* Action row */}
-                  <div className="flex items-center gap-2 mt-3" style={isMobile ? undefined : { paddingLeft: 12, paddingRight: 12 }}>
+                  <div className="flex items-center gap-1.5 mt-3">
                     <button
                       onClick={() => {
                         setPreviewSlug(project.slug);
                         setPreviewMode(isMobile ? "fullscreen" : "desktop");
                       }}
-                      className={`flex-1 ${isMobile ? 'h-11' : 'h-9'} flex items-center justify-center rounded-[8px] bg-primary text-white ${isMobile ? 'text-[14px]' : 'text-[12px]'} font-medium hover:brightness-110 transition-all duration-150`}
+                      className={`flex-1 h-10 flex items-center justify-center rounded-[6px] ${isMobile ? 'text-[14px]' : 'text-[12px]'} font-medium text-white transition-all duration-150`}
+                      style={{ background: '#4f46e5' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(1.1)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
+                      {...(isFocused ? { 'data-tour': 'view-project' } : {})}
                     >
                       View project
                     </button>
                     {isSubmitted ? (
-                      <div className={`${isMobile ? 'h-11' : 'h-9'} px-3.5 flex items-center justify-center gap-1.5 rounded-[8px] bg-[#059669]/10`}>
+                      <div className="h-10 px-3 flex items-center justify-center gap-1.5 rounded-[6px]" style={{ background: 'rgba(5,150,105,0.08)' }}>
                         <Check
-                          size={isMobile ? 14 : 12}
+                          size={isMobile ? 13 : 11}
                           strokeWidth={2}
-                          className="text-[#059669]"
+                          style={{ color: '#059669' }}
                         />
-                        <span className={`${isMobile ? 'text-[14px]' : 'text-[12px]'} text-[#059669] font-medium`}>
+                        <span className={`${isMobile ? 'text-[13px]' : 'text-[11px]'} font-medium`} style={{ color: '#059669' }}>
                           Submitted
                         </span>
                       </div>
                     ) : (
                       <button
                         onClick={() => setOpenDrawer(project.slug)}
-                        className={`${isMobile ? 'h-11' : 'h-9'} px-3.5 flex items-center justify-center rounded-[8px] border border-border ${isMobile ? 'text-[14px]' : 'text-[12px]'} text-muted hover:text-foreground hover:border-muted transition-colors duration-150`}
+                        className={`h-10 px-3 flex items-center justify-center rounded-[6px] ${isMobile ? 'text-[13px]' : 'text-[11px]'} transition-colors duration-150`}
+                        style={{ color: '#78716c', border: '1px solid #e7e5e4' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#a8a29e'; e.currentTarget.style.color = '#1a1a1a'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e7e5e4'; e.currentTarget.style.color = '#78716c'; }}
+                        {...(isFocused ? { 'data-tour': 'next-steps' } : {})}
                       >
                         Next steps
                       </button>
@@ -1421,9 +1513,12 @@ export default function Home() {
                       href={`${REPO_BASE}/${project.slug}/page.tsx`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`flex items-center justify-center ${isMobile ? 'w-11 h-11' : 'w-9 h-9'} rounded-[8px] border border-border text-muted hover:text-foreground hover:border-muted transition-colors duration-150`}
+                      className="flex items-center justify-center w-10 h-10 rounded-[6px] transition-colors duration-150"
+                      style={{ color: '#a8a29e', border: '1px solid #e7e5e4' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = '#1a1a1a'; e.currentTarget.style.borderColor = '#a8a29e'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = '#a8a29e'; e.currentTarget.style.borderColor = '#e7e5e4'; }}
                     >
-                      <Github size={14} strokeWidth={1.5} />
+                      <Github size={13} strokeWidth={1.5} />
                     </a>
                   </div>
                 </div>
@@ -1442,14 +1537,14 @@ export default function Home() {
               >
                 {/* Browser chrome — address bar at top */}
                 <div
-                  className="flex items-center gap-2 px-3 flex-shrink-0"
+                  className="flex items-center gap-2 px-2.5 flex-shrink-0"
                   style={{
-                    height: 32,
+                    height: 28,
                     background: '#f5f5f4',
                     borderBottom: '1px solid #e7e5e4',
-                    borderRadius: previewMode === "mobile"
+                    borderRadius: previewMode === "mobile" && isMobile
                       ? '35px 35px 0 0'
-                      : previewMode === "desktop"
+                      : previewMode === "desktop" || previewMode === "mobile"
                         ? '11px 11px 0 0'
                         : '0',
                     transition: 'border-radius 300ms cubic-bezier(0.32, 0.72, 0, 1)',
@@ -1525,37 +1620,63 @@ export default function Home() {
                           <div className="h-3 rounded" style={{ width: '70%', background: '#e7e5e4', animation: 'pulse 1.5s ease-in-out 0.4s infinite' }} />
                         </div>
                       )}
-                      {/* Mobile iframe — 640px scaled to fit */}
+                      {/* Mobile iframe — 375px scaled to fit, centered */}
                       <div
                         style={{
                           position: "absolute",
                           inset: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                           overflow: "hidden",
                           opacity: previewMode === "mobile" && iframeLoaded[project.slug] ? 1 : 0,
                           pointerEvents:
                             previewMode === "mobile" ? "auto" : "none",
                           transition: "opacity 150ms ease-out",
+                          background: isMobile ? 'transparent' : '#f5f5f4',
                         }}
                       >
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            width: MOBILE_IFRAME_W,
-                            height: MOBILE_IFRAME_H,
-                            transform: `scale(${MOBILE_FRAME_W / MOBILE_IFRAME_W})`,
-                            transformOrigin: "top left",
-                          }}
-                        >
-                          <iframe
-                            src={`/${project.slug}`}
-                            className="w-full h-full border-none"
-                            style={{ background: "#fff" }}
-                            title={`${project.name} — mobile`}
-                            onLoad={() => setIframeLoaded(prev => ({ ...prev, [project.slug]: true }))}
-                          />
-                        </div>
+                        {(() => {
+                          const availH = (isMobile ? cardH : desktopH) - 28;
+                          const phoneH = Math.min(mobileH - 32, availH - 24);
+                          const phoneW = Math.round(phoneH * (MOBILE_FRAME_W / (MOBILE_FRAME_H - 32)));
+                          const iframeScale = phoneW / MOBILE_IFRAME_W;
+                          return (
+                            <div
+                              style={{
+                                width: phoneW,
+                                height: phoneH,
+                                borderRadius: isMobile ? 0 : 20,
+                                overflow: "hidden",
+                                position: "relative",
+                                flexShrink: 0,
+                                boxShadow: isMobile ? 'none' : '0 8px 40px rgba(0,0,0,0.1)',
+                                border: isMobile ? 'none' : '1px solid #e7e5e4',
+                                background: '#ffffff',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: 0,
+                                  left: 0,
+                                  width: MOBILE_IFRAME_W,
+                                  height: MOBILE_IFRAME_H,
+                                  transform: `scale(${iframeScale})`,
+                                  transformOrigin: "top left",
+                                }}
+                              >
+                                <iframe
+                                  src={`/${project.slug}`}
+                                  className="w-full h-full border-none"
+                                  style={{ background: "#fff" }}
+                                  title={`${project.name} — mobile`}
+                                  onLoad={() => setIframeLoaded(prev => ({ ...prev, [project.slug]: true }))}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                       {/* Desktop iframe — rendered at actual card size */}
                       <div
@@ -1587,6 +1708,16 @@ export default function Home() {
                   onClick={() => setOpenDrawer(null)}
                 />
               )}
+
+              {/* Drawer glow — contained within card */}
+              <div
+                className="absolute inset-0 pointer-events-none z-[15]"
+                style={{
+                  opacity: isDrawerOpen ? 1 : 0,
+                  transition: 'opacity 600ms ease-out',
+                  background: 'radial-gradient(ellipse 100% 60% at 50% 100%, rgba(79,70,229,0.12) 0%, transparent 70%)',
+                }}
+              />
 
               {/* Inset drawer */}
               <div
@@ -2013,173 +2144,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Context card — persistent left panel, same size as project cards */}
-      {showContextCard && (
-        <div
-          className="fixed z-10 pointer-events-none"
-          style={{
-            left: Math.max(contextCardLeft, 16),
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: cardW,
-            height: cardH,
-          }}
-        >
-          <div
-            className="absolute inset-0 overflow-hidden bg-card flex flex-col"
-            style={{
-              borderRadius: 16,
-              border: '1px solid #d6d3d1',
-              boxShadow: '0 0 0 1px rgba(99,91,255,0.06), 0 8px 40px rgba(0,0,0,0.06)',
-            }}
-          >
-            {showHint ? (
-              /* Welcome / onboarding state */
-              <div key="welcome" className="flex flex-col justify-between h-full p-6" style={{ animation: 'coachFadeIn 500ms ease-out both', animationDelay: '200ms' }}>
-                <div>
-                  <div className="text-[24px] font-medium tracking-[-0.03em] leading-[1.15]" style={{ color: '#1a1a1a' }}>
-                    Viberr
-                  </div>
-                  <p className="text-[13px] leading-[1.6] mt-3" style={{ color: '#78716c' }}>
-                    12 projects built and ready to ship. Browse, preview live demos, and configure each one.
-                  </p>
-                </div>
 
-                <div>
-                  <div style={{ height: 1, background: '#e7e5e4' }} />
-                  <div className="mt-5 flex flex-col gap-5">
-                    {[
-                      { num: '01', label: 'Browse', desc: 'Scroll or use arrow keys to move between projects' },
-                      { num: '02', label: 'Preview', desc: 'View live interactive demos of each project' },
-                      { num: '03', label: 'Customize', desc: 'Configure settings and submit your preferences' },
-                      { num: '04', label: 'Ask', desc: '\u2318K to get AI assistance about any project' },
-                    ].map((step, i) => (
-                      <div
-                        key={step.num}
-                        className="flex items-start gap-3"
-                        style={{ animation: 'coachFadeIn 400ms ease-out both', animationDelay: `${400 + i * 120}ms` }}
-                      >
-                        <span className="text-[11px] tabular-nums leading-none flex-shrink-0 mt-[2px]" style={{ color: '#d6d3d1' }}>
-                          {step.num}
-                        </span>
-                        <div>
-                          <span className="text-[13px] font-medium leading-none" style={{ color: '#1a1a1a' }}>{step.label}</span>
-                          <p className="text-[11px] leading-[1.5] mt-1" style={{ color: '#a8a29e' }}>{step.desc}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : focusedProject ? (
-              /* Per-project context state */
-              <div key={focusedProject.slug} className="flex flex-col justify-between h-full p-6" style={{ animation: 'coachFadeIn 250ms ease-out both' }}>
-                <div>
-                  {/* Type + code */}
-                  <div className="flex items-center gap-2">
-                    <FocusedTypeIcon size={13} strokeWidth={1.5} style={{ color: '#a8a29e' }} />
-                    <span className="text-[10px] tracking-[0.05em] uppercase" style={{ color: '#a8a29e' }}>
-                      {focusedProject.type}
-                    </span>
-                    <span className="text-[10px] tabular-nums ml-auto" style={{ color: '#d6d3d1' }}>
-                      {focusedProject.code}
-                    </span>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-[13px] leading-[1.6] mt-3" style={{ color: '#78716c' }}>
-                    {focusedProject.description}
-                  </p>
-
-                  {/* Deliverables */}
-                  <ul className="mt-4 space-y-1.5">
-                    {focusedProject.deliverables.slice(0, 4).map((d, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="flex-shrink-0 mt-[7px]" style={{ width: 3, height: 3, borderRadius: '50%', background: '#4f46e5' }} />
-                        <span className="text-[12px] leading-[1.5]" style={{ color: '#525252' }}>{d}</span>
-                      </li>
-                    ))}
-                    {focusedProject.deliverables.length > 4 && (
-                      <li className="text-[11px] pl-[11px]" style={{ color: '#a8a29e' }}>
-                        +{focusedProject.deliverables.length - 4} more
-                      </li>
-                    )}
-                  </ul>
-                </div>
-
-                <div>
-                  {/* Divider */}
-                  <div className="mb-4" style={{ height: 1, background: '#e7e5e4' }} />
-
-                  {/* Progress bar */}
-                  <div className="w-full h-[2px] rounded-full overflow-hidden mb-3" style={{ background: '#e7e5e4' }}>
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${(focusedCompleted / focusedTotal) * 100}%`,
-                        background: focusedCompleted === focusedTotal ? '#059669' : '#4f46e5',
-                        transition: 'width 300ms ease-out',
-                      }}
-                    />
-                  </div>
-
-                  {/* Status + estimate */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px]" style={{ color: focusedSubmitted ? '#059669' : focusedCompleted === focusedTotal ? '#4f46e5' : '#a8a29e' }}>
-                      {focusedSubmitted
-                        ? 'Submitted'
-                        : focusedCompleted === focusedTotal
-                          ? 'Ready to submit'
-                          : `${focusedCompleted}/${focusedTotal} configured`}
-                    </span>
-                    <span className="text-[11px] tabular-nums" style={{ color: '#d6d3d1' }}>
-                      ${focusedProject.estimate.toLocaleString()}
-                    </span>
-                  </div>
-
-                  {/* Chat thread indicator */}
-                  {(chatBySlug[focusedProject.slug]?.length ?? 0) > 0 && (
-                    <div className="flex items-center gap-1.5 mt-3">
-                      <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#4f46e5' }} />
-                      <span className="text-[11px]" style={{ color: '#a8a29e' }}>
-                        {chatBySlug[focusedProject.slug].filter(m => !isStatusMsg(m.text)).length} messages
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Action */}
-                  {!focusedSubmitted && (
-                    <button
-                      onClick={() => setOpenDrawer(focusedProject.slug)}
-                      className="mt-4 w-full h-9 rounded-[8px] flex items-center justify-center text-[12px] font-medium pointer-events-auto"
-                      style={{
-                        color: focusedCompleted === focusedTotal ? '#ffffff' : '#78716c',
-                        background: focusedCompleted === focusedTotal ? '#4f46e5' : 'transparent',
-                        border: focusedCompleted === focusedTotal ? 'none' : '1px solid #e7e5e4',
-                        transition: 'border-color 150ms ease-out, color 150ms ease-out',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (focusedCompleted !== focusedTotal) {
-                          e.currentTarget.style.borderColor = '#a8a29e';
-                          e.currentTarget.style.color = '#525252';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (focusedCompleted !== focusedTotal) {
-                          e.currentTarget.style.borderColor = '#e7e5e4';
-                          e.currentTarget.style.color = '#78716c';
-                        }
-                      }}
-                    >
-                      {focusedCompleted === focusedTotal ? 'Submit' : focusedCompleted > 0 ? 'Continue' : 'Start'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      )}
 
       {/* Tilt-to-browse discovery toast */}
       {showTiltHint && (
@@ -2258,6 +2223,7 @@ export default function Home() {
             <div
               className="flex items-center gap-2 px-3"
               style={{ background: '#ffffff', minHeight: 50 }}
+              data-tour="chat"
             >
               {/* Living brand mark */}
               <div
@@ -2298,7 +2264,7 @@ export default function Home() {
                     viberr
                   </span>
                 </div>
-                <div style={{ position: 'absolute', bottom: -1, right: -1, width: 6, height: 6, borderRadius: '50%', background: '#059669', border: '1.5px solid #ffffff', transition: 'right 280ms cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
+
               </div>
 
               {/* Divider */}
@@ -2421,7 +2387,7 @@ export default function Home() {
               </div>
 
               {/* Right — nav + shortcut */}
-              <div className="flex items-center gap-0.5 flex-shrink-0 ml-2">
+              <div className="flex items-center gap-0.5 flex-shrink-0 ml-2" data-tour="nav">
                 {!isMobile && (
                   <>
                     <button
@@ -2448,15 +2414,26 @@ export default function Home() {
                   {focusedIndex + 1}/{projects.length}
                 </span>
                 {!isMobile && (
-                  <button
-                    onClick={() => chatInputRef.current?.focus()}
-                    className="text-[9px] px-1 py-px rounded select-none transition-all duration-150 ml-1.5"
-                    style={{ color: '#c4c0bc', border: '1px solid #ddd8d4' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = '#78716c'; e.currentTarget.style.borderColor = '#c4c0bc'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = '#c4c0bc'; e.currentTarget.style.borderColor = '#ddd8d4'; }}
-                  >
-                    ⌘K
-                  </button>
+                  <>
+                    <button
+                      onClick={() => chatInputRef.current?.focus()}
+                      className="text-[9px] px-1 py-px rounded select-none transition-all duration-150 ml-1.5"
+                      style={{ color: '#c4c0bc', border: '1px solid #ddd8d4' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = '#78716c'; e.currentTarget.style.borderColor = '#c4c0bc'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = '#c4c0bc'; e.currentTarget.style.borderColor = '#ddd8d4'; }}
+                    >
+                      ⌘K
+                    </button>
+                    <button
+                      onClick={() => setTourStep(0)}
+                      className="text-[9px] px-1 py-px rounded select-none transition-all duration-150 ml-0.5"
+                      style={{ color: '#c4c0bc', border: '1px solid #ddd8d4' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = '#78716c'; e.currentTarget.style.borderColor = '#c4c0bc'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = '#c4c0bc'; e.currentTarget.style.borderColor = '#ddd8d4'; }}
+                    >
+                      ?
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -2515,6 +2492,175 @@ export default function Home() {
                 projects.find((p) => p.slug === previewSlug)?.name ?? ""
               }
             />
+          </div>
+        </div>
+      )}
+
+      {/* ─── Spotlight Tour Overlay ─── */}
+      {tourActive && spotlightRect && (
+        <div className="fixed inset-0 z-[100]" onClick={advanceTour}>
+          {/* Dark mask with cutout */}
+          <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
+            <defs>
+              <mask id="spotlight-mask">
+                <rect width="100%" height="100%" fill="white" />
+                <rect
+                  x={spotlightRect.left - 8}
+                  y={spotlightRect.top - 8}
+                  width={spotlightRect.width + 16}
+                  height={spotlightRect.height + 16}
+                  rx="12"
+                  fill="black"
+                />
+              </mask>
+            </defs>
+            <rect
+              width="100%"
+              height="100%"
+              fill="rgba(10, 10, 10, 0.6)"
+              mask="url(#spotlight-mask)"
+              style={{ transition: 'all 300ms cubic-bezier(0.32, 0.72, 0, 1)' }}
+            />
+          </svg>
+
+          {/* Spotlight ring */}
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              left: spotlightRect.left - 8,
+              top: spotlightRect.top - 8,
+              width: spotlightRect.width + 16,
+              height: spotlightRect.height + 16,
+              borderRadius: 12,
+              boxShadow: '0 0 0 2px rgba(79, 70, 229, 0.4), 0 0 24px rgba(79, 70, 229, 0.15)',
+              transition: 'all 300ms cubic-bezier(0.32, 0.72, 0, 1)',
+            }}
+          />
+
+          {/* Tooltip */}
+          <div
+            className="absolute pointer-events-auto"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              ...(tourSteps[tourStep].position === 'top' ? {
+                left: spotlightRect.left + spotlightRect.width / 2 - 140,
+                bottom: windowH - spotlightRect.top + 20,
+              } : tourSteps[tourStep].position === 'right' ? {
+                left: spotlightRect.right + 20,
+                top: spotlightRect.top + spotlightRect.height / 2 - 60,
+              } : {
+                left: spotlightRect.left + spotlightRect.width / 2 - 140,
+                top: spotlightRect.bottom + 20,
+              }),
+              width: 280,
+              animation: 'coachFadeIn 250ms ease-out both',
+            }}
+            key={tourStep}
+          >
+            <div
+              className="rounded-[8px] overflow-hidden"
+              style={{
+                background: '#ffffff',
+                border: '1px solid #e7e5e4',
+                boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+              }}
+            >
+              {/* Progress bar */}
+              <div className="w-full h-[2px]" style={{ background: '#e7e5e4' }}>
+                <div className="h-full" style={{
+                  width: `${((tourStep + 1) / tourSteps.length) * 100}%`,
+                  background: '#4f46e5',
+                  transition: 'width 300ms ease-out',
+                }} />
+              </div>
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[13px] font-medium" style={{ color: '#1a1a1a' }}>
+                    {tourSteps[tourStep].title}
+                  </span>
+                  <span className="text-[10px] tabular-nums" style={{ color: '#d6d3d1' }}>
+                    {tourStep + 1}/{tourSteps.length}
+                  </span>
+                </div>
+                <p className="text-[12px] leading-[1.6]" style={{ color: '#78716c' }}>
+                  {tourSteps[tourStep].body}
+                </p>
+                <div className="flex items-center justify-between mt-3">
+                  <button
+                    onClick={dismissTour}
+                    className="text-[11px] transition-colors duration-150"
+                    style={{ color: '#a8a29e' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#525252')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '#a8a29e')}
+                  >
+                    Skip
+                  </button>
+                  <button
+                    onClick={advanceTour}
+                    className="h-7 px-3 rounded-[6px] text-[11px] font-medium text-white flex items-center justify-center transition-all duration-150"
+                    style={{ background: '#4f46e5' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.15)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
+                  >
+                    {tourStep === tourSteps.length - 1 ? 'Claim reward' : 'Next'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tour Completion Reward ─── */}
+      {showReward && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center"
+          style={{ background: 'rgba(10, 10, 10, 0.6)' }}
+          onClick={() => setShowReward(false)}
+        >
+          <div
+            className="rounded-[8px] text-center"
+            style={{
+              width: 340,
+              background: '#ffffff',
+              border: '1px solid #e7e5e4',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+              animation: 'coachFadeIn 300ms ease-out both',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Full indigo progress bar — 100% */}
+            <div className="w-full h-[2px]" style={{ background: '#4f46e5' }} />
+            <div className="p-8">
+              <div className="text-[20px] font-medium tracking-[-0.02em]" style={{ color: '#1a1a1a' }}>
+                You actually finished
+              </div>
+              <p className="text-[13px] leading-[1.6] mt-2" style={{ color: '#78716c' }}>
+                Most people skip these. You didn{'\u2019'}t. Every project is now 40% off.
+              </p>
+
+              <div className="mt-6 rounded-[6px] py-4 px-4" style={{ background: '#f5f5f4', border: '1px solid #e7e5e4' }}>
+                <div className="text-[10px] tracking-[0.08em] uppercase mb-2" style={{ color: '#a8a29e' }}>
+                  Your code
+                </div>
+                <div className="text-[20px] font-medium tracking-[0.06em] select-all" style={{ color: '#4f46e5' }}>
+                  TOURED
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  navigator.clipboard?.writeText('TOURED').catch(() => {});
+                  setShowReward(false);
+                }}
+                className="mt-5 w-full h-9 rounded-[8px] flex items-center justify-center text-[12px] font-medium text-white transition-all duration-150"
+                style={{ background: '#4f46e5' }}
+                onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.15)')}
+                onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
+              >
+                Copy code & start browsing
+              </button>
+            </div>
           </div>
         </div>
       )}

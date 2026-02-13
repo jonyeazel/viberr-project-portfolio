@@ -103,10 +103,3 @@ select:focus-visible,
   from { opacity: 1; }
   to { opacity: 0; transform: translateX(-12px); }
 }
-
-@keyframes drawerGlow {
-  0% { transform: scaleY(0.96) scaleX(0.98); opacity: 0.45; }
-  33% { transform: scaleY(1.06) scaleX(1.01); opacity: 0.9; }
-  66% { transform: scaleY(1.0) scaleX(1.04); opacity: 0.65; }
-  100% { transform: scaleY(0.96) scaleX(0.98); opacity: 0.45; }
-}
