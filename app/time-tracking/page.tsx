@@ -680,7 +680,6 @@ export default function TimeTrackingPage() {
           </div>
         </main>
       </div>
-      {isEmbedded && <div className="flex-shrink-0" style={{ height: 34, background: colors.bg }} />}
     </div>
   );
 }

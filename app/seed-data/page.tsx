@@ -605,7 +605,6 @@ export default function SeedDataPage() {
           </div>
         )}
       </div>
-      {isEmbedded && <div style={{ height: 34, flexShrink: 0, background: colors.bg }} />}
     </div>
   );
 }

@@ -769,7 +769,6 @@ export default function VoucherFulfillmentPage() {
           </div>
         )}
       </div>
-      {isEmbedded && <div className="flex-shrink-0" style={{ height: 34, background: 'var(--background)' }} />}
     </div>
   );
 }

@@ -1301,7 +1301,6 @@ export default function CollectablesPage() {
           </div>
         </>
       )}
-      {isEmbedded && <div style={{ height: 34, flexShrink: 0, background: 'var(--background)' }} />}
     </div>
   );
 }

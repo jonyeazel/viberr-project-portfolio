@@ -319,7 +319,6 @@ export default function BillingWorkflowPage() {
           <FinancialPlanTab customers={customers} />
         )}
       </main>
-      {isEmbedded && <div style={{ height: 34, flexShrink: 0, background: colors.bg }} />}
     </div>
   );
 }
